@@ -171,6 +171,29 @@ than duplicated. Synthetic stake and settlement entries currently use the admini
 ledger and are excluded from analytics; this is intentionally visible in the admin UI and must not
 be presented as production user activity.
 
+### Release-candidate UX patch 2 boundaries
+
+Patch 2 keeps competition definitions in `src/config/sports.ts`, including provider sport keys,
+markets, display labels, navigation groups, availability, and cache policy. Browse Odds links are
+generated from that configuration and disable route prefetching so configuring a competition does
+not itself create an upstream provider call. A selected competition page still uses the existing
+`getCompetitionOdds` server boundary and PostgreSQL cache/lease/quota ledger path.
+
+The active simulated parlay slip is a small client-side external store backed by browser local
+storage. It contains only the selection snapshot already displayed for placement: event and
+competition identity, teams, bookmaker, market, selection, line, accepted-provider preview price,
+decimal price, and kickoff. It contains no authentication, bankroll, service credential, or other
+sensitive data. Server placement remains authoritative; successful parlay placement sends only the
+submitted selection keys back to My Bets so the client removes those keys from the unfinished slip.
+Failed or stale-price-rejected placement does not clear the slip. Straight placement does not
+consume parlay selections. Explicit removal and clear actions update the same store.
+
+Kickoff display uses a client component with an identical deterministic UTC server fallback and a
+post-hydration local-time update. This keeps the rendered HTML stable across server and browser
+timezones while showing the user's local display timezone during normal interaction. Team marks
+use the centralized best-effort ESPN CDN resolver; image load errors hide only the image and retain
+initials.
+
 ### Administration and operations
 
 Administrative capabilities include quota inspection, request history, settlement-failure inspection, safe settlement reruns, bankroll adjustments, group membership management, upload moderation, and competition or bookmaker toggles. The source does not define the boundary between group administration and application administration.

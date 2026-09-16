@@ -39,6 +39,7 @@ const parlayPlacementSchema = z.object({
   legs: z.array(parlayLegSchema).min(2).max(12),
   stake: z.string().trim(),
   groupId: z.union([z.literal(""), z.uuid()]),
+  slipKeys: z.string().trim().max(4096).optional().default(""),
 });
 
 function formValue(formData: FormData, field: string) {
@@ -47,7 +48,7 @@ function formValue(formData: FormData, field: string) {
 }
 
 function notice(path: string, message: string): never {
-  redirect(`${path}?notice=${encodeURIComponent(message)}`);
+  redirect(`${path}${path.includes("?") ? "&" : "?"}notice=${encodeURIComponent(message)}`);
 }
 
 function placementMessage(message: string) {
@@ -126,6 +127,7 @@ export async function placeParlayBet(formData: FormData) {
     legs: submittedLegs,
     stake: formValue(formData, "stake"),
     groupId: formValue(formData, "groupId"),
+    slipKeys: formValue(formData, "slipKeys"),
   });
   if (!parsed.success || parsed.data.legs.some((leg) => !getCompetition(leg.competitionKey))) {
     notice("/sports", "A parlay requires 2–12 supported selections.");
@@ -157,5 +159,11 @@ export async function placeParlayBet(formData: FormData) {
     }
     notice("/sports", placementMessage(message));
   }
-  notice("/my-bets", "Simulated parlay placed atomically and its stake was debited once.");
+  const cleanupQuery = parsed.data.slipKeys
+    ? `?slip=${encodeURIComponent(parsed.data.slipKeys)}`
+    : "";
+  notice(
+    `/my-bets${cleanupQuery}`,
+    "Simulated parlay placed atomically and its stake was debited once.",
+  );
 }

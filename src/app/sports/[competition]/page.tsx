@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppNav } from "@/components/app-nav";
 import { BetSlip } from "@/components/bet-slip";
+import { CompetitionSwitcher } from "@/components/competition-switcher";
+import { KickoffTime } from "@/components/kickoff-time";
 import { StatusBadge } from "@/components/status-badge";
 import { SubmitButton } from "@/components/submit-button";
 import { TeamMark } from "@/components/team-mark";
@@ -88,9 +90,30 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
         point: query.point,
       })
     : null;
+  const slipSelection = chosen
+    ? {
+        competitionKey: id,
+        eventId: chosen.event.id,
+        sport: chosen.event.sport,
+        competition: chosen.event.competitionName,
+        event: `${chosen.event.awayTeam} at ${chosen.event.homeTeam}`,
+        scheduledStart: chosen.event.scheduledStart,
+        homeTeam: chosen.event.homeTeam,
+        awayTeam: chosen.event.awayTeam,
+        bookmakerId: chosen.odds.bookmakerId,
+        bookmaker: chosen.odds.bookmakerName,
+        marketType: chosen.odds.marketType,
+        selection: chosen.odds.selection,
+        selectionName: chosen.odds.selectionName,
+        line: chosen.odds.point,
+        americanOdds: chosen.odds.americanOdds,
+        decimalOdds: chosen.odds.decimalOdds,
+      }
+    : null;
   return (
     <main className="shell">
       <AppNav active="sports" userId={data.user.id} />
+      <CompetitionSwitcher currentCompetition={id} />
       <header className="account-header">
         <div>
           <p className="eyebrow">{competition.sport}</p>
@@ -142,7 +165,7 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
           </Link>
         ))}
       </section>
-      <div className={chosen ? "sportsbook-layout" : "event-list"}>
+      <div className="sportsbook-layout">
         <div className="event-list">
           {dataset?.events.map((event) => {
             const odds = event.odds.filter(
@@ -151,7 +174,7 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
             return (
               <article className="card event-card" key={event.id}>
                 <div className="event-heading">
-                  <div>
+                  <div className="event-heading-main">
                     <h2 className="event-teams">
                       <span>
                         <TeamMark teamName={event.awayTeam} sport={event.sport} />
@@ -163,9 +186,10 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
                         {event.homeTeam}
                       </span>
                     </h2>
-                    <time dateTime={event.scheduledStart}>
-                      {new Date(event.scheduledStart).toLocaleString()}
-                    </time>
+                    <div className="event-kickoff">
+                      <span className="sr-only">Kickoff </span>
+                      <KickoffTime value={event.scheduledStart} />
+                    </div>
                   </div>
                   <StatusBadge status={event.status} />
                 </div>
@@ -258,27 +282,7 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
             </p>
           ) : null}
         </div>
-        {chosen ? (
-          <BetSlip
-            competitionKey={id}
-            eventId={chosen.event.id}
-            sport={chosen.event.sport}
-            competition={chosen.event.competitionName}
-            event={`${chosen.event.awayTeam} at ${chosen.event.homeTeam}`}
-            scheduledStart={chosen.event.scheduledStart}
-            homeTeam={chosen.event.homeTeam}
-            awayTeam={chosen.event.awayTeam}
-            bookmakerId={chosen.odds.bookmakerId}
-            bookmaker={chosen.odds.bookmakerName}
-            marketType={chosen.odds.marketType}
-            selection={chosen.odds.selection}
-            selectionName={chosen.odds.selectionName}
-            line={chosen.odds.point}
-            americanOdds={chosen.odds.americanOdds}
-            decimalOdds={chosen.odds.decimalOdds}
-            groups={groups}
-          />
-        ) : null}
+        <BetSlip selection={slipSelection} groups={groups} />
       </div>
     </main>
   );

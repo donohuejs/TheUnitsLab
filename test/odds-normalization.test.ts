@@ -37,9 +37,9 @@ describe("Odds API normalization", () => {
     expect(americanToDecimal(-110)).toBe(1.9091);
   });
 
-  it("maps every initial competition to one stable provider key and canonical request", () => {
-    const keys = (["epl", "ucl", "ncaaf", "ncaab", "nfl", "nhl"] as const).map((id) =>
-      createOddsRequest(id),
+  it("maps every configured competition to one stable provider key and canonical request", () => {
+    const keys = (["epl", "ucl", "ncaaf", "ncaab", "nfl", "nhl", "uel", "laliga"] as const).map(
+      (id) => createOddsRequest(id),
     );
     expect(keys.map((item) => item.providerSportKey)).toEqual([
       "soccer_epl",
@@ -48,8 +48,10 @@ describe("Odds API normalization", () => {
       "basketball_ncaab",
       "americanfootball_nfl",
       "icehockey_nhl",
+      "soccer_uefa_europa_league",
+      "soccer_spain_la_liga",
     ]);
-    expect(new Set(keys.map(canonicalRequestKey))).toHaveLength(6);
+    expect(new Set(keys.map(canonicalRequestKey))).toHaveLength(8);
     expect(keys[0].bookmakers).toEqual(["betmgm", "draftkings", "fanduel"]);
     expect(createAlternateOddsRequest("nfl", "provider-event")).toMatchObject({
       endpoint: "event_odds",
@@ -57,6 +59,18 @@ describe("Odds API normalization", () => {
       markets: ["alternate_spreads", "alternate_totals"],
     });
   });
+
+  it.each(["uel", "laliga"] as const)(
+    "preserves soccer draw normalization for %s",
+    (competitionId) => {
+      const [event] = normalizeOddsResponse(fixture, competitionId, "2026-09-12T12:01:00Z");
+
+      expect(event.competitionId).toBe(competitionId);
+      expect(event.odds.find((odd) => odd.selection === "draw")).toEqual(
+        expect.objectContaining({ marketType: "moneyline", selection: "draw" }),
+      );
+    },
+  );
 
   it("normalizes alternate lines without reusing the featured market price", () => {
     const [event] = normalizeOddsResponse(

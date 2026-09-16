@@ -1,91 +1,73 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 
 import { placeParlayBet, placeStraightBet } from "@/app/sports/bet-actions";
+import { KickoffTime } from "@/components/kickoff-time";
 import { SubmitButton } from "@/components/submit-button";
 import { MarketBadge, SourceBadge, TicketTypeBadge } from "@/components/status-badge";
 import { TeamMark } from "@/components/team-mark";
 import { calculateParlayPotential } from "@/lib/parlays/calculations";
+import {
+  clearSlip,
+  getEmptySlipSnapshot,
+  getSlipSnapshot,
+  setSlipSelections,
+  slipSelectionKey,
+  subscribeToSlip,
+  type SlipSelection,
+} from "@/lib/wagers/slip";
 import { calculatePotential } from "@/lib/wagers/calculations";
 
-type Selection = {
-  competitionKey: string;
-  eventId: string;
-  sport: string;
-  competition: string;
-  event: string;
-  scheduledStart: string;
-  homeTeam: string;
-  awayTeam: string;
-  bookmakerId: string;
-  bookmaker: string;
-  marketType: "moneyline" | "spread" | "total";
-  selection: "home" | "away" | "draw" | "over" | "under";
-  selectionName: string;
-  line: number | null;
-  americanOdds: number;
-  decimalOdds: number;
+type Props = {
+  selection: SlipSelection | null;
+  groups: { id: string; name: string }[];
 };
 
-type Props = Selection & { groups: { id: string; name: string }[] };
-type StoredLeg = Selection;
-
-const STORAGE_KEY = "sportsbook-simulator:phase7-parlay";
 const americanPrice = (value: number) => (value > 0 ? `+${value}` : String(value));
 
-function legKey(leg: StoredLeg) {
-  return `${leg.eventId}|${leg.bookmakerId}|${leg.marketType}|${leg.selection}|${leg.line ?? ""}`;
-}
-
-export function BetSlip(props: Props) {
+export function BetSlip({ selection, groups }: Props) {
   const [stake, setStake] = useState("10.00");
   const [parlayStake, setParlayStake] = useState("10.00");
-  const [legs, setLegs] = useState<StoredLeg[]>([]);
   const [parlayNotice, setParlayNotice] = useState("");
-  const selection: Selection = props;
-
-  useEffect(() => {
-    const hydrate = window.setTimeout(() => {
-      try {
-        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]") as StoredLeg[];
-        if (Array.isArray(saved)) setLegs(saved.slice(0, 12));
-      } catch {
-        localStorage.removeItem(STORAGE_KEY);
-      }
-    }, 0);
-    return () => window.clearTimeout(hydrate);
-  }, []);
-
-  function persist(next: StoredLeg[]) {
-    setLegs(next);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  }
+  const legs = useSyncExternalStore(subscribeToSlip, getSlipSnapshot, getEmptySlipSnapshot);
 
   function addCurrentLeg() {
-    if (legs.length >= 12) return setParlayNotice("A parlay can contain at most 12 legs.");
+    if (!selection) {
+      setParlayNotice("Select a price first, then add it to the parlay.");
+      return;
+    }
+    if (legs.length >= 12) {
+      setParlayNotice("A parlay can contain at most 12 legs.");
+      return;
+    }
     if (legs.some((leg) => leg.eventId === selection.eventId)) {
-      return setParlayNotice(
+      setParlayNotice(
         "Same-game parlay (SGP) pricing is not currently supported; choose a different event.",
       );
+      return;
     }
     if (legs.length && legs[0].bookmakerId !== selection.bookmakerId) {
-      return setParlayNotice("All simulated parlay legs must use the same bookmaker.");
+      setParlayNotice("All simulated parlay legs must use the same bookmaker.");
+      return;
     }
-    if (legs.some((leg) => legKey(leg) === legKey(selection))) {
-      return setParlayNotice("That selection is already in the parlay.");
+    if (legs.some((leg) => slipSelectionKey(leg) === slipSelectionKey(selection))) {
+      setParlayNotice("That selection is already in the parlay.");
+      return;
     }
-    persist([...legs, selection]);
+    setSlipSelections([...legs, selection]);
     setParlayNotice("Selection added to the parlay.");
   }
 
   const straightPotential = useMemo(() => {
+    if (!selection) return null;
     try {
-      return calculatePotential(stake, props.decimalOdds.toFixed(4));
+      return calculatePotential(stake, selection.decimalOdds.toFixed(4));
     } catch {
       return null;
     }
-  }, [props.decimalOdds, stake]);
+  }, [selection, stake]);
+
   const parlayPotential = useMemo(() => {
     try {
       return legs.length >= 2
@@ -98,6 +80,7 @@ export function BetSlip(props: Props) {
       return null;
     }
   }, [legs, parlayStake]);
+
   const submittedLegs = legs.map((leg) => ({
     competitionKey: leg.competitionKey,
     eventId: leg.eventId,
@@ -110,114 +93,124 @@ export function BetSlip(props: Props) {
 
   return (
     <aside className="bet-slip-stack" aria-label="Simulated bet slips">
-      <section className="card bet-slip">
-        <div className="ticket-meta">
-          <SourceBadge source="simulated" />
-          <TicketTypeBadge ticketType="straight" />
-        </div>
-        <h2>Straight bet — one leg</h2>
-        <p className="simulation-label">Virtual units only. No real-money wager is placed.</p>
-        <dl className="ticket-details">
-          <div>
-            <dt>Competition</dt>
-            <dd>{props.competition}</dd>
+      {selection ? (
+        <section className="card bet-slip">
+          <div className="ticket-meta">
+            <SourceBadge source="simulated" />
+            <TicketTypeBadge ticketType="straight" />
           </div>
-          <div>
-            <dt>Event</dt>
-            <dd className="team-pair">
-              <span>
-                <TeamMark teamName={props.awayTeam} sport={props.sport} />
-                {props.awayTeam}
-              </span>
-              <span className="event-at">at</span>
-              <span>
-                <TeamMark teamName={props.homeTeam} sport={props.sport} />
-                {props.homeTeam}
-              </span>
-            </dd>
-          </div>
-          <div>
-            <dt>Bookmaker</dt>
-            <dd>{props.bookmaker}</dd>
-          </div>
-          <div>
-            <dt>Market</dt>
-            <dd>
-              <MarketBadge market={props.marketType} />
-            </dd>
-          </div>
-          <div>
-            <dt>Selection</dt>
-            <dd>
-              {props.selectionName}
-              {props.line === null ? "" : ` ${props.line > 0 ? "+" : ""}${props.line}`}
-            </dd>
-          </div>
-          <div>
-            <dt>Odds</dt>
-            <dd>
-              {americanPrice(props.americanOdds)} ({props.decimalOdds.toFixed(4)})
-            </dd>
-          </div>
-        </dl>
-        <button className="button secondary" type="button" onClick={addCurrentLeg}>
-          Add this selection to parlay
-        </button>
-        <form action={placeStraightBet} className="form-stack">
-          <input type="hidden" name="competitionKey" value={props.competitionKey} />
-          <input type="hidden" name="eventId" value={props.eventId} />
-          <input type="hidden" name="bookmakerId" value={props.bookmakerId} />
-          <input type="hidden" name="marketType" value={props.marketType} />
-          <input type="hidden" name="selection" value={props.selection} />
-          <input type="hidden" name="expectedAmericanOdds" value={props.americanOdds} />
-          <input type="hidden" name="expectedLine" value={props.line ?? ""} />
-          <label>
-            Stake in virtual units
-            <input
-              name="stake"
-              type="number"
-              inputMode="decimal"
-              min="0.01"
-              step="0.01"
-              required
-              value={stake}
-              onChange={(event) => setStake(event.target.value)}
-            />
-          </label>
-          {props.groups.length ? (
+          <h2>Straight bet — one leg</h2>
+          <p className="simulation-label">Virtual units only. No real-money wager is placed.</p>
+          <dl className="ticket-details">
+            <div>
+              <dt>Competition</dt>
+              <dd>{selection.competition}</dd>
+            </div>
+            <div>
+              <dt>Event</dt>
+              <dd className="team-pair">
+                <span>
+                  <TeamMark teamName={selection.awayTeam} sport={selection.sport} />
+                  {selection.awayTeam}
+                </span>
+                <span className="event-at">at</span>
+                <span>
+                  <TeamMark teamName={selection.homeTeam} sport={selection.sport} />
+                  {selection.homeTeam}
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt>Kickoff</dt>
+              <dd>
+                <KickoffTime value={selection.scheduledStart} />
+              </dd>
+            </div>
+            <div>
+              <dt>Bookmaker</dt>
+              <dd>{selection.bookmaker}</dd>
+            </div>
+            <div>
+              <dt>Market</dt>
+              <dd>
+                <MarketBadge market={selection.marketType} />
+              </dd>
+            </div>
+            <div>
+              <dt>Selection</dt>
+              <dd>
+                {selection.selectionName}
+                {selection.line === null
+                  ? ""
+                  : ` ${selection.line > 0 ? "+" : ""}${selection.line}`}
+              </dd>
+            </div>
+            <div>
+              <dt>Odds</dt>
+              <dd>
+                {americanPrice(selection.americanOdds)} ({selection.decimalOdds.toFixed(4)})
+              </dd>
+            </div>
+          </dl>
+          <button className="button secondary" type="button" onClick={addCurrentLeg}>
+            Add this selection to parlay
+          </button>
+          <form action={placeStraightBet} className="form-stack">
+            <input type="hidden" name="competitionKey" value={selection.competitionKey} />
+            <input type="hidden" name="eventId" value={selection.eventId} />
+            <input type="hidden" name="bookmakerId" value={selection.bookmakerId} />
+            <input type="hidden" name="marketType" value={selection.marketType} />
+            <input type="hidden" name="selection" value={selection.selection} />
+            <input type="hidden" name="expectedAmericanOdds" value={selection.americanOdds} />
+            <input type="hidden" name="expectedLine" value={selection.line ?? ""} />
             <label>
-              Group association (optional)
-              <select name="groupId" defaultValue="">
-                <option value="">No group</option>
-                {props.groups.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.name}
-                  </option>
-                ))}
-              </select>
+              Stake in virtual units
+              <input
+                name="stake"
+                type="number"
+                inputMode="decimal"
+                min="0.01"
+                step="0.01"
+                required
+                value={stake}
+                onChange={(event) => setStake(event.target.value)}
+              />
             </label>
-          ) : (
-            <input type="hidden" name="groupId" value="" />
-          )}
-          <div className="potential-grid" aria-live="polite">
-            <span>
-              Potential profit{" "}
-              <strong>{straightPotential ? `${straightPotential.profit} units` : "—"}</strong>
-            </span>
-            <span>
-              Potential return{" "}
-              <strong>{straightPotential ? `${straightPotential.return} units` : "—"}</strong>
-            </span>
-          </div>
-          <SubmitButton
-            pendingLabel="Placing straight…"
-            className="button"
-            disabled={!straightPotential}
-          >
-            Place simulated straight
-          </SubmitButton>
-        </form>
-      </section>
+            {groups.length ? (
+              <label>
+                Group association (optional)
+                <select name="groupId" defaultValue="">
+                  <option value="">No group</option>
+                  {groups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <input type="hidden" name="groupId" value="" />
+            )}
+            <div className="potential-grid" aria-live="polite">
+              <span>
+                Potential profit{" "}
+                <strong>{straightPotential ? `${straightPotential.profit} units` : "—"}</strong>
+              </span>
+              <span>
+                Potential return{" "}
+                <strong>{straightPotential ? `${straightPotential.return} units` : "—"}</strong>
+              </span>
+            </div>
+            <SubmitButton
+              pendingLabel="Placing straight…"
+              className="button"
+              disabled={!straightPotential}
+            >
+              Place simulated straight
+            </SubmitButton>
+          </form>
+        </section>
+      ) : null}
 
       <section className="card bet-slip">
         <div className="ticket-meta">
@@ -233,25 +226,33 @@ export function BetSlip(props: Props) {
         {parlayNotice ? <p className="notice">{parlayNotice}</p> : null}
         <ol className="parlay-leg-list">
           {legs.map((leg, index) => (
-            <li key={legKey(leg)}>
-              <div>
+            <li key={slipSelectionKey(leg)}>
+              <div className="parlay-leg-copy">
                 <strong>
                   <MarketBadge market={leg.marketType} /> {leg.selectionName}
                   {leg.line === null ? "" : ` ${leg.line > 0 ? "+" : ""}${leg.line}`}
                 </strong>
-                <small>
+                <small className="parlay-leg-context">
                   <span className="team-pair">
                     <TeamMark teamName={leg.awayTeam} sport={leg.sport} />
                     {leg.awayTeam} at <TeamMark teamName={leg.homeTeam} sport={leg.sport} />
                     {leg.homeTeam}
                   </span>
-                  {leg.bookmaker} · {americanPrice(leg.americanOdds)} ({leg.decimalOdds.toFixed(4)})
+                  <span>
+                    {leg.competition} · <KickoffTime value={leg.scheduledStart} />
+                  </span>
+                  <span>
+                    {leg.bookmaker} · {americanPrice(leg.americanOdds)} (
+                    {leg.decimalOdds.toFixed(4)})
+                  </span>
                 </small>
               </div>
               <button
                 className="text-button"
                 type="button"
-                onClick={() => persist(legs.filter((_, candidate) => candidate !== index))}
+                onClick={() =>
+                  setSlipSelections(legs.filter((_, candidate) => candidate !== index))
+                }
               >
                 Remove
               </button>
@@ -259,10 +260,14 @@ export function BetSlip(props: Props) {
           ))}
         </ol>
         {!legs.length ? (
-          <p className="empty-state">Add a displayed market selection to begin.</p>
+          <p className="empty-state">
+            <strong>No selections yet</strong>
+            Your parlay slip stays available while you switch competitions.
+          </p>
         ) : null}
         <form action={placeParlayBet} className="form-stack">
           <input type="hidden" name="legs" value={JSON.stringify(submittedLegs)} />
+          <input type="hidden" name="slipKeys" value={legs.map(slipSelectionKey).join(",")} />
           <label>
             Parlay stake in virtual units
             <input
@@ -276,12 +281,12 @@ export function BetSlip(props: Props) {
               onChange={(event) => setParlayStake(event.target.value)}
             />
           </label>
-          {props.groups.length ? (
+          {groups.length ? (
             <label>
               Group association (optional)
               <select name="groupId" defaultValue="">
                 <option value="">No group</option>
-                {props.groups.map((group) => (
+                {groups.map((group) => (
                   <option key={group.id} value={group.id}>
                     {group.name}
                   </option>
@@ -325,7 +330,7 @@ export function BetSlip(props: Props) {
               className="button secondary"
               type="button"
               onClick={() => {
-                persist([]);
+                clearSlip();
                 setParlayNotice("Parlay slip cleared.");
               }}
             >

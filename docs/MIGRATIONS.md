@@ -22,6 +22,13 @@ settlement-job reads, and grants the narrow synthetic create/settle RPCs only to
 settlement, payout, idempotency, and analytics-exclusion test. This migration must replay after the
 Phase 7 migrations and before any release-candidate UAT.
 
+Release-candidate UX patch 2 adds `20260921000000_release_candidate_ux_patch_2.sql`. It inserts
+enabled `uel` and `laliga` rows into the existing soccer competition catalog with `on conflict`
+updates, without editing Patch 1. `supabase/tests/release_candidate_ux_patch_2.sql` verifies the
+rows, names, sport association, enabled state, and identifier uniqueness. The migration replays
+after Patch 1 and changes no RLS policy, wager function, cache table, quota ledger, settlement
+function, or bankroll behavior.
+
 ## Source of truth
 
 Ordered SQL files under `supabase/migrations` are the database source of truth. Configuration in a hosted dashboard is not sufficient. Migrations must include tables, constraints, functions, grants, Row Level Security enablement, policies, storage policies, and indexes needed by the corresponding phase.

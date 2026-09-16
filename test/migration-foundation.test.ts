@@ -44,6 +44,10 @@ const releaseCandidateMigrationUrl = new URL(
   "../supabase/migrations/20260920000000_release_candidate_ux_patch_1.sql",
   import.meta.url,
 );
+const releaseCandidatePatchTwoMigrationUrl = new URL(
+  "../supabase/migrations/20260921000000_release_candidate_ux_patch_2.sql",
+  import.meta.url,
+);
 
 describe("Phase 0 database foundation", () => {
   it("keeps server-only objects outside exposed schemas", async () => {
@@ -255,5 +259,17 @@ describe("Release candidate UX patch 1 migration", () => {
     expect(sql).toContain("where ticket.source = 'simulated' and not ticket.is_synthetic");
     expect(sql).toContain("revoke all on function public.admin_create_settlement_test");
     expect(sql).toContain("grant execute on function public.admin_settle_settlement_test");
+  });
+});
+
+describe("Release candidate UX patch 2 migration", () => {
+  it("adds soccer competition catalog rows forward-only after patch 1", async () => {
+    const sql = await readFile(fileURLToPath(releaseCandidatePatchTwoMigrationUrl), "utf8");
+
+    expect(sql).toContain("insert into public.competitions_catalog");
+    expect(sql).toContain("('uel', 'soccer', 'UEFA Europa League', true)");
+    expect(sql).toContain("('laliga', 'soccer', 'La Liga', true)");
+    expect(sql).toContain("on conflict (id) do update");
+    expect(sql).not.toContain("20260920000000_release_candidate_ux_patch_1.sql");
   });
 });

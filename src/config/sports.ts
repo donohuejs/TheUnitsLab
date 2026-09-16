@@ -15,7 +15,9 @@ export const marketSchema = z.object({
 export const competitionSchema = z.object({
   id: Identifier,
   name: z.string().trim().min(1),
+  browseLabel: z.string().trim().min(1),
   sport: z.enum(["soccer", "football", "basketball", "hockey"]),
+  browseGroup: z.enum(["football", "basketball", "hockey", "soccer"]),
   providerSportKey: Identifier,
   enabled: z.boolean(),
   availability: z.enum(["core", "event_based", "future"]),
@@ -92,7 +94,9 @@ export const rawSportsProviderConfiguration = {
     {
       id: "epl",
       name: "English Premier League",
+      browseLabel: "EPL",
       sport: "soccer",
+      browseGroup: "soccer",
       providerSportKey: "soccer_epl",
       enabled: true,
       availability: "core",
@@ -102,7 +106,9 @@ export const rawSportsProviderConfiguration = {
     {
       id: "ucl",
       name: "UEFA Champions League",
+      browseLabel: "Champions League",
       sport: "soccer",
+      browseGroup: "soccer",
       providerSportKey: "soccer_uefa_champs_league",
       enabled: true,
       availability: "core",
@@ -112,7 +118,9 @@ export const rawSportsProviderConfiguration = {
     {
       id: "ncaaf",
       name: "NCAA Division I College Football",
+      browseLabel: "NCAA Football",
       sport: "football",
+      browseGroup: "football",
       providerSportKey: "americanfootball_ncaaf",
       enabled: true,
       availability: "core",
@@ -122,7 +130,9 @@ export const rawSportsProviderConfiguration = {
     {
       id: "ncaab",
       name: "NCAA Division I Men's College Basketball",
+      browseLabel: "NCAA Basketball",
       sport: "basketball",
+      browseGroup: "basketball",
       providerSportKey: "basketball_ncaab",
       enabled: true,
       availability: "core",
@@ -132,7 +142,9 @@ export const rawSportsProviderConfiguration = {
     {
       id: "nfl",
       name: "NFL",
+      browseLabel: "NFL",
       sport: "football",
+      browseGroup: "football",
       providerSportKey: "americanfootball_nfl",
       enabled: true,
       availability: "core",
@@ -143,7 +155,9 @@ export const rawSportsProviderConfiguration = {
     {
       id: "nba",
       name: "NBA Playoffs and Finals",
+      browseLabel: "NBA",
       sport: "basketball",
+      browseGroup: "basketball",
       providerSportKey: "basketball_nba",
       enabled: false,
       availability: "event_based",
@@ -153,12 +167,38 @@ export const rawSportsProviderConfiguration = {
     {
       id: "nhl",
       name: "NHL",
+      browseLabel: "NHL",
       sport: "hockey",
+      browseGroup: "hockey",
       providerSportKey: "icehockey_nhl",
       enabled: true,
       availability: "core",
       markets: twoWayMarkets,
       alternateMarkets: ["alternate_spreads", "alternate_totals"],
+      cache: { scheduleSeconds: 21600, pregameOddsSeconds: 900 },
+    },
+    {
+      id: "uel",
+      name: "UEFA Europa League",
+      browseLabel: "Europa League",
+      sport: "soccer",
+      browseGroup: "soccer",
+      providerSportKey: "soccer_uefa_europa_league",
+      enabled: true,
+      availability: "core",
+      markets: soccerMarkets,
+      cache: { scheduleSeconds: 21600, pregameOddsSeconds: 900 },
+    },
+    {
+      id: "laliga",
+      name: "La Liga",
+      browseLabel: "La Liga",
+      sport: "soccer",
+      browseGroup: "soccer",
+      providerSportKey: "soccer_spain_la_liga",
+      enabled: true,
+      availability: "core",
+      markets: soccerMarkets,
       cache: { scheduleSeconds: 21600, pregameOddsSeconds: 900 },
     },
   ],
@@ -227,3 +267,23 @@ export const rawSportsProviderConfiguration = {
 export const sportsProviderConfiguration = providerConfigurationSchema.parse(
   rawSportsProviderConfiguration,
 );
+
+const browseGroupLabels = {
+  football: "Football",
+  basketball: "Basketball",
+  hockey: "Hockey",
+  soccer: "Soccer",
+} as const;
+
+export const browseCompetitionGroups = (["football", "hockey", "soccer", "basketball"] as const)
+  .map((group) => ({
+    id: group,
+    label: browseGroupLabels[group],
+    competitions: sportsProviderConfiguration.competitions.filter(
+      (competition) =>
+        competition.enabled &&
+        competition.availability === "core" &&
+        competition.browseGroup === group,
+    ),
+  }))
+  .filter((group) => group.competitions.length > 0);

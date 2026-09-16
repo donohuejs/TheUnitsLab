@@ -95,6 +95,18 @@ configured markets (`alternate_spreads` and/or `alternate_totals`) and is theref
 to the provider's current market-by-region rules. Cache reuse and the existing refresh controls remain
 the quota guardrails. No paid dependency, provider key, or uncontrolled client polling loop was added.
 
+## Release-candidate UX patch 2 quota impact
+
+La Liga and UEFA Europa League add two provider-backed competition definitions but no automatic
+provider work. Their Browse Odds switcher links disable Next.js route prefetching, and the landing
+cards use the same opt-out, so a configured competition is fetched only when the user requests the
+page or an existing bounded refresh/settlement path requires it. Each request uses the existing
+canonical request key, shared PostgreSQL cache, refresh lease, cooldown, quota mode, and usage
+ledger. The two soccer competitions use the same featured h2h/spreads/totals request shape as EPL
+and UCL; no alternate-market or background polling path was added. Expected quota impact is zero
+until a user or existing server workflow requests one of the new competitions, after which it is
+one shared request per cache miss under the current provider cost rules.
+
 ## Highest-risk assumptions
 
 - Exact Odds API credit cost depends on request shape and must be measured without uncontrolled calls.

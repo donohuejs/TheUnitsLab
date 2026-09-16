@@ -400,7 +400,8 @@ textarea:focus {
   transform: translateY(-2px);
 }
 .top-nav,
-.book-filter {
+.book-filter,
+.competition-switcher {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -455,6 +456,56 @@ textarea:focus {
 .book-filter .pill {
   text-decoration: none;
 }
+
+.competition-switcher {
+  align-items: stretch;
+  gap: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  padding: 0.8rem;
+  background: rgba(255, 255, 255, 0.72);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.competition-switcher-group {
+  display: grid;
+  gap: 0.35rem;
+  min-width: max-content;
+}
+
+.competition-switcher-label {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.competition-switcher-links {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.competition-switcher-link {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.42rem 0.7rem;
+  color: #31556c;
+  background: #fff;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.competition-switcher-link:hover,
+.competition-switcher-link.active {
+  border-color: var(--accent);
+  color: #fff;
+  background: var(--accent);
+}
+
 .pill.active {
   color: white;
   background: #087443;
@@ -551,8 +602,11 @@ textarea:focus {
   justify-content: space-between;
   gap: 1rem;
 }
+.event-heading-main {
+  min-width: 0;
+}
 .event-heading h2 {
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.45rem;
 }
 .event-teams,
 .team-pair {
@@ -596,10 +650,17 @@ textarea:focus {
   place-items: center;
 }
 .team-mark-image {
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: 80%;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 0.18rem;
   background-color: white;
+}
+.event-kickoff {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 .alternate-lines-link {
   display: flex;
@@ -698,6 +759,17 @@ textarea:focus {
   display: flex;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.parlay-leg-copy {
+  min-width: 0;
+}
+
+.parlay-leg-context {
+  display: grid;
+  gap: 0.28rem;
+  margin-top: 0.35rem;
+  color: var(--muted);
 }
 
 .parlay-leg-list small,
@@ -1118,6 +1190,12 @@ thead th {
     grid-template-columns: 1fr;
   }
 
+  .competition-switcher {
+    flex-wrap: nowrap;
+    margin-inline: -0.25rem;
+    padding-inline: 0.55rem;
+  }
+
   .bet-slip {
     position: static;
   }
@@ -1148,6 +1226,24 @@ thead th {
 
   .odds-grid {
     grid-template-columns: 1fr;
+  }
+
+  .event-heading {
+    align-items: flex-start;
+  }
+
+  .event-teams {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .event-teams .event-at {
+    margin-left: 2rem;
+  }
+
+  .parlay-leg-list li {
+    align-items: flex-start;
   }
 
   th,

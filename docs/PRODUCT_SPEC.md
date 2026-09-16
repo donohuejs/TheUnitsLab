@@ -67,6 +67,16 @@ The owner explicitly authorizes this focused release-candidate usability and tes
 - An administrator-only settlement harness may create explicitly flagged synthetic straight or parlay tickets for win, loss, push, and void scenarios. Synthetic rows are excluded from ordinary ticket history, score reads, analytics, leaderboards, and settlement-job selection. The harness invokes the same authoritative settlement functions and must remain inaccessible to browser roles.
 - IRL/external wager entry remains a separate manual record path. Custom lines and odds remain supported there; teasers and fabricated provider prices are not added to simulated wagering.
 
+### Approved release-candidate UX patch 2 clarification 2026-09-16
+
+The owner explicitly authorizes a focused release-candidate Browse Odds usability patch before broad UAT. It does not start Phase 9, alter the provider/cache/quota boundary, or change the virtual-only, security, immutable-ticket, settlement, or free-tier constraints.
+
+- The core Browse Odds catalog adds UEFA Europa League (`soccer_uefa_europa_league`) and La Liga (`soccer_spain_la_liga`) through the existing provider configuration, normalization, PostgreSQL cache, refresh lease, quota ledger, and placement/settlement paths. The keys were verified against The Odds API's current sports catalog before implementation.
+- Competition navigation is grouped and generated from shared catalog configuration. The active client-side parlay slip is persisted as non-sensitive wager-selection snapshots in browser local storage and remains available across Browse Odds competition navigation, back/forward navigation, rerenders, and refresh when browser storage is available.
+- Soccer competitions retain three-way moneyline normalization, including draw. Mixed-sport simulated parlays remain permitted by the existing Phase 7 rules when legs use one bookmaker and distinct provider events; same-game parlays remain unsupported.
+- Team marks remain presentation-only. The centralized ESPN CDN resolver adds normalized NCAA aliases and a visible initials fallback when a team is unknown or an external image fails.
+- Kickoff presentation uses a shared readable formatter with no seconds. The server-rendered fallback is deterministic UTC and the client updates it to the user's local timezone after hydration, avoiding server/client timezone mismatch.
+
 ## 1 Project purpose
 
 Build a private, entertainment-focused sports wagering simulator and betting-performance tracker.

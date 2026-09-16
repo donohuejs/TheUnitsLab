@@ -1,4 +1,5 @@
-export type CompetitionId = "epl" | "ucl" | "ncaaf" | "ncaab" | "nfl" | "nba" | "nhl";
+export type CompetitionId =
+  "epl" | "ucl" | "uel" | "laliga" | "ncaaf" | "ncaab" | "nfl" | "nba" | "nhl";
 export type MarketType = "moneyline" | "spread" | "total";
 export type SelectionType = "home" | "away" | "draw" | "over" | "under";
 

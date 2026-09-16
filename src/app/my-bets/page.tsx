@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { AppNav } from "@/components/app-nav";
 import { MarketBadge, SourceBadge, StatusBadge, TicketTypeBadge } from "@/components/status-badge";
 import { SubmitButton } from "@/components/submit-button";
+import { SlipPlacementCleanup } from "@/components/slip-placement-cleanup";
 import { TeamMark } from "@/components/team-mark";
 import { hasPublicEnvironment } from "@/config/env.public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -11,7 +12,7 @@ import { liveWagerState } from "@/lib/settlement/grading";
 
 import { refreshMyOpenScores } from "./actions";
 
-type Props = { searchParams: Promise<{ view?: string; notice?: string }> };
+type Props = { searchParams: Promise<{ view?: string; notice?: string; slip?: string }> };
 type Leg = {
   id: string;
   leg_number: number;
@@ -66,6 +67,7 @@ export default async function MyBetsPage({ searchParams }: Props) {
   if (!hasPublicEnvironment(process.env)) redirect("/auth");
   const query = await searchParams;
   const view = query.view === "history" ? "history" : "open";
+  const slipKeys = query.slip?.split(",").filter(Boolean).slice(0, 12) ?? [];
   const supabase = await createSupabaseServerClient();
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) redirect("/auth");
@@ -95,6 +97,7 @@ export default async function MyBetsPage({ searchParams }: Props) {
 
   return (
     <main className="shell">
+      <SlipPlacementCleanup slipKeys={slipKeys} />
       <AppNav active="my-bets" userId={authData.user.id} />
       <header className="account-header">
         <div>

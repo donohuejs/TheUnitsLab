@@ -3,18 +3,53 @@ import { describe, expect, it } from "vitest";
 import { parsePublicEnvironment } from "../src/config/env.public";
 import { serverEnvironmentSchema } from "../src/config/env.schema";
 import {
+  browseCompetitionGroups,
   providerConfigurationSchema,
   rawSportsProviderConfiguration,
   sportsProviderConfiguration,
 } from "../src/config/sports";
 
 describe("sports and provider configuration", () => {
-  it("exposes the six configured core competitions", () => {
+  it("exposes the configured core competitions", () => {
     const enabledCoreIds = sportsProviderConfiguration.competitions
       .filter((competition) => competition.enabled && competition.availability === "core")
       .map((competition) => competition.id);
 
-    expect(enabledCoreIds).toEqual(["epl", "ucl", "ncaaf", "ncaab", "nfl", "nhl"]);
+    expect(enabledCoreIds).toEqual(["epl", "ucl", "ncaaf", "ncaab", "nfl", "nhl", "uel", "laliga"]);
+  });
+
+  it("exposes the seven release-candidate switcher targets from shared configuration", () => {
+    const switcherIds = browseCompetitionGroups.flatMap((group) =>
+      group.competitions.map((competition) => competition.id),
+    );
+
+    expect(switcherIds).toEqual(
+      expect.arrayContaining(["ncaaf", "nfl", "nhl", "epl", "ucl", "uel", "laliga"]),
+    );
+    expect(switcherIds).toHaveLength(8);
+  });
+
+  it("keeps the new soccer competitions provider-backed with draw support", () => {
+    expect(sportsProviderConfiguration.competitions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "laliga",
+          providerSportKey: "soccer_spain_la_liga",
+          sport: "soccer",
+          markets: expect.arrayContaining([
+            expect.objectContaining({ id: "moneyline", supportsDraw: true }),
+          ]),
+        }),
+        expect.objectContaining({
+          id: "uel",
+          providerSportKey: "soccer_uefa_europa_league",
+          sport: "soccer",
+          markets: expect.arrayContaining([
+            expect.objectContaining({ id: "moneyline", supportsDraw: true }),
+          ]),
+        }),
+      ]),
+    );
   });
 
   it("keeps event-based competitions disabled by default", () => {

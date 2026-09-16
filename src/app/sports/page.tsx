@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppNav } from "@/components/app-nav";
+import { CompetitionSwitcher } from "@/components/competition-switcher";
 import { sportsProviderConfiguration } from "@/config/sports";
 import { hasPublicEnvironment } from "@/config/env.public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -24,10 +25,16 @@ export default async function SportsPage() {
         </p>
       </header>
       <AppNav active="sports" userId={data.user.id} />
+      <CompetitionSwitcher />
       <div className="competition-grid">
         {competitions.map((item) => (
-          <Link className="card competition-card" href={`/sports/${item.id}`} key={item.id}>
-            <span className="pill">{item.sport}</span>
+          <Link
+            className="card competition-card"
+            href={`/sports/${item.id}`}
+            key={item.id}
+            prefetch={false}
+          >
+            <span className="pill">{item.browseLabel}</span>
             <h2>{item.name}</h2>
             <p>{item.markets.map((market) => market.id).join(" · ")}</p>
           </Link>

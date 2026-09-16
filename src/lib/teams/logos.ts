@@ -88,15 +88,59 @@ const logoIds: Record<string, LogoRecord> = {
   michigan: { sport: "ncaa", id: "130" },
   "notre dame": { sport: "ncaa", id: "87" },
   "ohio state": { sport: "ncaa", id: "194" },
+  pittsburgh: { sport: "ncaa", id: "221" },
+  "south carolina": { sport: "ncaa", id: "2579" },
+  syracuse: { sport: "ncaa", id: "183" },
   texas: { sport: "ncaa", id: "251" },
+  miami: { sport: "ncaa", id: "2390" },
 };
 
-function normalizeName(name: string) {
-  return name.toLowerCase().replace(/[’']/g, "'").replace(/\s+/g, " ").trim();
+const teamAliases: Record<string, string> = {
+  "alabama crimson tide": "alabama",
+  "alabama crimson tide football": "alabama",
+  "alabama university": "alabama",
+  "clemson tigers": "clemson",
+  "clemson university": "clemson",
+  "georgia bulldogs": "georgia",
+  "georgia university": "georgia",
+  uga: "georgia",
+  "michigan wolverines": "michigan",
+  "university of michigan": "michigan",
+  "notre dame fighting irish": "notre dame",
+  "notre dame university": "notre dame",
+  "ohio state buckeyes": "ohio state",
+  "ohio state university": "ohio state",
+  pitt: "pittsburgh",
+  "pitt panthers": "pittsburgh",
+  "pittsburgh panthers": "pittsburgh",
+  "university of pittsburgh": "pittsburgh",
+  "south carolina gamecocks": "south carolina",
+  "south carolina university": "south carolina",
+  "sc gamecocks": "south carolina",
+  "syracuse orange": "syracuse",
+  "syracuse orange football": "syracuse",
+  "syracuse university": "syracuse",
+  "miami hurricanes": "miami",
+  "miami hurricanes football": "miami",
+  "miami fl": "miami",
+  "miami florida": "miami",
+  "miami university florida": "miami",
+};
+
+export function normalizeTeamName(name: string) {
+  return name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[’']/g, "")
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export function teamInitials(name: string) {
-  const words = normalizeName(name)
+  const words = normalizeTeamName(name)
     .replace(/[^a-z0-9 ]/g, "")
     .split(" ")
     .filter(Boolean);
@@ -106,7 +150,8 @@ export function teamInitials(name: string) {
 }
 
 export function resolveTeamLogo(teamName: string, sport: TeamSport) {
-  const match = logoIds[normalizeName(teamName)];
+  const normalizedName = normalizeTeamName(teamName);
+  const match = logoIds[teamAliases[normalizedName] ?? normalizedName];
   if (!match) return null;
   const sportPath =
     match.sport === "nfl"
