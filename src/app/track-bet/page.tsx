@@ -8,10 +8,11 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { AppNav } from "@/components/app-nav";
 import { ExternalParlayForm } from "@/components/external-parlay-form";
 import { ExternalParlayResultForm } from "@/components/external-parlay-result-form";
+import { ImportBetslipForm } from "@/components/import-betslip-form";
 import { MarketBadge, SourceBadge, StatusBadge, TicketTypeBadge } from "@/components/status-badge";
 import { SubmitButton } from "@/components/submit-button";
 
-import { createExternalWager, setExternalWagerResult } from "./actions";
+import { setExternalWagerResult } from "./actions";
 
 type Props = { searchParams: Promise<{ view?: string; notice?: string }> };
 type Group = { id: string; name: string };
@@ -39,6 +40,11 @@ type ExternalWager = {
   effective_settlement_decimal_odds: number | null;
   effective_settlement_american_odds: number | null;
   settled_return_units: number | null;
+  raw_stake_dollars: number | null;
+  raw_return_dollars: number | null;
+  match_state: "matched" | "partially_matched" | "unmatched" | "needs_review";
+  match_reason: string | null;
+  settlement_method: "automatic" | "manual";
   external_wager_legs: {
     id: string;
     leg_number: number;
@@ -68,7 +74,7 @@ export default async function TrackBetPage({ searchParams }: Props) {
   let wagerQuery = supabase
     .from("external_wagers")
     .select(
-      "id,source,ticket_type,leg_count,sportsbook_name,competition_name,event_description,event_date,selection,market_type,line,american_odds,decimal_odds,stake_units,status,profit_loss_units,wager_date,screenshot_path,verification_status,user_notes,effective_settlement_decimal_odds,effective_settlement_american_odds,settled_return_units,external_wager_legs(*)",
+      "id,source,ticket_type,leg_count,sportsbook_name,competition_name,event_description,event_date,selection,market_type,line,american_odds,decimal_odds,stake_units,status,profit_loss_units,wager_date,screenshot_path,verification_status,user_notes,effective_settlement_decimal_odds,effective_settlement_american_odds,settled_return_units,raw_stake_dollars,raw_return_dollars,match_state,match_reason,settlement_method,external_wager_legs(*)",
     )
     .eq("user_id", authData.user.id)
     .order("wager_date", { ascending: false });
@@ -98,13 +104,13 @@ export default async function TrackBetPage({ searchParams }: Props) {
 
   return (
     <main className="shell">
-      <AppNav active="track-bet" userId={authData.user.id} />
+      <AppNav active="import-betslip" userId={authData.user.id} />
       <header className="page-header">
-        <p className="eyebrow">IRL / external — statistics only</p>
-        <h1>Track IRL bet</h1>
+        <p className="eyebrow">Imported wagers — statistics only</p>
+        <h1>Import Betslip</h1>
         <p className="muted">
-          Record a wager you placed elsewhere in units. This app never places the wager and IRL
-          results never affect your virtual bankroll.
+          Bring in a wager you placed elsewhere for analysis. Review every draft before saving; no
+          imported wager affects your simulated Vial balance.
         </p>
       </header>
       {query.notice ? (
@@ -114,14 +120,14 @@ export default async function TrackBetPage({ searchParams }: Props) {
       ) : null}
       {wagerError || groupError || summaryResult.error ? (
         <p className="notice error" role="alert">
-          Some external-wager data is temporarily unavailable. Your external records were not
+          Some imported-wager data is temporarily unavailable. Your imported records were not
           changed.
         </p>
       ) : null}
 
-      <section className="stats-grid irl-stats" aria-label="IRL performance summary">
+      <section className="stats-grid irl-stats" aria-label="Imported performance summary">
         <div className="card">
-          <small>Settled IRL wagers</small>
+          <small>Settled imported wagers</small>
           <strong>{summary.totalSettled}</strong>
         </div>
         <div className="card">
@@ -131,11 +137,11 @@ export default async function TrackBetPage({ searchParams }: Props) {
           </strong>
         </div>
         <div className="card">
-          <small>Units wagered</small>
+          <small>Vials wagered</small>
           <strong>{summary.unitsWagered}</strong>
         </div>
         <div className="card">
-          <small>Net units</small>
+          <small>Net Vials</small>
           <strong>{summary.netUnits}</strong>
         </div>
         <div className="card">
@@ -145,143 +151,23 @@ export default async function TrackBetPage({ searchParams }: Props) {
       </section>
 
       <section className="card track-form-card">
-        <h2>Record an external straight wager</h2>
-        <form action={createExternalWager} className="form-stack" encType="multipart/form-data">
-          <div className="form-grid">
-            <label>
-              Sportsbook
-              <select name="sportsbookId" defaultValue="fanduel">
-                <option value="fanduel">FanDuel</option>
-                <option value="draftkings">DraftKings</option>
-                <option value="betmgm">BetMGM</option>
-                <option value="caesars">Caesars</option>
-                <option value="other">Other sportsbook</option>
-              </select>
-            </label>
-            <label>
-              Other sportsbook name
-              <input
-                name="otherSportsbookName"
-                maxLength={80}
-                placeholder="Only when Other is selected"
-              />
-            </label>
-            <label>
-              Competition
-              <select name="competitionKey" defaultValue="epl">
-                {coreCompetitions.map((competition) => (
-                  <option key={competition.id} value={competition.id}>
-                    {competition.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Sport
-              <select name="sportKey" defaultValue="soccer">
-                <option value="soccer">Soccer</option>
-                <option value="football">Football</option>
-                <option value="basketball">Basketball</option>
-                <option value="hockey">Hockey</option>
-              </select>
-            </label>
-            <label className="form-wide">
-              Event or matchup
-              <input
-                name="eventDescription"
-                minLength={2}
-                maxLength={200}
-                placeholder="Chelsea at Arsenal"
-                required
-              />
-            </label>
-            <label>
-              Event date
-              <input name="eventDate" type="datetime-local" required />
-            </label>
-            <label>
-              Wager date
-              <input name="wagerDate" type="datetime-local" defaultValue={nowLocal} required />
-            </label>
-            <label>
-              Selection
-              <input name="selection" maxLength={120} placeholder="Arsenal" required />
-            </label>
-            <label>
-              Market
-              <select name="marketType" defaultValue="moneyline">
-                <option value="moneyline">Moneyline</option>
-                <option value="spread">Spread</option>
-                <option value="total">Total</option>
-              </select>
-            </label>
-            <label>
-              Line
-              <input
-                name="line"
-                type="number"
-                step="0.0001"
-                placeholder="Required for spread or total"
-              />
-            </label>
-            <label>
-              American odds
-              <input name="americanOdds" type="number" step="1" placeholder="-110" required />
-            </label>
-            <label>
-              Stake in units
-              <input name="stake" inputMode="decimal" placeholder="1.00" required />
-            </label>
-            <label>
-              Initial result
-              <select name="status" defaultValue="open">
-                <option value="open">Open</option>
-                <option value="won">Won</option>
-                <option value="lost">Lost</option>
-                <option value="push">Push</option>
-                <option value="void">Void</option>
-              </select>
-            </label>
-            <label>
-              Verification
-              <select name="verificationStatus" defaultValue="unverified">
-                <option value="unverified">Unverified</option>
-                <option value="user_attested">User attested</option>
-              </select>
-            </label>
-            <label>
-              Optional group
-              <select name="groupId" defaultValue="">
-                <option value="">Private — only me</option>
-                {((groups ?? []) as Group[]).map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Optional screenshot
-              <input name="screenshot" type="file" accept="image/jpeg,image/png,image/webp" />
-            </label>
-            <label className="form-wide">
-              Notes
-              <textarea name="userNotes" maxLength={2000} rows={3} />
-            </label>
-          </div>
-          <small className="muted">
-            Screenshots are private, limited to JPEG, PNG, or WebP, and capped at 5 MB. No OCR or
-            image interpretation is performed.
-          </small>
-          <SubmitButton pendingLabel="Saving external wager…">Save external wager</SubmitButton>
-        </form>
+        <h2>Import a straight betslip</h2>
+        <ImportBetslipForm
+          groups={(groups ?? []) as Group[]}
+          competitions={coreCompetitions.map((competition) => ({
+            id: competition.id,
+            name: competition.name,
+            sport: competition.sport,
+          }))}
+          nowLocal={nowLocal}
+        />
       </section>
 
       <section className="card track-form-card">
-        <h2>Record an external parlay</h2>
+        <h2>Import a parlay betslip</h2>
         <p className="muted">
-          Capture the accepted combined price and each normalized leg. Push and void adjustments use
-          the surviving leg prices.
+          Capture the accepted combined price and each normalized leg. Imported parlays remain
+          separate from the simulated Vial balance.
         </p>
         <ExternalParlayForm
           groups={(groups ?? []) as Group[]}
@@ -297,13 +183,13 @@ export default async function TrackBetPage({ searchParams }: Props) {
       <section className="section-break">
         <div className="view-tabs">
           <Link className={view === "open" ? "pill active" : "pill"} href="/track-bet">
-            Open IRL wagers
+            Open imported wagers
           </Link>
           <Link
             className={view === "history" ? "pill active" : "pill"}
             href="/track-bet?view=history"
           >
-            Settled IRL history
+            Settled imported history
           </Link>
         </div>
         <div className="ticket-list">
@@ -312,7 +198,7 @@ export default async function TrackBetPage({ searchParams }: Props) {
               <div className="event-heading">
                 <div>
                   <div className="ticket-meta">
-                    <SourceBadge source="external" />
+                    <SourceBadge source="external" sportsbookName={wager.sportsbook_name} />
                     <TicketTypeBadge ticketType={wager.ticket_type} />
                   </div>
                   <h2>
@@ -377,11 +263,16 @@ export default async function TrackBetPage({ searchParams }: Props) {
                 </div>
                 <div>
                   <dt>Stake</dt>
-                  <dd>{units(wager.stake_units)} units</dd>
+                  <dd>
+                    {units(wager.stake_units)} Vials
+                    {wager.raw_stake_dollars === null
+                      ? ""
+                      : ` · $${units(wager.raw_stake_dollars)} source`}
+                  </dd>
                 </div>
                 <div>
                   <dt>Profit / loss</dt>
-                  <dd>{units(wager.profit_loss_units)} units</dd>
+                  <dd>{units(wager.profit_loss_units)} Vials</dd>
                 </div>
                 <div>
                   <dt>Effective settlement odds</dt>
@@ -398,7 +289,7 @@ export default async function TrackBetPage({ searchParams }: Props) {
                   <dd>
                     {wager.settled_return_units === null
                       ? "—"
-                      : `${units(wager.settled_return_units)} units`}
+                      : `${units(wager.settled_return_units)} Vials`}
                   </dd>
                 </div>
                 <div>
@@ -411,6 +302,11 @@ export default async function TrackBetPage({ searchParams }: Props) {
                 </div>
               </dl>
               {wager.user_notes ? <p>{wager.user_notes}</p> : null}
+              <p className="muted">
+                Event matching: {wager.match_state.replace("_", " ")} · Settlement:{" "}
+                {wager.settlement_method}
+                {wager.match_reason ? ` · ${wager.match_reason}` : ""}
+              </p>
               {wager.screenshot_path ? (
                 <p>
                   <Link href={`/track-bet/screenshot/${wager.id}`} target="_blank">
@@ -440,6 +336,13 @@ export default async function TrackBetPage({ searchParams }: Props) {
                       <option value="void">Void</option>
                     </select>
                   </label>
+                  <label>
+                    Manual settlement reason (if needed)
+                    <input
+                      name="manualReason"
+                      placeholder="Event not confidently matched, unsupported prop, etc."
+                    />
+                  </label>
                   <SubmitButton className="button secondary" pendingLabel="Updating result…">
                     Update result
                   </SubmitButton>
@@ -449,7 +352,7 @@ export default async function TrackBetPage({ searchParams }: Props) {
           ))}
           {!records.length ? (
             <p className="empty-state">
-              No {view === "open" ? "open" : "settled"} external wagers yet.
+              No {view === "open" ? "open" : "settled"} imported wagers yet.
             </p>
           ) : null}
         </div>

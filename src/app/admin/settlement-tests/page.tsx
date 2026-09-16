@@ -86,7 +86,7 @@ export default async function SettlementTestsPage({ searchParams }: Props) {
             </select>
           </label>
           <label>
-            Stake in virtual units
+            Stake in Vials
             <input
               name="stake"
               type="number"
@@ -124,7 +124,7 @@ export default async function SettlementTestsPage({ searchParams }: Props) {
                       : "Straight test wager"}
                   </h3>
                   <small>
-                    {ticket.id} · {Number(ticket.stake_units).toFixed(2)} units ·{" "}
+                    {ticket.id} · {Number(ticket.stake_units).toFixed(2)} Vials ·{" "}
                     {new Date(ticket.created_at).toLocaleString()}
                   </small>
                 </div>

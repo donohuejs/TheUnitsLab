@@ -5,7 +5,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: PRODUCT_NAME,
-  description: "Private virtual-unit sports performance and wager tracker",
+  description: "Experiment, analyze, and improve your sports performance with Vials.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

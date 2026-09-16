@@ -1,8 +1,8 @@
 import Link from "next/link";
 
+import { BrandLockup } from "@/components/brand";
 import { isAdministrator } from "@/lib/authorization";
 import { primaryNavigation } from "@/lib/navigation";
-import { PRODUCT_NAME } from "@/lib/ui";
 
 export function AppNav({ active, userId }: { active: string; userId: string }) {
   const navigation = isAdministrator(userId)
@@ -11,8 +11,11 @@ export function AppNav({ active, userId }: { active: string; userId: string }) {
 
   return (
     <nav className="top-nav" aria-label="Primary navigation">
-      <Link className="nav-brand" href="/" aria-label={`${PRODUCT_NAME} home`}>
-        The Units <span>Lab</span>
+      <Link className="nav-brand" href="/" aria-label="The Units Lab home">
+        <BrandLockup compact />
+        <span className="nav-brand-text">
+          The Units <span>Lab</span>
+        </span>
       </Link>
       <div className="nav-links">
         {navigation.map((item) => (

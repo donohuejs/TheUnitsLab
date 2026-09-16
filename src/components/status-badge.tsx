@@ -1,4 +1,10 @@
-import { displayLabel, marketLabel, sourceLabel, ticketTypeLabel } from "@/lib/ui";
+import {
+  displayLabel,
+  importedSourceLabel,
+  marketLabel,
+  sourceLabel,
+  ticketTypeLabel,
+} from "@/lib/ui";
 
 export function StatusBadge({ status }: { status: string }) {
   const className = status.replace(/[^a-z0-9_-]/gi, "-");
@@ -12,8 +18,15 @@ export function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export function SourceBadge({ source }: { source: "simulated" | "external" | "irl" }) {
-  return <span className={`source-badge source-${source}`}>{sourceLabel(source)}</span>;
+export function SourceBadge({
+  source,
+  sportsbookName,
+}: {
+  source: "simulated" | "external" | "irl";
+  sportsbookName?: string | null;
+}) {
+  const label = source === "simulated" ? sourceLabel(source) : importedSourceLabel(sportsbookName);
+  return <span className={`source-badge source-${source}`}>{label}</span>;
 }
 
 export function TicketTypeBadge({ ticketType }: { ticketType: "straight" | "parlay" }) {

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AppNav } from "@/components/app-nav";
+import { BrandLockup } from "@/components/brand";
 import { SourceBadge, StatusBadge, TicketTypeBadge } from "@/components/status-badge";
 import { TeamMark } from "@/components/team-mark";
 import { hasPublicEnvironment } from "@/config/env.public";
@@ -11,7 +12,7 @@ import {
   type AnalyticsWager,
 } from "@/lib/analytics/calculations";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { PRODUCT_NAME } from "@/lib/ui";
+import { PRODUCT_NAME, VIAL_LABEL, welcomeName } from "@/lib/ui";
 
 type DashboardRpcWager = {
   wager_id: string;
@@ -60,18 +61,19 @@ function mapWager(row: DashboardRpcWager): AnalyticsWager {
   };
 }
 
-const units = (value: string | number) => Number(value).toFixed(2);
+const vials = (value: string | number) => Number(value).toFixed(2);
 
 export default async function HomePage() {
   const configured = hasPublicEnvironment(process.env);
   if (!configured) {
     return (
       <main className="shell hero">
+        <BrandLockup />
         <p className="eyebrow">Private entertainment and statistics</p>
         <h1>{PRODUCT_NAME}</h1>
         <p className="hero-copy">
-          Browse real pregame odds and place simulated wagers using virtual units. The application
-          never accepts or places a real-money wager.
+          Browse real pregame odds and place simulated wagers using Vials. The application never
+          accepts or places a real-money wager.
         </p>
         <p className="notice error" role="alert">
           Supabase public configuration is required before authentication can run.
@@ -85,11 +87,12 @@ export default async function HomePage() {
   if (!authData.user) {
     return (
       <main className="shell hero">
+        <BrandLockup />
         <p className="eyebrow">Private entertainment and statistics</p>
         <h1>{PRODUCT_NAME}</h1>
         <p className="hero-copy">
-          Browse real pregame odds and place simulated wagers using virtual units. Track external
-          wagers separately for performance statistics.
+          Experiment with real pregame odds using Vials, then import wagers placed elsewhere for
+          performance statistics.
         </p>
         <Link className="button link-button" href="/auth">
           Sign in or create an account
@@ -152,23 +155,22 @@ export default async function HomePage() {
       <header className="page-header dashboard-hero">
         <div>
           <p className="eyebrow">Your activity at a glance</p>
-          <h1>Welcome back{profile?.display_name ? `, ${profile.display_name}` : ""}</h1>
+          <h1>Welcome back, {welcomeName(profile?.display_name)}</h1>
           <p className="muted">
-            Review your virtual bankroll, recent simulated tickets, and performance without mixing
-            in external wagers.
+            Review your Vial balance, recent simulated tickets, and performance across both sources.
           </p>
           <div className="dashboard-actions">
             <Link className="button" href="/sports">
               Browse odds
             </Link>
             <Link className="button secondary" href="/track-bet">
-              Track an IRL bet
+              Import Betslip
             </Link>
           </div>
         </div>
         <div className="balance-card">
           <small>Available simulated bankroll</small>
-          <strong>{ledgerResult.error ? "—" : `${units(balance)} units`}</strong>
+          <strong>{ledgerResult.error ? "—" : `${vials(balance)} ${VIAL_LABEL}`}</strong>
           <Link href="/my-bets">Review open bets</Link>
         </div>
       </header>
@@ -185,7 +187,7 @@ export default async function HomePage() {
           <span className="muted">W–L–P, combined analytics</span>
         </div>
         <div className="card">
-          <small>Units won / lost</small>
+          <small>Vials won / lost</small>
           <strong>{summary?.unitsWonLost ?? "—"}</strong>
           <Link href="/performance">View performance</Link>
         </div>
@@ -201,19 +203,19 @@ export default async function HomePage() {
           <SourceBadge source="simulated" />
           <h2>Simulated wagers</h2>
           <p>
-            Use cached real-world odds and virtual units. Accepted tickets debit and settle your
-            simulated bankroll.
+            Use cached real-world odds and Vials. Accepted tickets debit and settle your simulated
+            balance.
           </p>
           <Link href="/sports">Build a simulated ticket →</Link>
         </div>
         <div>
           <SourceBadge source="external" />
-          <h2>IRL / external tracking</h2>
+          <h2>Imported wagers</h2>
           <p>
-            Record a wager placed elsewhere. It contributes to statistics only and never changes the
-            virtual bankroll.
+            Import a wager placed elsewhere. It contributes to statistics only and never changes the
+            simulated Vial balance.
           </p>
-          <Link href="/track-bet">Record an external wager →</Link>
+          <Link href="/import-betslip">Import a betslip →</Link>
         </div>
       </section>
 
@@ -255,7 +257,7 @@ export default async function HomePage() {
                     </strong>
                     <div className="ticket-meta">
                       <TicketTypeBadge ticketType={ticket.ticket_type} />
-                      <small>{units(ticket.stake_units)} units staked</small>
+                      <small>{vials(ticket.stake_units)} Vials staked</small>
                     </div>
                   </div>
                   <StatusBadge status={ticket.status} />

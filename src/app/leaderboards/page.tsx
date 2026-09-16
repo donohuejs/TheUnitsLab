@@ -36,7 +36,7 @@ type RpcWager = {
 };
 
 const categories: { value: LeaderboardCategory; label: string }[] = [
-  { value: "units", label: "Most units won" },
+  { value: "units", label: "Most Vials won" },
   { value: "roi", label: "Best ROI" },
   { value: "win_percentage", label: "Best win percentage" },
   { value: "total_wagers", label: "Total wagers" },
@@ -121,7 +121,9 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
       <header className="page-header">
         <p className="eyebrow">Private groups</p>
         <h1>Leaderboards</h1>
-        <p className="muted">Units Won is the default ranking. ROI is shown beside every member.</p>
+        <p className="muted">
+          Vials Won is the default ranking. ROI is shown beside every participant.
+        </p>
       </header>
 
       <form className="card filter-bar leaderboard-filters" method="get">
@@ -148,9 +150,9 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
         <label>
           Source
           <select name="source" defaultValue={source}>
-            <option value="combined">Combined</option>
+            <option value="combined">All</option>
             <option value="simulated">Simulated</option>
-            <option value="irl">IRL / external</option>
+            <option value="irl">Imported</option>
           </select>
         </label>
         <label>
@@ -196,8 +198,8 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
               <thead>
                 <tr>
                   <th scope="col">Rank</th>
-                  <th scope="col">Member</th>
-                  <th scope="col">Units won/lost</th>
+                  <th scope="col">Participant</th>
+                  <th scope="col">Vials won/lost</th>
                   <th scope="col">ROI</th>
                   <th scope="col">Record</th>
                   <th scope="col">Bets</th>

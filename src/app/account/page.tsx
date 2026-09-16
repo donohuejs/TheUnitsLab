@@ -118,6 +118,11 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
         </p>
       ) : null}
 
+      <p className="notice disclosure">
+        The Units Lab is a simulation and wager-tracking companion. No real-money wagering,
+        deposits, withdrawals, or sportsbook execution occurs in the app.
+      </p>
+
       <div className="dashboard-grid">
         <section className="card">
           <h2>Profile</h2>
@@ -138,7 +143,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                 <input name="avatarUrl" type="url" defaultValue={profile.avatar_url ?? ""} />
               </label>
               <label>
-                Preferred unit description
+                Preferred Vial description
                 <input
                   name="unitDescription"
                   maxLength={80}
@@ -147,7 +152,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                 />
               </label>
               <label>
-                Default virtual bankroll preference
+                Default Vial balance preference
                 <input
                   name="defaultBankroll"
                   type="number"

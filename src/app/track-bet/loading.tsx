@@ -1,5 +1,5 @@
 import { PageLoading } from "@/components/page-loading";
 
 export default function Loading() {
-  return <PageLoading label="Loading external wager tracking…" />;
+  return <PageLoading label="Loading Import Betslip…" />;
 }

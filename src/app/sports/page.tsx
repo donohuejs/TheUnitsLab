@@ -16,15 +16,15 @@ export default async function SportsPage() {
   );
   return (
     <main className="shell">
+      <AppNav active="sports" userId={data.user.id} />
       <header className="page-header">
-        <p className="eyebrow">Simulated sportsbook</p>
+        <p className="eyebrow">Explore the board</p>
         <h1>Browse odds</h1>
         <p className="muted">
-          Pregame markets in a shared 15-minute cache. Select a price for a straight ticket or add
-          distinct events to the parlay slip.
+          Pregame markets in a shared cache. Select a price for a simulated ticket or add distinct
+          events to the parlay slip.
         </p>
       </header>
-      <AppNav active="sports" userId={data.user.id} />
       <CompetitionSwitcher />
       <div className="competition-grid">
         {competitions.map((item) => (

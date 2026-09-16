@@ -194,6 +194,38 @@ timezones while showing the user's local display timezone during normal interact
 use the centralized best-effort ESPN CDN resolver; image load errors hide only the image and retain
 initials.
 
+### Release-candidate UX patch 3 boundaries
+
+Patch 3 is a forward-only pre-UAT layer over the existing Phase 7/8 domain. The brand is rendered
+by a reusable inline SVG component with a compact navigation treatment and `app/icon.svg`; it is
+presentation-only and carries no wager or authorization meaning.
+
+The UI calls the existing exact unit quantities “Vials,” but the database remains backward-compatible
+with its `*_units` columns and ledger transaction types. Imported source dollars are stored on
+`external_wagers.raw_stake_dollars` and `raw_return_dollars`, while `stake_units` and the existing
+profit/return fields are the exact normalized Vial-equivalent values. The database never treats raw
+dollars as money held by the app, and imported records never reference `bankroll_ledger`.
+
+`/import-betslip` is the user-facing import route. Its three entry paths share one reviewed draft
+form and the `create_imported_wager` boundary, which requires confirmation. Screenshots use the
+existing private storage bucket and attachment function. The form uses a server duplicate preflight
+endpoint backed by the owner-scoped `find_import_duplicates` function; duplicate signals are
+advisory and the user explicitly chooses cancel, view existing, or import anyway.
+
+Imported rows retain sportsbook bet ID, SHA-256 content hash, import method, optional canonical
+provider event ID, normalized grading side, match state/reason, and automatic/manual settlement
+method. `match_imported_wager` only associates canonical non-synthetic score rows. The same
+`app_private.grade_straight_leg` helper grades supported moneyline, soccer draw, spread, and total
+markets. `settle_imported_wager` locks the owner row, waits for durable final scores, supports
+matched imported parlays through their normalized legs, appends result evidence, and updates no
+virtual-bankroll row. If the event, market, source detail, or final score is insufficient, the row
+stays open with a user-visible manual reason; `set_imported_manual_result` requires that reason.
+
+My Bets reads the caller's simulated tickets and caller-owned imported rows in one canonical ledger
+surface. Group/leaderboard privacy remains governed by the existing Phase 6/7 RPCs; raw imported
+dollar values are only shown in the owner's My Bets/import surfaces and are not exposed to other
+participants.
+
 ### Administration and operations
 
 Administrative capabilities include quota inspection, request history, settlement-failure inspection, safe settlement reruns, bankroll adjustments, group membership management, upload moderation, and competition or bookmaker toggles. The source does not define the boundary between group administration and application administration.

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 
-import { createExternalParlay } from "@/app/track-bet/actions";
+import { createImportedParlay } from "@/app/track-bet/actions";
 import { SubmitButton } from "@/components/submit-button";
 
 type Competition = {
@@ -20,6 +20,8 @@ type Leg = {
   line: string;
   americanOdds: string;
   result: "open" | "won" | "lost" | "push" | "void";
+  providerEventId: string;
+  selectionKey: "" | "home" | "away" | "draw" | "over" | "under";
 };
 
 const emptyLeg = (competitionKey: string): Leg => ({
@@ -31,6 +33,8 @@ const emptyLeg = (competitionKey: string): Leg => ({
   line: "",
   americanOdds: "",
   result: "open",
+  providerEventId: "",
+  selectionKey: "",
 });
 
 export function ExternalParlayForm({
@@ -46,6 +50,11 @@ export function ExternalParlayForm({
     emptyLeg(competitions[0]?.id ?? "epl"),
     emptyLeg(competitions[0]?.id ?? "epl"),
   ]);
+  const [reviewing, setReviewing] = useState(false);
+  const [duplicates, setDuplicates] = useState<
+    { wager_id: string; sportsbook_name: string; duplicate_signal: string }[]
+  >([]);
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   function update(index: number, patch: Partial<Leg>) {
     setLegs((current) =>
       current.map((leg, candidate) => (candidate === index ? { ...leg, ...patch } : leg)),
@@ -63,10 +72,57 @@ export function ExternalParlayForm({
       line: leg.line === "" ? null : Number(leg.line),
       americanOdds: Number(leg.americanOdds),
       result: leg.result,
+      providerEventId: leg.providerEventId,
+      selectionKey: leg.selectionKey,
     };
   });
+  async function reviewDraft(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    setCheckingDuplicates(true);
+    try {
+      const response = await fetch("/api/import-betslip/duplicates", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          sportsbookId: formData.get("sportsbookId"),
+          sportsbookBetId: formData.get("sportsbookBetId"),
+          wagerDate: formData.get("wagerDate"),
+          stakeDollars: formData.get("rawStakeDollars"),
+          americanOdds: formData.get("combinedAmericanOdds"),
+          eventDescription: legs
+            .map((leg) => leg.eventDescription)
+            .filter(Boolean)
+            .join(" / "),
+        }),
+      });
+      const responseBody = (await response.json()) as {
+        duplicates?: { wager_id: string; sportsbook_name: string; duplicate_signal: string }[];
+      };
+      setDuplicates(responseBody.duplicates ?? []);
+    } catch {
+      setDuplicates([]);
+    } finally {
+      setCheckingDuplicates(false);
+      setReviewing(true);
+    }
+  }
   return (
-    <form action={createExternalParlay} className="form-stack" encType="multipart/form-data">
+    <form
+      action={createImportedParlay}
+      className="form-stack"
+      encType="multipart/form-data"
+      onSubmit={reviewing ? undefined : reviewDraft}
+    >
+      <input type="hidden" name="confirmed" value={reviewing ? "true" : "false"} />
+      <label>
+        Import path
+        <select name="importMethod" defaultValue="entry">
+          <option value="screenshot">Upload Screenshot</option>
+          <option value="paste">Paste Bet Text</option>
+          <option value="entry">Enter Manually</option>
+        </select>
+      </label>
       <input type="hidden" name="legs" value={JSON.stringify(payload)} />
       <div className="form-grid">
         <label>
@@ -92,8 +148,12 @@ export function ExternalParlayForm({
           <input name="combinedAmericanOdds" type="number" step="1" placeholder="+450" required />
         </label>
         <label>
-          Stake in units
-          <input name="stake" inputMode="decimal" placeholder="1.00" required />
+          Source stake (USD)
+          <input name="rawStakeDollars" inputMode="decimal" placeholder="1.00" required />
+        </label>
+        <label>
+          Source return / payout (USD)
+          <input name="rawReturnDollars" inputMode="decimal" placeholder="Optional" />
         </label>
         <label>
           Wager date
@@ -117,6 +177,10 @@ export function ExternalParlayForm({
           </select>
         </label>
         <label>
+          Sportsbook bet ID
+          <input name="sportsbookBetId" maxLength={160} placeholder="Optional" />
+        </label>
+        <label>
           Optional group
           <select name="groupId" defaultValue="">
             <option value="">Private — only me</option>
@@ -128,8 +192,12 @@ export function ExternalParlayForm({
           </select>
         </label>
         <label>
-          Optional screenshot
+          Private screenshot
           <input name="screenshot" type="file" accept="image/jpeg,image/png,image/webp" />
+        </label>
+        <label className="form-wide">
+          Pasted bet text
+          <textarea name="rawText" maxLength={10000} rows={3} placeholder="Optional source text" />
         </label>
         <label className="form-wide">
           Notes
@@ -234,6 +302,31 @@ export function ExternalParlayForm({
                   <option value="void">Void</option>
                 </select>
               </label>
+              <label>
+                Canonical event ID
+                <input
+                  value={leg.providerEventId}
+                  onChange={(event) => update(index, { providerEventId: event.target.value })}
+                  maxLength={160}
+                  placeholder="Optional for matching"
+                />
+              </label>
+              <label>
+                Grading side
+                <select
+                  value={leg.selectionKey}
+                  onChange={(event) =>
+                    update(index, { selectionKey: event.target.value as Leg["selectionKey"] })
+                  }
+                >
+                  <option value="">Needs review</option>
+                  <option value="home">Home</option>
+                  <option value="away">Away</option>
+                  <option value="draw">Draw</option>
+                  <option value="over">Over</option>
+                  <option value="under">Under</option>
+                </select>
+              </label>
             </div>
             {legs.length > 2 ? (
               <button
@@ -258,11 +351,52 @@ export function ExternalParlayForm({
         >
           Add leg
         </button>
-        <SubmitButton pendingLabel="Saving external parlay…">Save external parlay</SubmitButton>
+        {reviewing ? (
+          <section className="notice review-panel" aria-label="Review imported parlay">
+            <h3>Review parlay draft before saving</h3>
+            <p>
+              Nothing has been saved yet. Confirm the editable ticket and legs, then choose the
+              final action.
+            </p>
+            {checkingDuplicates ? <p>Checking for likely duplicates…</p> : null}
+            {duplicates.length ? (
+              <div className="duplicate-warning" role="alert">
+                <strong>Likely duplicate import</strong>
+                <ul>
+                  {duplicates.map((duplicate) => (
+                    <li key={duplicate.wager_id}>
+                      {duplicate.sportsbook_name} · {duplicate.duplicate_signal}
+                    </li>
+                  ))}
+                </ul>
+                <div className="inline-actions">
+                  <a className="button secondary" href="/my-bets?filter=imported">
+                    View existing
+                  </a>
+                  <button
+                    className="button secondary"
+                    type="button"
+                    onClick={() => {
+                      setReviewing(false);
+                      setDuplicates([]);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <SubmitButton pendingLabel="Importing…">Import anyway</SubmitButton>
+                </div>
+              </div>
+            ) : (
+              <SubmitButton pendingLabel="Importing…">Confirm and save to My Bets</SubmitButton>
+            )}
+          </section>
+        ) : (
+          <SubmitButton pendingLabel="Preparing review…">Review parlay draft</SubmitButton>
+        )}
       </div>
       <small className="muted">
-        The app records a wager placed elsewhere. It never submits it to a sportsbook or changes the
-        virtual bankroll.
+        Source-dollar values remain attached to the imported record. Screenshots stay private, and
+        imported bets never change the simulated Vial balance.
       </small>
     </form>
   );

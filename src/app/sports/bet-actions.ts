@@ -58,7 +58,7 @@ function placementMessage(message: string) {
   if (message.includes("FRESH_ODDS_REQUIRED")) {
     return "The displayed odds expired. Refresh the competition and review the current price.";
   }
-  if (message.includes("INSUFFICIENT_BANKROLL")) return "Insufficient virtual bankroll.";
+  if (message.includes("INSUFFICIENT_BANKROLL")) return "Insufficient Vial balance.";
   if (message.includes("EVENT_ALREADY_STARTED")) return "This event has already started.";
   if (message.includes("INVALID_GROUP_ASSOCIATION"))
     return "That group association is not authorized.";

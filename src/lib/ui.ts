@@ -1,4 +1,6 @@
 export const PRODUCT_NAME = "The Units Lab";
+export const PRODUCT_SUBTITLE = "Experiment | Analyze | Improve";
+export const VIAL_LABEL = "Vials";
 
 export const WAGER_STATUSES = ["open", "won", "lost", "push", "void"] as const;
 
@@ -27,7 +29,15 @@ export function displayLabel(value: string) {
 }
 
 export function sourceLabel(source: "simulated" | "external" | "irl") {
-  return source === "simulated" ? "Simulated" : "IRL / external";
+  return source === "simulated" ? "Simulated" : "Imported";
+}
+
+export function importedSourceLabel(sportsbookName?: string | null) {
+  return sportsbookName?.trim() ? `Imported · ${sportsbookName.trim()}` : "Imported · Other";
+}
+
+export function welcomeName(displayName?: string | null) {
+  return displayName?.trim() || "Scientist";
 }
 
 export function ticketTypeLabel(ticketType: "straight" | "parlay") {

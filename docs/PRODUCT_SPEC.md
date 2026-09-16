@@ -77,6 +77,45 @@ The owner explicitly authorizes a focused release-candidate Browse Odds usabilit
 - Team marks remain presentation-only. The centralized ESPN CDN resolver adds normalized NCAA aliases and a visible initials fallback when a team is unknown or an external image fails.
 - Kickoff presentation uses a shared readable formatter with no seconds. The server-rendered fallback is deterministic UTC and the client updates it to the user's local timezone after hydration, avoiding server/client timezone mismatch.
 
+### Approved release-candidate UX patch 3 clarification 2026-09-16
+
+The owner explicitly authorizes this focused pre-UAT UX and imported-wager reconciliation patch. It
+does not start Phase 9 and does not change the virtual-only, security, immutable-ticket,
+settlement-idempotency, provider/cache/quota, synthetic-isolation, or $0/month constraints.
+
+- The approved brand is **The Units Lab** with the subtitle `Experiment | Analyze | Improve`. The
+  reusable science-forward mark uses beaker/flask glassware, a liquid money cue, and vapor, with
+  full-wordmark, compact-nav, and app-icon treatments. `Bet Smarter`, `Member` as a greeting
+  fallback, and primary `SIMULATED SPORTSBOOK` copy are removed. The safe greeting fallback is
+  `Welcome back, Scientist`.
+- The user-facing virtual-unit label is **Vials**. Underlying fixed-precision `numeric(14,2)` unit
+  columns and economics remain unchanged. Cross-source normalization is exact: `1 USD = 1 Vial`.
+  Imported rows retain raw source-dollar stake/return values for audit/display and store the same
+  normalized value in the existing unit fields. Imported rows never touch the simulated ledger.
+- My Bets is the canonical user wager ledger and combines simulated tickets with imported sportsbook
+  records. Source badges are `Simulated` or `Imported · <sportsbook>`, with All/Open/Settled/
+  Simulated/Imported filters. `Track IRL Bet` is replaced in user-facing surfaces by **Import
+  Betslip**.
+- Screenshot upload, pasted bet text, and manual entry all create an editable draft and require
+  explicit review/confirmation before save. Screenshot storage remains private under existing RLS
+  and storage policies. Safe automated screenshot extraction is not fabricated; the current flow
+  preserves the private upload and editable review architecture while requiring normalized fields.
+- Duplicate warnings use sportsbook bet ID, content hash, and sportsbook/time/stake/odds/event
+  signals. The user can view the existing wager, cancel, or import anyway. Imported records carry
+  matched, partially matched, unmatched, or needs-review event state and a reason when manual
+  settlement is required.
+- Deterministic imported settlement uses canonical scores and the existing grading helper for
+  moneyline, spread, total, soccer three-way results, and imported parlays when all legs are
+  matched/gradable. Automatic results append audit evidence and are idempotent. Manual results
+  require an explicit reason. No imported result or raw-dollar value creates a virtual-bankroll
+  transaction.
+- Performance and Leaderboards use normalized Vial-equivalent values, retain raw source values only
+  where authorized, and expose All/Simulated/Imported filters. Settings contains the explicit
+  simulation/wager-tracking disclosure.
+
+This clarification intentionally changes the source-recommended UI word “units” to “Vials” without
+renaming existing database columns or changing their exact economics.
+
 ## 1 Project purpose
 
 Build a private, entertainment-focused sports wagering simulator and betting-performance tracker.

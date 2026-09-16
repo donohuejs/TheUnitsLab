@@ -100,7 +100,7 @@ export function BetSlip({ selection, groups }: Props) {
             <TicketTypeBadge ticketType="straight" />
           </div>
           <h2>Straight bet — one leg</h2>
-          <p className="simulation-label">Virtual units only. No real-money wager is placed.</p>
+          <p className="simulation-label">Virtual Vials only. No real-money wager is placed.</p>
           <dl className="ticket-details">
             <div>
               <dt>Competition</dt>
@@ -164,7 +164,7 @@ export function BetSlip({ selection, groups }: Props) {
             <input type="hidden" name="expectedAmericanOdds" value={selection.americanOdds} />
             <input type="hidden" name="expectedLine" value={selection.line ?? ""} />
             <label>
-              Stake in virtual units
+              Stake in Vials
               <input
                 name="stake"
                 type="number"
@@ -194,11 +194,11 @@ export function BetSlip({ selection, groups }: Props) {
             <div className="potential-grid" aria-live="polite">
               <span>
                 Potential profit{" "}
-                <strong>{straightPotential ? `${straightPotential.profit} units` : "—"}</strong>
+                <strong>{straightPotential ? `${straightPotential.profit} Vials` : "—"}</strong>
               </span>
               <span>
                 Potential return{" "}
-                <strong>{straightPotential ? `${straightPotential.return} units` : "—"}</strong>
+                <strong>{straightPotential ? `${straightPotential.return} Vials` : "—"}</strong>
               </span>
             </div>
             <SubmitButton
@@ -269,7 +269,7 @@ export function BetSlip({ selection, groups }: Props) {
           <input type="hidden" name="legs" value={JSON.stringify(submittedLegs)} />
           <input type="hidden" name="slipKeys" value={legs.map(slipSelectionKey).join(",")} />
           <label>
-            Parlay stake in virtual units
+            Parlay stake in Vials
             <input
               name="stake"
               type="number"
@@ -307,11 +307,11 @@ export function BetSlip({ selection, groups }: Props) {
             </div>
             <div>
               <dt>Potential profit</dt>
-              <dd>{parlayPotential ? `${parlayPotential.profit} units` : "—"}</dd>
+              <dd>{parlayPotential ? `${parlayPotential.profit} Vials` : "—"}</dd>
             </div>
             <div>
               <dt>Potential return</dt>
-              <dd>{parlayPotential ? `${parlayPotential.return} units` : "—"}</dd>
+              <dd>{parlayPotential ? `${parlayPotential.return} Vials` : "—"}</dd>
             </div>
           </dl>
           <small className="muted">

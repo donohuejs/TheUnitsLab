@@ -29,6 +29,17 @@ rows, names, sport association, enabled state, and identifier uniqueness. The mi
 after Patch 1 and changes no RLS policy, wager function, cache table, quota ledger, settlement
 function, or bankroll behavior.
 
+Release-candidate UX patch 3 adds `20260922000000_release_candidate_ux_patch_3.sql`. It keeps all
+existing external-wager and ledger columns/economics, then adds raw source-dollar stake/return
+provenance, import method and duplicate signals, canonical event/selection matching state, and
+automatic/manual settlement evidence. It adds owner-scoped duplicate lookup, reviewed imported
+straight and parlay creation boundaries, canonical event matching, deterministic imported
+straight/parlay settlement, manual-reason enforcement, and least-privilege authenticated grants.
+Existing storage policies, external-wager RLS, settlement audits, and virtual-bankroll isolation
+remain in force. `supabase/tests/release_candidate_ux_patch_3.sql` adds 33 pgTAP schema, grant,
+RLS, normalization, duplicate, matching, settlement, manual-reason, and bankroll-isolation
+assertions. The migration is forward-only and must replay after Patch 2.
+
 ## Source of truth
 
 Ordered SQL files under `supabase/migrations` are the database source of truth. Configuration in a hosted dashboard is not sufficient. Migrations must include tables, constraints, functions, grants, Row Level Security enablement, policies, storage policies, and indexes needed by the corresponding phase.

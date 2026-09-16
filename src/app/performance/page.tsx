@@ -37,9 +37,9 @@ type RpcWager = {
 };
 
 const sourceOptions: { value: SourceFilter; label: string }[] = [
-  { value: "combined", label: "Combined" },
+  { value: "combined", label: "All" },
   { value: "simulated", label: "Simulated" },
-  { value: "irl", label: "IRL / external" },
+  { value: "irl", label: "Imported" },
 ];
 const periodOptions: { value: AnalyticsPeriod; label: string }[] = [
   { value: "week", label: "This week" },
@@ -88,7 +88,7 @@ function BreakdownTable({ title, rows }: { title: string; rows: AnalyticsBreakdo
                 <th scope="col">Category</th>
                 <th scope="col">Bets</th>
                 <th scope="col">Record</th>
-                <th scope="col">Units</th>
+                <th scope="col">Vials</th>
                 <th scope="col">ROI</th>
               </tr>
             </thead>
@@ -188,14 +188,14 @@ export default async function PerformancePage({ searchParams }: Props) {
       {!wagerResult.error ? (
         <section className="profit-grid" aria-label="Primary profitability summary">
           <div className="card primary-metric">
-            <small>Units won / lost</small>
+            <small>Vials won / lost</small>
             <strong>{summary.unitsWonLost}</strong>
-            <span>units</span>
+            <span>Vials</span>
           </div>
           <div className="card primary-metric">
             <small>Return on investment</small>
             <strong>{summary.roiPercent}%</strong>
-            <span>on {summary.unitsWagered} settled units</span>
+            <span>on {summary.unitsWagered} settled Vials</span>
           </div>
         </section>
       ) : null}

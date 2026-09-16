@@ -1,12 +1,12 @@
 # The Units Lab
 
-The Units Lab is a private, entertainment-focused sports wagering simulator and betting-performance tracker. It uses real sportsbook odds with virtual units and lets invited users record wagers placed independently elsewhere for statistical tracking. It never accepts, transmits, executes, facilitates, escrows, or settles real-money wagers.
+The Units Lab is a private, entertainment-focused sports wagering simulator and betting-performance tracker. It uses real sportsbook odds with virtual Vials and lets invited users import wagers placed independently elsewhere for statistical tracking. It never accepts, transmits, executes, facilitates, escrows, or settles real-money wagers.
 
 ## Phase status
 
-Phases 0-8 are complete. Phase 8 adds the signed-in dashboard, consistent navigation, explicit source/ticket/result presentation, deliberate loading and error states, responsive behavior, accessibility affordances, and release-readiness documentation while preserving the Phase 7 wagering engine.
+Phases 0-8 are complete. The release-candidate UX Patch 3 is the current pre-UAT gate; it adds the approved brand treatment, Vials terminology, unified My Bets ledger, reviewed Import Betslip paths, duplicate signals, and imported event matching/settlement while preserving the Phase 7 wagering engine. Phase 9 has not started.
 
-The interface supports account/group workflows, pregame odds for EPL, UCL, NCAAF, and NCAAB, straight and multi-leg simulated bet slips, My Bets reconstruction, cached scores, deterministic simulated settlement, external straight/parlay tracking, Performance analytics, private-group leaderboards, and a dashboard that keeps simulated and IRL records distinct. External records never change the simulated virtual-bankroll ledger. No provider polling or Phase 9 screenshot intelligence was added.
+The interface supports account/group workflows, pregame odds for EPL, UCL, NCAAF, NCAAB, NFL, NHL, La Liga, and Europa League, straight and multi-leg simulated bet slips, a unified My Bets ledger, cached scores, deterministic simulated settlement, reviewed screenshot/text/manual betslip import, imported straight/parlay tracking, Performance analytics, private-group leaderboards, and a dashboard that keeps simulated and imported records distinct. External records never change the simulated virtual-bankroll ledger. Screenshot extraction remains intentionally review-first; no provider polling or Phase 9 work was added.
 
 Parlays use one bookmaker and distinct provider events; same-event combinations and cross-book tickets are rejected because the current provider model has no verified correlation pricing. Push and void legs are neutral prices; if no active leg remains, all-void is `void` and any push/void mixture is `push` with the stake returned. Settlement waits for every non-void leg to have a durable final result.
 
@@ -88,6 +88,7 @@ Individual commands are `npm run format:check`, `npm run lint`, `npm run typeche
 - [Phase 7 completion report](PHASE_7_COMPLETION_REPORT.md)
 - [Phase 8 plan](docs/PHASE_8_PLAN.md)
 - [Phase 8 completion report](PHASE_8_COMPLETION_REPORT.md)
+- [Release-candidate UX Patch 3 report](RELEASE_CANDIDATE_UX_PATCH_3_REPORT.md)
 - [Rollout Part 1 release-readiness report](ROLLOUT_PART_1_RELEASE_READINESS_REPORT.md)
 - [Release candidate checklist](RELEASE_CANDIDATE_CHECKLIST.md)
 - [Agent guidance](AGENTS.md)
