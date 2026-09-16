@@ -9,6 +9,7 @@ import { AppNav } from "@/components/app-nav";
 import { ExternalParlayForm } from "@/components/external-parlay-form";
 import { ExternalParlayResultForm } from "@/components/external-parlay-result-form";
 import { ImportBetslipForm } from "@/components/import-betslip-form";
+import { LocalDateTime } from "@/components/local-date-time";
 import { MarketBadge, SourceBadge, StatusBadge, TicketTypeBadge } from "@/components/status-badge";
 import { SubmitButton } from "@/components/submit-button";
 
@@ -206,9 +207,7 @@ export default async function TrackBetPage({ searchParams }: Props) {
                       ? `${wager.leg_count}-leg parlay`
                       : wager.event_description}
                   </h2>
-                  <time dateTime={wager.event_date}>
-                    {new Date(wager.event_date).toLocaleString()}
-                  </time>
+                  <LocalDateTime value={wager.event_date} />
                 </div>
                 <StatusBadge status={wager.status} />
               </div>
@@ -230,9 +229,7 @@ export default async function TrackBetPage({ searchParams }: Props) {
                           <MarketBadge market={leg.market_type} /> · {price(leg.american_odds)} (
                           {Number(leg.decimal_odds).toFixed(4)})
                         </p>
-                        <time dateTime={leg.event_date}>
-                          {new Date(leg.event_date).toLocaleString()}
-                        </time>
+                        <LocalDateTime value={leg.event_date} />
                       </section>
                     ))}
                 </div>
@@ -298,7 +295,9 @@ export default async function TrackBetPage({ searchParams }: Props) {
                 </div>
                 <div>
                   <dt>Wager date</dt>
-                  <dd>{new Date(wager.wager_date).toLocaleString()}</dd>
+                  <dd>
+                    <LocalDateTime value={wager.wager_date} />
+                  </dd>
                 </div>
               </dl>
               {wager.user_notes ? <p>{wager.user_notes}</p> : null}

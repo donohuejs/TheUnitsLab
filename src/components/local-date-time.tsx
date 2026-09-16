@@ -6,7 +6,7 @@ import { formatLocalDateTime } from "@/lib/time";
 
 const subscribeToTimezone = () => () => {};
 
-export function KickoffTime({ value }: { value: string }) {
+export function LocalDateTime({ value }: { value: string }) {
   const clientSnapshot = useMemo(() => () => formatLocalDateTime(value), [value]);
   const serverSnapshot = useMemo(() => () => formatLocalDateTime(value, "UTC"), [value]);
   const label = useSyncExternalStore(subscribeToTimezone, clientSnapshot, serverSnapshot);

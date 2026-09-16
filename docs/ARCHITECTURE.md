@@ -226,6 +226,42 @@ surface. Group/leaderboard privacy remains governed by the existing Phase 6/7 RP
 dollar values are only shown in the owner's My Bets/import surfaces and are not exposed to other
 participants.
 
+### Release-candidate fix patch 1 boundaries
+
+This is a focused production-smoke-test blocker patch after UX Patch 3 and before UAT; it does not
+start Phase 9. `getCompetitionOdds` re-evaluates scheduled starts when serving cached normalized
+events, so an event that has crossed kickoff is marked `live` even when its odds cache is still
+fresh. Because the current provider response has no verified per-price in-play flag, the UI locks
+every started-event price as a pregame price and the existing server placement RPC remains the
+final `EVENT_ALREADY_STARTED` authority.
+
+The competition page groups normalized provider output into moneyline, spread/handicap, total, and
+an explicit Props / Other empty state. The normal request asks only configured featured markets;
+the event-odds alternate request is the production-verifiable provider-backed path for alternate
+spreads/totals. It uses the same canonical cache, lease, quota ledger, and free-tier policy. No
+client interpolation or synthetic alternate price is permitted, and a provider response with no
+alternate market is shown as unavailable.
+
+The client stores persistent straight selections separately from the existing parlay store. The
+straight batch action validates the complete snapshot and calls the existing server-authoritative
+straight placement RPC once per selection, so each accepted selection has its own ticket, immutable
+terms, stake debit, settlement, and audit trail. Independent calls can partially succeed; the
+response warns the user while clearing only the selections successfully placed, leaving failed
+selections available for review or retry.
+
+`public.cancel_simulated_bet(uuid)` is an authenticated owner-only security-definer boundary. It
+locks the open non-synthetic ticket, checks every leg against the database clock, changes the
+ticket and legs to `void`, inserts one `simulated_void` credit keyed by `settlement:<bet_id>`, and
+appends a durable audit. A non-open retry returns `already_settled`; a post-kickoff request remains
+open, returns `failed`, and records `EVENT_ALREADY_STARTED`. Imported wagers do not use this
+function and never enter the virtual bankroll.
+
+Local timestamp components use an identical deterministic server snapshot and a browser-local
+snapshot through `useSyncExternalStore`, avoiding a hydration mismatch without showing UTC as the
+normal user-facing timezone. Screenshot import remains review-first when OCR is unavailable: the
+private file is attached to the saved imported record, the normalized fields remain editable, and
+canonical event ID/matching data can move a supported record to automatic settlement.
+
 ### Administration and operations
 
 Administrative capabilities include quota inspection, request history, settlement-failure inspection, safe settlement reruns, bankroll adjustments, group membership management, upload moderation, and competition or bookmaker toggles. The source does not define the boundary between group administration and application administration.

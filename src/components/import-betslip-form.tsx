@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, useSyncExternalStore, type FormEvent } from "react";
 
 import { SubmitButton } from "@/components/submit-button";
 import { createImportedWager } from "@/app/track-bet/actions";
+import { toDateTimeLocalValue } from "@/lib/time";
 
 type Group = { id: string; name: string };
 type Competition = { id: string; name: string; sport: string };
@@ -31,12 +32,15 @@ type Draft = {
   stakeDollars: string;
   returnDollars: string;
   sportsbookBetId: string;
+  providerEventId: string;
   groupId: string;
   userNotes: string;
   rawText: string;
 };
 
 const inputClass = "form-wide";
+const subscribeToClock = () => () => {};
+const getBrowserNow = () => toDateTimeLocalValue(new Date());
 
 export function ImportBetslipForm({
   groups,
@@ -51,6 +55,7 @@ export function ImportBetslipForm({
   const [reviewing, setReviewing] = useState(false);
   const [duplicates, setDuplicates] = useState<Duplicate[]>([]);
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+  const [screenshotName, setScreenshotName] = useState("");
   const [draft, setDraft] = useState<Draft>({
     sportsbookId: "fanduel",
     otherSportsbookName: "",
@@ -67,10 +72,15 @@ export function ImportBetslipForm({
     stakeDollars: "",
     returnDollars: "",
     sportsbookBetId: "",
+    providerEventId: "",
     groupId: "",
     userNotes: "",
     rawText: "",
   });
+
+  const browserNowSnapshot = useMemo(() => getBrowserNow, []);
+  const browserNow = useSyncExternalStore(subscribeToClock, browserNowSnapshot, () => nowLocal);
+  const effectiveWagerDate = draft.wagerDate === nowLocal ? browserNow : draft.wagerDate;
 
   const set = (field: keyof Draft, value: string) =>
     setDraft((current) => ({ ...current, [field]: value }));
@@ -85,7 +95,7 @@ export function ImportBetslipForm({
         body: JSON.stringify({
           sportsbookId: draft.sportsbookId,
           sportsbookBetId: draft.sportsbookBetId,
-          wagerDate: draft.wagerDate,
+          wagerDate: effectiveWagerDate,
           stakeDollars: draft.stakeDollars,
           americanOdds: draft.americanOdds,
           eventDescription: draft.eventDescription,
@@ -114,6 +124,18 @@ export function ImportBetslipForm({
     >
       <input type="hidden" name="confirmed" value={reviewing ? "true" : "false"} />
       <input type="hidden" name="importMethod" value={method} />
+      <input
+        type="hidden"
+        name="eventDateUtc"
+        value={toDateTimeLocalValue(draft.eventDate) ? new Date(draft.eventDate).toISOString() : ""}
+      />
+      <input
+        type="hidden"
+        name="wagerDateUtc"
+        value={
+          toDateTimeLocalValue(effectiveWagerDate) ? new Date(effectiveWagerDate).toISOString() : ""
+        }
+      />
       <div className="import-methods" aria-label="Import entry path">
         {(
           [
@@ -150,8 +172,17 @@ export function ImportBetslipForm({
               type="file"
               accept="image/jpeg,image/png,image/webp"
               required={!reviewing}
+              onChange={(event) => setScreenshotName(event.target.files?.[0]?.name ?? "")}
             />
           </label>
+          {screenshotName ? (
+            <p className="screenshot-ready" role="status">
+              Screenshot attached: {screenshotName}. It will stay private and be associated with the
+              imported wager after confirmation.
+            </p>
+          ) : (
+            <p className="muted">Choose an image to attach it to the editable review draft.</p>
+          )}
         </div>
       ) : null}
       {method === "paste" ? (
@@ -243,11 +274,22 @@ export function ImportBetslipForm({
           />
         </label>
         <label>
+          Canonical event ID (optional)
+          <input
+            name="providerEventId"
+            value={draft.providerEventId}
+            onChange={(event) => set("providerEventId", event.target.value)}
+            maxLength={160}
+            placeholder="Use the provider event ID when known"
+          />
+          <small className="muted">A matched canonical event can settle automatically.</small>
+        </label>
+        <label>
           Wager date and time
           <input
             name="wagerDate"
             type="datetime-local"
-            value={draft.wagerDate}
+            value={effectiveWagerDate}
             onChange={(event) => set("wagerDate", event.target.value)}
             required
           />

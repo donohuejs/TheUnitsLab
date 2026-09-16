@@ -108,6 +108,16 @@ describe("Odds API normalization", () => {
       ]),
     );
   });
+
+  it("marks a started provider event live so pregame UI can lock its prices", () => {
+    const [event] = normalizeOddsResponse(
+      [{ ...fixture[0], commence_time: "2026-09-12T12:00:00Z" }],
+      "epl",
+      "2026-09-12T12:01:00Z",
+    );
+
+    expect(event.status).toBe("live");
+  });
 });
 
 describe("quota metadata", () => {

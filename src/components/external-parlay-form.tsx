@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, useSyncExternalStore, type FormEvent } from "react";
 
 import { createImportedParlay } from "@/app/track-bet/actions";
 import { SubmitButton } from "@/components/submit-button";
+import { toDateTimeLocalValue } from "@/lib/time";
 
 type Competition = {
   id: string;
@@ -37,6 +38,9 @@ const emptyLeg = (competitionKey: string): Leg => ({
   selectionKey: "",
 });
 
+const subscribeToClock = () => () => {};
+const getBrowserNow = () => toDateTimeLocalValue(new Date());
+
 export function ExternalParlayForm({
   groups,
   competitions,
@@ -55,6 +59,10 @@ export function ExternalParlayForm({
     { wager_id: string; sportsbook_name: string; duplicate_signal: string }[]
   >([]);
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+  const [wagerDate, setWagerDate] = useState(nowLocal);
+  const browserNowSnapshot = useMemo(() => getBrowserNow, []);
+  const browserNow = useSyncExternalStore(subscribeToClock, browserNowSnapshot, () => nowLocal);
+  const effectiveWagerDate = wagerDate === nowLocal ? browserNow : wagerDate;
   function update(index: number, patch: Partial<Leg>) {
     setLegs((current) =>
       current.map((leg, candidate) => (candidate === index ? { ...leg, ...patch } : leg)),
@@ -66,7 +74,9 @@ export function ExternalParlayForm({
       sportKey: competition?.sport,
       competitionKey: leg.competitionKey,
       eventDescription: leg.eventDescription,
-      eventDate: leg.eventDate,
+      eventDate: toDateTimeLocalValue(leg.eventDate)
+        ? new Date(leg.eventDate).toISOString()
+        : leg.eventDate,
       selection: leg.selection,
       marketType: leg.marketType,
       line: leg.line === "" ? null : Number(leg.line),
@@ -124,6 +134,11 @@ export function ExternalParlayForm({
         </select>
       </label>
       <input type="hidden" name="legs" value={JSON.stringify(payload)} />
+      <input
+        type="hidden"
+        name="wagerDateUtc"
+        value={effectiveWagerDate ? new Date(effectiveWagerDate).toISOString() : ""}
+      />
       <div className="form-grid">
         <label>
           Sportsbook
@@ -157,7 +172,13 @@ export function ExternalParlayForm({
         </label>
         <label>
           Wager date
-          <input name="wagerDate" type="datetime-local" defaultValue={nowLocal} required />
+          <input
+            name="wagerDate"
+            type="datetime-local"
+            value={effectiveWagerDate}
+            onChange={(event) => setWagerDate(event.target.value)}
+            required
+          />
         </label>
         <label>
           Ticket result

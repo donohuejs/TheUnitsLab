@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useSyncExternalStore } from "react";
 
-import { placeParlayBet, placeStraightBet } from "@/app/sports/bet-actions";
+import { placeParlayBet, placeStraightBet, placeStraightBets } from "@/app/sports/bet-actions";
 import { KickoffTime } from "@/components/kickoff-time";
 import { SubmitButton } from "@/components/submit-button";
 import { MarketBadge, SourceBadge, TicketTypeBadge } from "@/components/status-badge";
@@ -10,9 +10,14 @@ import { TeamMark } from "@/components/team-mark";
 import { calculateParlayPotential } from "@/lib/parlays/calculations";
 import {
   clearSlip,
+  clearStraightSlip,
+  getEmptyStraightSlipSnapshot,
   getEmptySlipSnapshot,
+  getStraightSlipSnapshot,
   getSlipSnapshot,
+  setStraightSlipSelections,
   setSlipSelections,
+  subscribeToStraightSlip,
   slipSelectionKey,
   subscribeToSlip,
   type SlipSelection,
@@ -29,8 +34,15 @@ const americanPrice = (value: number) => (value > 0 ? `+${value}` : String(value
 export function BetSlip({ selection, groups }: Props) {
   const [stake, setStake] = useState("10.00");
   const [parlayStake, setParlayStake] = useState("10.00");
+  const [straightStake, setStraightStake] = useState("10.00");
   const [parlayNotice, setParlayNotice] = useState("");
+  const [straightNotice, setStraightNotice] = useState("");
   const legs = useSyncExternalStore(subscribeToSlip, getSlipSnapshot, getEmptySlipSnapshot);
+  const straightSelections = useSyncExternalStore(
+    subscribeToStraightSlip,
+    getStraightSlipSnapshot,
+    getEmptyStraightSlipSnapshot,
+  );
 
   function addCurrentLeg() {
     if (!selection) {
@@ -59,6 +71,23 @@ export function BetSlip({ selection, groups }: Props) {
     setParlayNotice("Selection added to the parlay.");
   }
 
+  function addCurrentStraight() {
+    if (!selection) {
+      setStraightNotice("Select a price first, then add it to the straight-bet slip.");
+      return;
+    }
+    if (straightSelections.length >= 12) {
+      setStraightNotice("The straight-bet slip can contain at most 12 selections.");
+      return;
+    }
+    if (straightSelections.some((leg) => slipSelectionKey(leg) === slipSelectionKey(selection))) {
+      setStraightNotice("That selection is already in the straight-bet slip.");
+      return;
+    }
+    setStraightSlipSelections([...straightSelections, selection]);
+    setStraightNotice("Selection added to independent straight bets.");
+  }
+
   const straightPotential = useMemo(() => {
     if (!selection) return null;
     try {
@@ -81,7 +110,28 @@ export function BetSlip({ selection, groups }: Props) {
     }
   }, [legs, parlayStake]);
 
+  const straightPreviews = useMemo(
+    () =>
+      straightSelections.map((leg) => {
+        try {
+          return calculatePotential(straightStake, leg.decimalOdds.toFixed(4));
+        } catch {
+          return null;
+        }
+      }),
+    [straightSelections, straightStake],
+  );
+
   const submittedLegs = legs.map((leg) => ({
+    competitionKey: leg.competitionKey,
+    eventId: leg.eventId,
+    bookmakerId: leg.bookmakerId,
+    marketType: leg.marketType,
+    selection: leg.selection,
+    expectedAmericanOdds: leg.americanOdds,
+    expectedLine: leg.line,
+  }));
+  const submittedStraightLegs = straightSelections.map((leg) => ({
     competitionKey: leg.competitionKey,
     eventId: leg.eventId,
     bookmakerId: leg.bookmakerId,
@@ -152,9 +202,14 @@ export function BetSlip({ selection, groups }: Props) {
               </dd>
             </div>
           </dl>
-          <button className="button secondary" type="button" onClick={addCurrentLeg}>
-            Add this selection to parlay
-          </button>
+          <div className="inline-actions">
+            <button className="button secondary" type="button" onClick={addCurrentStraight}>
+              Add to straight bets
+            </button>
+            <button className="button secondary" type="button" onClick={addCurrentLeg}>
+              Add to parlay
+            </button>
+          </div>
           <form action={placeStraightBet} className="form-stack">
             <input type="hidden" name="competitionKey" value={selection.competitionKey} />
             <input type="hidden" name="eventId" value={selection.eventId} />
@@ -211,6 +266,126 @@ export function BetSlip({ selection, groups }: Props) {
           </form>
         </section>
       ) : null}
+
+      <section className="card bet-slip">
+        <div className="ticket-meta">
+          <SourceBadge source="simulated" />
+          <TicketTypeBadge ticketType="straight" />
+        </div>
+        <h2>Straights — {straightSelections.length} selections</h2>
+        <p className="muted">
+          Add independent bets from any competition and submit them together. Each selection is
+          placed as its own simulated wager with its own ticket and ledger entry.
+        </p>
+        {straightNotice ? <p className="notice">{straightNotice}</p> : null}
+        {straightSelections.length ? (
+          <ol className="parlay-leg-list">
+            {straightSelections.map((leg, index) => (
+              <li key={slipSelectionKey(leg)}>
+                <div className="parlay-leg-copy">
+                  <strong>
+                    {index + 1}. <MarketBadge market={leg.marketType} /> {leg.selectionName}
+                    {leg.line === null ? "" : ` ${leg.line > 0 ? "+" : ""}${leg.line}`}
+                  </strong>
+                  <small className="parlay-leg-context">
+                    <span className="team-pair">
+                      <TeamMark teamName={leg.awayTeam} sport={leg.sport} />
+                      {leg.awayTeam} at <TeamMark teamName={leg.homeTeam} sport={leg.sport} />
+                      {leg.homeTeam}
+                    </span>
+                    <span>
+                      {leg.competition} · <KickoffTime value={leg.scheduledStart} /> ·{" "}
+                      {leg.bookmaker}
+                    </span>
+                    <span>
+                      {americanPrice(leg.americanOdds)} ({leg.decimalOdds.toFixed(4)}) · potential{" "}
+                      {straightPreviews[index]
+                        ? `${straightPreviews[index]!.profit} Vials profit`
+                        : "—"}
+                    </span>
+                  </small>
+                </div>
+                <button
+                  className="text-button"
+                  type="button"
+                  onClick={() =>
+                    setStraightSlipSelections(
+                      straightSelections.filter((_, candidate) => candidate !== index),
+                    )
+                  }
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="empty-state">
+            <strong>No straight bets added</strong>
+            Choose a price above and add it here. This slip persists across competition navigation
+            and refresh.
+          </p>
+        )}
+        <form action={placeStraightBets} className="form-stack">
+          <input type="hidden" name="legs" value={JSON.stringify(submittedStraightLegs)} />
+          <input
+            type="hidden"
+            name="slipKeys"
+            value={straightSelections.map(slipSelectionKey).join(",")}
+          />
+          <label>
+            Stake per straight bet in Vials
+            <input
+              name="stake"
+              type="number"
+              inputMode="decimal"
+              min="0.01"
+              step="0.01"
+              required
+              value={straightStake}
+              onChange={(event) => setStraightStake(event.target.value)}
+            />
+          </label>
+          {groups.length ? (
+            <label>
+              Group association (optional)
+              <select name="groupId" defaultValue="">
+                <option value="">No group</option>
+                {groups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <input type="hidden" name="groupId" value="" />
+          )}
+          <small className="muted">
+            The entered stake applies independently to each selected straight bet. The server
+            rechecks every event, line, and price before accepting each ticket.
+          </small>
+          <SubmitButton
+            pendingLabel="Placing straight bets…"
+            className="button"
+            disabled={!straightSelections.length || straightPreviews.some((preview) => !preview)}
+          >
+            Place all straight bets
+          </SubmitButton>
+          {straightSelections.length ? (
+            <button
+              className="button secondary"
+              type="button"
+              onClick={() => {
+                clearStraightSlip();
+                setStraightNotice("Straight-bet slip cleared.");
+              }}
+            >
+              Clear straights
+            </button>
+          ) : null}
+        </form>
+      </section>
 
       <section className="card bet-slip">
         <div className="ticket-meta">

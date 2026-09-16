@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppNav } from "@/components/app-nav";
+import { KickoffTime } from "@/components/kickoff-time";
+import { LocalDateTime } from "@/components/local-date-time";
 import { MarketBadge, SourceBadge, StatusBadge, TicketTypeBadge } from "@/components/status-badge";
 import { SubmitButton } from "@/components/submit-button";
 import { SlipPlacementCleanup } from "@/components/slip-placement-cleanup";
@@ -10,11 +12,17 @@ import { hasPublicEnvironment } from "@/config/env.public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { liveWagerState } from "@/lib/settlement/grading";
 
-import { refreshMyOpenScores } from "./actions";
+import { cancelSimulatedBet, refreshMyOpenScores } from "./actions";
 
 type Filter = "all" | "open" | "settled" | "simulated" | "imported";
 type Props = {
-  searchParams: Promise<{ filter?: string; view?: string; notice?: string; slip?: string }>;
+  searchParams: Promise<{
+    filter?: string;
+    view?: string;
+    notice?: string;
+    slip?: string;
+    straight?: string;
+  }>;
 };
 type Leg = {
   id: string;
@@ -25,6 +33,7 @@ type Leg = {
   bookmaker_name: string;
   home_team: string;
   away_team: string;
+  scheduled_start: string;
   market_type: "moneyline" | "spread" | "total";
   selection: "home" | "away" | "draw" | "over" | "under";
   selection_name: string;
@@ -55,6 +64,7 @@ type ImportedWager = {
   leg_count: number;
   event_description: string;
   event_date: string;
+  wager_date: string;
   selection: string;
   market_type: "moneyline" | "spread" | "total";
   line: number | null;
@@ -107,6 +117,7 @@ export default async function MyBetsPage({ searchParams }: Props) {
   const query = await searchParams;
   const filter = selectedFilter(query);
   const slipKeys = query.slip?.split(",").filter(Boolean).slice(0, 12) ?? [];
+  const straightSlipKeys = query.straight?.split(",").filter(Boolean).slice(0, 12) ?? [];
   const supabase = await createSupabaseServerClient();
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) redirect("/auth");
@@ -122,7 +133,7 @@ export default async function MyBetsPage({ searchParams }: Props) {
     supabase
       .from("external_wagers")
       .select(
-        "id,sportsbook_name,ticket_type,leg_count,event_description,event_date,selection,market_type,line,american_odds,decimal_odds,stake_units,raw_stake_dollars,raw_return_dollars,status,profit_loss_units,match_state,match_reason,settlement_method,external_wager_legs(*)",
+        "id,sportsbook_name,ticket_type,leg_count,event_description,event_date,wager_date,selection,market_type,line,american_odds,decimal_odds,stake_units,raw_stake_dollars,raw_return_dollars,status,profit_loss_units,match_state,match_reason,settlement_method,external_wager_legs(*)",
       )
       .eq("user_id", authData.user.id)
       .order("wager_date", { ascending: false }),
@@ -158,7 +169,7 @@ export default async function MyBetsPage({ searchParams }: Props) {
 
   return (
     <main className="shell">
-      <SlipPlacementCleanup slipKeys={slipKeys} />
+      <SlipPlacementCleanup slipKeys={slipKeys} straightSlipKeys={straightSlipKeys} />
       <AppNav active="my-bets" userId={authData.user.id} />
       <header className="account-header">
         <div>
@@ -215,6 +226,9 @@ export default async function MyBetsPage({ searchParams }: Props) {
         {records.map((ticket) => {
           const firstLeg = ticket.bet_legs[0];
           if (!firstLeg) return null;
+          const canCancel =
+            ticket.status === "open" &&
+            ticket.bet_legs.every((leg) => new Date(leg.scheduled_start).getTime() > Date.now());
           return (
             <article className="card ticket-card" key={ticket.id}>
               <div className="event-heading">
@@ -235,9 +249,9 @@ export default async function MyBetsPage({ searchParams }: Props) {
                       </span>
                     )}
                   </h2>
-                  <time dateTime={ticket.created_at}>
-                    {new Date(ticket.created_at).toLocaleString()}
-                  </time>
+                  <p className="ticket-time-meta">
+                    Placed <LocalDateTime value={ticket.created_at} />
+                  </p>
                 </div>
                 <StatusBadge status={ticket.status} />
               </div>
@@ -266,6 +280,9 @@ export default async function MyBetsPage({ searchParams }: Props) {
                           {leg.line === null ? "" : ` ${leg.line > 0 ? "+" : ""}${leg.line}`} ·{" "}
                           <MarketBadge market={leg.market_type} /> · {leg.bookmaker_name} ·{" "}
                           {price(leg.american_odds)} ({Number(leg.decimal_odds).toFixed(4)})
+                        </p>
+                        <p className="ticket-time-meta">
+                          Kickoff <KickoffTime value={leg.scheduled_start} />
                         </p>
                         {score ? (
                           <div className="live-score compact-score">
@@ -338,6 +355,15 @@ export default async function MyBetsPage({ searchParams }: Props) {
                   <dd>{firstLeg.bookmaker_name}</dd>
                 </div>
               </dl>
+              {canCancel ? (
+                <form action={cancelSimulatedBet} className="cancel-form">
+                  <input type="hidden" name="betId" value={ticket.id} />
+                  <SubmitButton className="button secondary" pendingLabel="Cancelling…">
+                    Cancel Bet
+                  </SubmitButton>
+                  <small className="muted">Available until the event kickoff.</small>
+                </form>
+              ) : null}
             </article>
           );
         })}
@@ -354,9 +380,10 @@ export default async function MyBetsPage({ searchParams }: Props) {
                     ? `${wager.leg_count}-leg imported parlay`
                     : wager.event_description}
                 </h2>
-                <time dateTime={wager.event_date}>
-                  {new Date(wager.event_date).toLocaleString()}
-                </time>
+                <p className="ticket-time-meta">
+                  Kickoff <LocalDateTime value={wager.event_date} /> · Placed{" "}
+                  <LocalDateTime value={wager.wager_date} />
+                </p>
               </div>
               <StatusBadge status={wager.status} />
             </div>

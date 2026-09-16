@@ -170,7 +170,10 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
       </form>
 
       {!groups.length ? (
-        <p className="empty-state">Join or create a private group to view its leaderboard.</p>
+        <p className="empty-state">
+          <strong>No group selected</strong>
+          Join or create a group to see leaderboards.
+        </p>
       ) : null}
       {wagerResult.error || memberResult.error ? (
         <p className="notice error" role="alert">

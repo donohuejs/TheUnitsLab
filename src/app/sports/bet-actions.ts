@@ -42,6 +42,13 @@ const parlayPlacementSchema = z.object({
   slipKeys: z.string().trim().max(4096).optional().default(""),
 });
 
+const straightBatchSchema = z.object({
+  legs: z.array(parlayLegSchema).min(1).max(12),
+  stake: z.string().trim(),
+  groupId: z.union([z.literal(""), z.uuid()]),
+  slipKeys: z.string().trim().max(4096).optional().default(""),
+});
+
 function formValue(formData: FormData, field: string) {
   const candidate = formData.get(field);
   return typeof candidate === "string" ? candidate : "";
@@ -114,6 +121,68 @@ export async function placeStraightBet(formData: FormData) {
   }
 
   notice("/my-bets", "Simulated straight wager placed and stake debited once.");
+}
+
+export async function placeStraightBets(formData: FormData) {
+  let submittedLegs: unknown;
+  try {
+    submittedLegs = JSON.parse(formValue(formData, "legs"));
+  } catch {
+    notice("/sports", "The straight-bet list is invalid.");
+  }
+  const parsed = straightBatchSchema.safeParse({
+    legs: submittedLegs,
+    stake: formValue(formData, "stake"),
+    groupId: formValue(formData, "groupId"),
+    slipKeys: formValue(formData, "slipKeys"),
+  });
+  if (!parsed.success || parsed.data.legs.some((leg) => !getCompetition(leg.competitionKey))) {
+    notice("/sports", "The straight-bet list is invalid.");
+  }
+  let stake: string;
+  try {
+    stake = formatUnits(parseStakeToMinorUnits(parsed.data.stake));
+  } catch {
+    notice("/sports", "Enter a positive straight-bet stake using at most two decimals.");
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data: authData } = await supabase.auth.getUser();
+  if (!authData.user) notice("/auth", "Please sign in to continue.");
+
+  let placed = 0;
+  let firstError = "";
+  const submittedSlipKeys = parsed.data.slipKeys.split(",").filter(Boolean);
+  const placedSlipKeys: string[] = [];
+  for (const [index, leg] of parsed.data.legs.entries()) {
+    const { data, error } = await supabase.rpc("place_simulated_straight_bet", {
+      p_competition_key: leg.competitionKey,
+      p_event_id: leg.eventId,
+      p_bookmaker_id: leg.bookmakerId,
+      p_market_type: leg.marketType,
+      p_selection: leg.selection,
+      p_expected_american_odds: leg.expectedAmericanOdds,
+      p_expected_line: leg.expectedLine,
+      p_stake_units: stake,
+      p_group_id: parsed.data.groupId || null,
+    });
+    if (error || !data) {
+      firstError ||= error?.message ?? "";
+      continue;
+    }
+    placed += 1;
+    if (submittedSlipKeys[index]) placedSlipKeys.push(submittedSlipKeys[index]);
+  }
+
+  if (!placed) notice("/sports", placementMessage(firstError));
+  const path = placedSlipKeys.length
+    ? `/my-bets?straight=${encodeURIComponent(placedSlipKeys.join(","))}`
+    : "/my-bets";
+  const partial = placed < parsed.data.legs.length ? " Some selections could not be placed." : "";
+  notice(
+    path,
+    `Placed ${placed} independent straight wager${placed === 1 ? "" : "s"}; each is recorded separately.${partial}`,
+  );
 }
 
 export async function placeParlayBet(formData: FormData) {

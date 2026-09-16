@@ -68,7 +68,7 @@ export function normalizeOddsResponse(
     homeTeam: event.home_team,
     awayTeam: event.away_team,
     scheduledStart: event.commence_time,
-    status: "scheduled",
+    status: new Date(event.commence_time) <= new Date(fetchedAt) ? "live" : "scheduled",
     providerSportKey: event.sport_key,
     odds: event.bookmakers.flatMap((bookmaker) => {
       const configured = configuredBooks.get(bookmaker.key);

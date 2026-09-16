@@ -4,7 +4,7 @@ The Units Lab is a private, entertainment-focused sports wagering simulator and 
 
 ## Phase status
 
-Phases 0-8 are complete. The release-candidate UX Patch 3 is the current pre-UAT gate; it adds the approved brand treatment, Vials terminology, unified My Bets ledger, reviewed Import Betslip paths, duplicate signals, and imported event matching/settlement while preserving the Phase 7 wagering engine. Phase 9 has not started.
+Phases 0-8 are complete. Release-candidate UX Patch 3 and Fix Patch 1 are the current pre-UAT gate; Fix Patch 1 closes the production-smoke-test blockers for local timestamps, started-event locking, grouped markets, independent straight slips, pre-kickoff cancellation, alternate-line availability states, and screenshot/manual matching flow while preserving the Phase 7 wagering engine. Phase 9 has not started.
 
 The interface supports account/group workflows, pregame odds for EPL, UCL, NCAAF, NCAAB, NFL, NHL, La Liga, and Europa League, straight and multi-leg simulated bet slips, a unified My Bets ledger, cached scores, deterministic simulated settlement, reviewed screenshot/text/manual betslip import, imported straight/parlay tracking, Performance analytics, private-group leaderboards, and a dashboard that keeps simulated and imported records distinct. External records never change the simulated virtual-bankroll ledger. Screenshot extraction remains intentionally review-first; no provider polling or Phase 9 work was added.
 
@@ -89,6 +89,7 @@ Individual commands are `npm run format:check`, `npm run lint`, `npm run typeche
 - [Phase 8 plan](docs/PHASE_8_PLAN.md)
 - [Phase 8 completion report](PHASE_8_COMPLETION_REPORT.md)
 - [Release-candidate UX Patch 3 report](RELEASE_CANDIDATE_UX_PATCH_3_REPORT.md)
+- [Release-candidate Fix Patch 1 report](RELEASE_CANDIDATE_FIX_PATCH_1_REPORT.md)
 - [Rollout Part 1 release-readiness report](ROLLOUT_PART_1_RELEASE_READINESS_REPORT.md)
 - [Release candidate checklist](RELEASE_CANDIDATE_CHECKLIST.md)
 - [Agent guidance](AGENTS.md)

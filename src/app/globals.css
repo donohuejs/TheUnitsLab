@@ -1364,3 +1364,61 @@ thead th {
     transition-duration: 0.01ms !important;
   }
 }
+
+.status-live {
+  color: #8b1e14;
+  border-color: #f3aaa2;
+  background: #fee7e4;
+}
+
+.market-groups {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.market-group h3 {
+  margin-bottom: 0.55rem;
+  color: #31556c;
+  font-size: 0.86rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.market-group .odds-grid {
+  margin-top: 0;
+}
+
+.odd.locked {
+  border-color: #d5d9de;
+  color: #667085;
+  background: #f0f2f4;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.odd.locked strong {
+  color: #667085;
+}
+
+.ticket-time-meta {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.cancel-form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  border-top: 1px solid var(--border);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.screenshot-ready {
+  margin: 0.7rem 0 0;
+  color: #075536;
+  font-weight: 700;
+}

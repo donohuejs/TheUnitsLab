@@ -13,6 +13,7 @@ const labels: Record<string, string> = {
   push: "Push",
   void: "Void",
   scheduled: "Scheduled",
+  live: "LIVE",
   hit: "Fresh",
   miss: "Freshly loaded",
   refreshed: "Refreshed",
@@ -45,5 +46,7 @@ export function ticketTypeLabel(ticketType: "straight" | "parlay") {
 }
 
 export function marketLabel(market: string) {
-  return market === "moneyline" ? "Moneyline" : displayLabel(market);
+  if (market === "moneyline") return "Moneyline";
+  if (market === "spread") return "Point spread / handicap";
+  return displayLabel(market);
 }

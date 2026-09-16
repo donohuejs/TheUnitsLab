@@ -116,6 +116,39 @@ settlement-idempotency, provider/cache/quota, synthetic-isolation, or $0/month c
 This clarification intentionally changes the source-recommended UI word “units” to “Vials” without
 renaming existing database columns or changing their exact economics.
 
+### Approved release-candidate fix patch 1 clarification 2026-09-16
+
+The owner explicitly authorizes this narrow production-smoke-test blocker patch before UAT. It is
+not Phase 9 and does not add live wagering, real-money handling, a paid dependency, uncontrolled
+polling, or a change to RLS, immutable ticket terms, settlement idempotency, or the $0/month target.
+
+- Event and refresh timestamps use one readable local-time formatter with no seconds. Server output
+  has a deterministic UTC snapshot and client hydration updates it to the viewer's local timezone.
+- Provider events whose scheduled start has passed are visibly marked **LIVE** and all displayed
+  prices remain locked as pregame prices. The current provider model does not expose a verified
+  in-play price flag, so no started-event price is accepted as a live wager; the existing server
+  `EVENT_ALREADY_STARTED` rejection remains authoritative.
+- Event markets are visibly grouped as Moneyline, Point spread / handicap, Total, and Props / Other.
+  Soccer moneyline continues to include draw, and provider-returned soccer spreads are displayed
+  without interpolation. Soccer handicap availability is provider-data-limited, not UI-limited; a
+  missing provider market is shown as unavailable rather than fabricated.
+- The simulated slip has independent persistent Straights and Parlay sections. Submitting multiple
+  straight selections creates one server-authoritative ticket and stake debit per selection; a
+  partial response identifies that some independent tickets were not accepted.
+- An owner may cancel an open simulated ticket only while every leg is before kickoff. Cancellation
+  changes the ticket and legs to void, refunds the original Vial stake once through the existing
+  ledger idempotency key, and appends audit evidence. Imported records are never eligible for this
+  action.
+- My Bets shows local placed and kickoff times for simulated and imported records. The import
+  screenshot path visibly confirms the private attachment and continues to an editable draft and
+  explicit review/confirmation when extraction is unavailable. A provider event ID plus structured
+  market, selection key, line, odds, and competition data enables deterministic automatic matching
+  and settlement; unmatched or unsupported records retain a manual-review reason.
+
+This clarification resolves the prior cancellation question only for owner-initiated,
+pre-kickoff simulated cancellation. It does not resolve provider-specific live-market semantics or
+promise that alternate/handicap markets exist for every event, bookmaker, or provider plan.
+
 ## 1 Project purpose
 
 Build a private, entertainment-focused sports wagering simulator and betting-performance tracker.
@@ -717,7 +750,7 @@ These items are not resolved by the governing source:
 10. Quota thresholds are suggested rather than confirmed, and the applicable free-plan allowance and endpoint credit costs must be verified before implementation.
 11. The source identifies bookmakers of interest but does not select the default bookmaker or fallback behavior when a bookmaker or market is unavailable.
 12. The exact score endpoint and provider mappings for EPL, UCL, NCAAF, and NCAAB need verification.
-13. Resolved for Phase 3 placement only on 2026-09-12: stakes must be positive hundredth-unit values within `numeric(14,2)`, insufficient balances are rejected, and per-user transaction locking prevents concurrent overspending. Bankroll resets, administrative-adjustment authorization, and wager cancellation remain unresolved.
+13. Resolved for Phase 3 placement only on 2026-09-12: stakes must be positive hundredth-unit values within `numeric(14,2)`, insufficient balances are rejected, and per-user transaction locking prevents concurrent overspending. Bankroll resets and administrative-adjustment authorization remain unresolved. Owner-initiated simulated wager cancellation is resolved only before kickoff by the release-candidate fix patch clarification above; after kickoff it is rejected.
 14. Resolved for Phase 3/7 calculation and settlement: accepted decimal odds use four places and potential/final unit values round to hundredths using exact decimal arithmetic. Supported parlay settlement waits for all non-void final legs; any loss loses, active wins win, pushes/voids are neutral, all-void is `void`, and a push/void-only mixture is `push` with stake returned. Same-event and cross-book simulated parlays are rejected because the current provider model has no verified correlation pricing. Grading conventions for postponed, abandoned, rescheduled, or later provider corrections remain unresolved.
 15. External-wager verification statuses, who may verify, edit and settlement permissions, evidence requirements, and handling of corrected records are unspecified.
 16. ROI formulas, average-odds method, streak definitions, week and season boundaries, time-zone behavior, combined-source calculations, and leaderboard tie-breaking are unspecified.

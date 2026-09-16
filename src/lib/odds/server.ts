@@ -10,10 +10,22 @@ import { getOdds, getOddsForRequest } from "./service";
 import { createAlternateOddsRequest } from "./request";
 import type { CompetitionId } from "./types";
 
+function markStartedEvents<T extends { scheduledStart: string; status: "scheduled" | "live" }>(
+  result: T,
+): T {
+  return {
+    ...result,
+    status:
+      result.status === "live" || new Date(result.scheduledStart).getTime() <= Date.now()
+        ? "live"
+        : "scheduled",
+  };
+}
+
 export async function getCompetitionOdds(competitionId: CompetitionId, manual = false) {
   const environment = readServerEnvironment(process.env);
   const store = new PostgresOddsStore(createSupabaseAdminClient());
-  return getOdds(
+  const result = await getOdds(
     {
       store,
       allowance: environment.ODDS_API_MONTHLY_ALLOWANCE,
@@ -30,6 +42,13 @@ export async function getCompetitionOdds(competitionId: CompetitionId, manual = 
     competitionId,
     { manual },
   );
+  return {
+    ...result,
+    dataset: {
+      ...result.dataset,
+      events: result.dataset.events.map(markStartedEvents),
+    },
+  };
 }
 
 export async function getEventAlternateOdds(competitionId: CompetitionId, providerEventId: string) {

@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   getSlipSnapshot,
+  getStraightSlipSnapshot,
   parseSlipSelections,
   removeSlipSelectionKeys,
   setSlipSelections,
+  setStraightSlipSelections,
   slipSelectionKey,
   type SlipSelection,
 } from "../src/lib/wagers/slip";
@@ -58,5 +60,15 @@ describe("persistent simulated parlay slip", () => {
     expect(removed).toEqual([selections[0], selections[2]]);
     setSlipSelections([]);
     expect(getSlipSnapshot()).toEqual([]);
+  });
+
+  it("keeps independent straight selections separate from the parlay slip", () => {
+    const selections = [leg("ncaaf", "straight-one"), leg("epl", "straight-two")];
+
+    setSlipSelections([selections[0]]);
+    setStraightSlipSelections(selections);
+
+    expect(getSlipSnapshot()).toEqual([selections[0]]);
+    expect(getStraightSlipSnapshot()).toEqual(selections);
   });
 });

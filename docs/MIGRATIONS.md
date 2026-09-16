@@ -40,6 +40,15 @@ remain in force. `supabase/tests/release_candidate_ux_patch_3.sql` adds 33 pgTAP
 RLS, normalization, duplicate, matching, settlement, manual-reason, and bankroll-isolation
 assertions. The migration is forward-only and must replay after Patch 2.
 
+Release-candidate fix patch 1 adds `20260923000000_release_candidate_fix_patch_1.sql`. It adds the
+authenticated owner-only `cancel_simulated_bet` boundary for pre-kickoff simulated tickets. The
+function locks the ticket, checks all immutable leg kickoffs, transitions ticket and legs to void,
+refunds the original stake through the existing one-credit `simulated_void` ledger constraint, and
+records success, rejection, or already-settled audit evidence. It does not touch imported wagers.
+`supabase/tests/release_candidate_fix_patch_1.sql` verifies the function grant, successful exact
+refund, idempotent retry, post-kickoff rejection, unchanged open status, and rejection audit. The
+migration is forward-only and must replay after Patch 3.
+
 ## Source of truth
 
 Ordered SQL files under `supabase/migrations` are the database source of truth. Configuration in a hosted dashboard is not sufficient. Migrations must include tables, constraints, functions, grants, Row Level Security enablement, policies, storage policies, and indexes needed by the corresponding phase.

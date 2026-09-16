@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppNav } from "@/components/app-nav";
+import { LocalDateTime } from "@/components/local-date-time";
 import { StatusBadge, TicketTypeBadge } from "@/components/status-badge";
 import { SubmitButton } from "@/components/submit-button";
 import { hasPublicEnvironment } from "@/config/env.public";
@@ -125,7 +126,7 @@ export default async function SettlementTestsPage({ searchParams }: Props) {
                   </h3>
                   <small>
                     {ticket.id} · {Number(ticket.stake_units).toFixed(2)} Vials ·{" "}
-                    {new Date(ticket.created_at).toLocaleString()}
+                    <LocalDateTime value={ticket.created_at} />
                   </small>
                 </div>
                 <StatusBadge status={ticket.status} />

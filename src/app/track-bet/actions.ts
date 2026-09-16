@@ -77,6 +77,7 @@ const importedWagerSchema = z.object({
   competitionKey: z.string().trim().min(1).max(40),
   eventDescription: z.string().trim().min(2).max(200),
   eventDate: z.string().refine((candidate) => !Number.isNaN(Date.parse(candidate))),
+  providerEventId: z.string().trim().max(160),
   wagerDate: z.string().refine((candidate) => !Number.isNaN(Date.parse(candidate))),
   selection: z.string().trim().min(1).max(120),
   selectionKey: z.enum(["", "home", "away", "draw", "over", "under"]),
@@ -103,6 +104,7 @@ export async function createImportedWager(formData: FormData) {
     competitionKey: value(formData, "competitionKey"),
     eventDescription: value(formData, "eventDescription"),
     eventDate: value(formData, "eventDate"),
+    providerEventId: value(formData, "providerEventId"),
     wagerDate: value(formData, "wagerDate"),
     selection: value(formData, "selection"),
     selectionKey: value(formData, "selectionKey"),
@@ -166,7 +168,7 @@ export async function createImportedWager(formData: FormData) {
     p_sport_key: parsed.data.sportKey,
     p_competition_key: parsed.data.competitionKey,
     p_event_description: parsed.data.eventDescription,
-    p_event_date: new Date(parsed.data.eventDate).toISOString(),
+    p_event_date: new Date(value(formData, "eventDateUtc") || parsed.data.eventDate).toISOString(),
     p_selection: parsed.data.selection,
     p_selection_key: parsed.data.selectionKey || null,
     p_market_type: parsed.data.marketType,
@@ -174,14 +176,14 @@ export async function createImportedWager(formData: FormData) {
     p_american_odds: parsed.data.americanOdds,
     p_raw_stake_dollars: stakeDollars,
     p_raw_return_dollars: returnDollars,
-    p_wager_date: new Date(parsed.data.wagerDate).toISOString(),
+    p_wager_date: new Date(value(formData, "wagerDateUtc") || parsed.data.wagerDate).toISOString(),
     p_status: parsed.data.status,
     p_verification_status: parsed.data.verificationStatus,
     p_user_notes: parsed.data.userNotes || null,
     p_import_method: parsed.data.importMethod,
     p_sportsbook_bet_id: parsed.data.sportsbookBetId || null,
     p_import_content_hash: contentHash,
-    p_provider_event_id: null,
+    p_provider_event_id: parsed.data.providerEventId || null,
     p_confirmed: true,
   });
   if (error || !data) finish(databaseMessage(error?.message ?? ""));
@@ -199,7 +201,10 @@ export async function createImportedWager(formData: FormData) {
     });
     if (attachment.error) finish("The import was saved, but its screenshot could not be attached.");
   }
-  await supabase.rpc("match_imported_wager", { p_external_wager_id: wagerId });
+  await supabase.rpc("match_imported_wager", {
+    p_external_wager_id: wagerId,
+    p_provider_event_id: parsed.data.providerEventId || null,
+  });
   finish("Imported betslip saved to My Bets. Your simulated Vial balance was not changed.");
 }
 
@@ -274,7 +279,7 @@ export async function createExternalWager(formData: FormData) {
     p_line: parsed.data.line === "" ? null : parsed.data.line,
     p_american_odds: parsed.data.americanOdds,
     p_stake_units: stake,
-    p_wager_date: new Date(parsed.data.wagerDate).toISOString(),
+    p_wager_date: new Date(value(formData, "wagerDateUtc") || parsed.data.wagerDate).toISOString(),
     p_status: parsed.data.status,
     p_verification_status: parsed.data.verificationStatus,
     p_user_notes: parsed.data.userNotes || null,
@@ -467,7 +472,7 @@ export async function createImportedParlay(formData: FormData) {
     p_combined_american_odds: parsed.data.combinedAmericanOdds,
     p_raw_stake_dollars: rawStakeDollars,
     p_raw_return_dollars: rawReturnDollars,
-    p_wager_date: new Date(parsed.data.wagerDate).toISOString(),
+    p_wager_date: new Date(value(formData, "wagerDateUtc") || parsed.data.wagerDate).toISOString(),
     p_status: parsed.data.status,
     p_verification_status: parsed.data.verificationStatus,
     p_user_notes: parsed.data.userNotes || null,

@@ -2,12 +2,22 @@
 
 import { useEffect } from "react";
 
-import { removeSlipSelectionKeysAndPersist } from "@/lib/wagers/slip";
+import {
+  removeSlipSelectionKeysAndPersist,
+  removeStraightSlipSelectionKeysAndPersist,
+} from "@/lib/wagers/slip";
 
-export function SlipPlacementCleanup({ slipKeys }: { slipKeys: string[] }) {
+export function SlipPlacementCleanup({
+  slipKeys,
+  straightSlipKeys,
+}: {
+  slipKeys: string[];
+  straightSlipKeys?: string[];
+}) {
   useEffect(() => {
     if (slipKeys.length) removeSlipSelectionKeysAndPersist(slipKeys);
-  }, [slipKeys]);
+    if (straightSlipKeys?.length) removeStraightSlipSelectionKeysAndPersist(straightSlipKeys);
+  }, [slipKeys, straightSlipKeys]);
 
   return null;
 }
