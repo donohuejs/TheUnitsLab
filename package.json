@@ -1,0 +1,55 @@
+{
+  "name": "sportsbook-simulator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The Units Lab private virtual-unit sports performance and wager tracker foundation.",
+  "engines": {
+    "node": ">=24.18.1 <25",
+    "npm": ">=11.16.0 <12"
+  },
+  "packageManager": "npm@11.16.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:db": "supabase test db",
+    "test:db:concurrency": "node test/phase3-concurrency.mjs",
+    "test:db:settlement-concurrency": "node test/phase4-settlement-concurrency.mjs",
+    "test:db:parlay-placement-concurrency": "node test/phase7-parlay-placement-concurrency.mjs",
+    "test:db:parlay-settlement-concurrency": "node test/phase7-parlay-settlement-concurrency.mjs",
+    "test:coverage": "vitest run --coverage",
+    "security:scan": "node test/secret-scan.mjs",
+    "validate": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run security:scan && npm run build",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "db:reset": "supabase db reset --local",
+    "db:lint": "supabase db lint --local"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.116.0",
+    "next": "16.3.5",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "server-only": "0.0.1",
+    "zod": "4.6.2"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitest/coverage-v8": "5.0.0",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.5",
+    "prettier": "3.9.6",
+    "supabase": "2.117.0",
+    "typescript": "6.0.3",
+    "vitest": "5.0.0"
+  }
+}

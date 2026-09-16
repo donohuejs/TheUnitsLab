@@ -1,0 +1,225 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { AppNav } from "@/components/app-nav";
+import { BetSlip } from "@/components/bet-slip";
+import { StatusBadge } from "@/components/status-badge";
+import { SubmitButton } from "@/components/submit-button";
+import { sportsProviderConfiguration } from "@/config/sports";
+import { hasPublicEnvironment } from "@/config/env.public";
+import { getCompetition } from "@/lib/odds/request";
+import { getCompetitionOdds } from "@/lib/odds/server";
+import type { CompetitionId } from "@/lib/odds/types";
+import { findStraightSelection } from "@/lib/wagers/selection";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { refreshOdds } from "../actions";
+
+type Props = {
+  params: Promise<{ competition: string }>;
+  searchParams: Promise<{
+    bookmaker?: string;
+    notice?: string;
+    event?: string;
+    market?: string;
+    selection?: string;
+    book?: string;
+  }>;
+};
+const price = (value: number) => (value > 0 ? `+${value}` : String(value));
+
+export default async function CompetitionPage({ params, searchParams }: Props) {
+  if (!hasPublicEnvironment(process.env)) redirect("/auth");
+  const { competition: id } = await params;
+  const query = await searchParams;
+  const competition = getCompetition(id);
+  if (!competition) redirect("/sports");
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) redirect("/auth");
+  const { data: groupRows } = await supabase
+    .from("groups")
+    .select("id,name")
+    .order("name", { ascending: true });
+  const groups = (groupRows ?? []) as { id: string; name: string }[];
+  const books = sportsProviderConfiguration.bookmakers.filter((book) => book.enabled);
+  const selected = books.some((book) => book.id === query.bookmaker) ? query.bookmaker : "all";
+  let result;
+  let error: string | null = null;
+  try {
+    result = await getCompetitionOdds(id as CompetitionId);
+  } catch {
+    error = "Odds are temporarily unavailable. Try again later.";
+  }
+  const chosen = result
+    ? findStraightSelection(result.dataset, {
+        eventId: query.event ?? "",
+        bookmakerId: query.book ?? "",
+        marketType: query.market ?? "",
+        selection: query.selection ?? "",
+      })
+    : null;
+  return (
+    <main className="shell">
+      <AppNav active="sports" userId={data.user.id} />
+      <header className="account-header">
+        <div>
+          <p className="eyebrow">{competition.sport}</p>
+          <h1>{competition.name}</h1>
+          {result ? (
+            <p className="muted">
+              Last refreshed{" "}
+              <time dateTime={result.dataset.fetchedAt}>
+                {new Date(result.dataset.fetchedAt).toLocaleString()}
+              </time>{" "}
+              · {result.cacheStatus} · quota {result.quotaState}
+            </p>
+          ) : null}
+        </div>
+        <form action={refreshOdds}>
+          <input type="hidden" name="competitionId" value={id} />
+          <SubmitButton pendingLabel="Refreshing odds…">Refresh odds</SubmitButton>
+        </form>
+      </header>
+      {query.notice ? (
+        <p className="notice" role="status" aria-live="polite">
+          {query.notice}
+        </p>
+      ) : null}
+      {error ? (
+        <p className="notice error" role="alert">
+          {error} If this is a new environment, an administrator must configure the server-only
+          provider credentials.
+        </p>
+      ) : null}
+      {result ? (
+        <p className="refresh-meta">
+          <StatusBadge status={result.cacheStatus} />
+          <span>Shared data · quota state {result.quotaState}</span>
+        </p>
+      ) : null}
+      <section className="book-filter">
+        <strong>Bookmaker</strong>
+        <Link className={selected === "all" ? "pill active" : "pill"} href={`/sports/${id}`}>
+          All
+        </Link>
+        {books.map((book) => (
+          <Link
+            className={selected === book.id ? "pill active" : "pill"}
+            href={`/sports/${id}?bookmaker=${book.id}`}
+            key={book.id}
+          >
+            {book.name}
+          </Link>
+        ))}
+      </section>
+      <div className={chosen ? "sportsbook-layout" : "event-list"}>
+        <div className="event-list">
+          {result?.dataset.events.map((event) => {
+            const odds = event.odds.filter(
+              (odd) => selected === "all" || odd.bookmakerId === selected,
+            );
+            return (
+              <article className="card event-card" key={event.id}>
+                <div className="event-heading">
+                  <div>
+                    <h2>
+                      {event.awayTeam} at {event.homeTeam}
+                    </h2>
+                    <time dateTime={event.scheduledStart}>
+                      {new Date(event.scheduledStart).toLocaleString()}
+                    </time>
+                  </div>
+                  <StatusBadge status={event.status} />
+                </div>
+                {odds.length ? (
+                  <div className="odds-grid">
+                    {odds.map((odd, index) => (
+                      <Link
+                        className={
+                          chosen?.event.id === event.id &&
+                          chosen.odds.bookmakerId === odd.bookmakerId &&
+                          chosen.odds.marketType === odd.marketType &&
+                          chosen.odds.selection === odd.selection
+                            ? "odd selected"
+                            : "odd"
+                        }
+                        href={`/sports/${id}?${new URLSearchParams({
+                          ...(selected === "all" ? {} : { bookmaker: selected }),
+                          event: event.id,
+                          book: odd.bookmakerId,
+                          market: odd.marketType,
+                          selection: odd.selection,
+                        }).toString()}`}
+                        key={`${odd.bookmakerId}-${odd.marketType}-${odd.selection}-${odd.point}-${index}`}
+                        aria-current={
+                          chosen?.event.id === event.id &&
+                          chosen.odds.bookmakerId === odd.bookmakerId &&
+                          chosen.odds.marketType === odd.marketType &&
+                          chosen.odds.selection === odd.selection
+                            ? "true"
+                            : undefined
+                        }
+                      >
+                        <small>
+                          {odd.bookmakerName} · {odd.marketType}
+                        </small>
+                        <strong>
+                          {odd.selectionName}
+                          {odd.point === null ? "" : ` ${odd.point > 0 ? "+" : ""}${odd.point}`}
+                        </strong>
+                        <span>
+                          {price(odd.americanOdds)} <small>({odd.decimalOdds.toFixed(2)})</small>
+                        </span>
+                        <small>
+                          {chosen?.event.id === event.id &&
+                          chosen.odds.bookmakerId === odd.bookmakerId &&
+                          chosen.odds.marketType === odd.marketType &&
+                          chosen.odds.selection === odd.selection
+                            ? "Selected for simulated slip"
+                            : "Select for simulated slip"}
+                        </small>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="empty-state">No supported odds from the selected bookmaker.</p>
+                )}
+              </article>
+            );
+          })}
+          {result && result.dataset.events.length === 0 ? (
+            <p className="empty-state">
+              <strong>No scheduled events are currently available</strong>
+              Check back later; odds refreshes are shared and quota-protected.
+            </p>
+          ) : null}
+          {!result && !error ? (
+            <p className="empty-state">
+              Odds are loading. The page will update when the shared cache responds.
+            </p>
+          ) : null}
+        </div>
+        {chosen ? (
+          <BetSlip
+            competitionKey={id}
+            eventId={chosen.event.id}
+            sport={chosen.event.sport}
+            competition={chosen.event.competitionName}
+            event={`${chosen.event.awayTeam} at ${chosen.event.homeTeam}`}
+            scheduledStart={chosen.event.scheduledStart}
+            homeTeam={chosen.event.homeTeam}
+            awayTeam={chosen.event.awayTeam}
+            bookmakerId={chosen.odds.bookmakerId}
+            bookmaker={chosen.odds.bookmakerName}
+            marketType={chosen.odds.marketType}
+            selection={chosen.odds.selection}
+            selectionName={chosen.odds.selectionName}
+            line={chosen.odds.point}
+            americanOdds={chosen.odds.americanOdds}
+            decimalOdds={chosen.odds.decimalOdds}
+            groups={groups}
+          />
+        ) : null}
+      </div>
+    </main>
+  );
+}

@@ -1,0 +1,6 @@
+.next
+coverage
+node_modules
+package-lock.json
+docs/Virtual Sportsbook - Governing Specification V1.docx
+

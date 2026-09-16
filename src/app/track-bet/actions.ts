@@ -1,0 +1,341 @@
+"use server";
+
+import { randomUUID } from "node:crypto";
+
+import { redirect } from "next/navigation";
+import { z } from "zod";
+
+import { sportsProviderConfiguration } from "@/config/sports";
+import { formatUnits, parseStakeToMinorUnits } from "@/lib/wagers/calculations";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+const MAX_SCREENSHOT_BYTES = 5 * 1024 * 1024;
+const screenshotExtensions = new Map([
+  ["image/jpeg", "jpg"],
+  ["image/png", "png"],
+  ["image/webp", "webp"],
+]);
+
+const wagerSchema = z.object({
+  groupId: z.union([z.literal(""), z.uuid()]),
+  sportsbookId: z.enum(["fanduel", "draftkings", "betmgm", "caesars", "other"]),
+  otherSportsbookName: z.string().trim().max(80),
+  sportKey: z.enum(["soccer", "football", "basketball"]),
+  competitionKey: z.string().trim().min(1).max(40),
+  eventDescription: z.string().trim().min(2).max(200),
+  eventDate: z.string().refine((value) => !Number.isNaN(Date.parse(value))),
+  selection: z.string().trim().min(1).max(120),
+  marketType: z.enum(["moneyline", "spread", "total"]),
+  line: z.union([z.literal(""), z.coerce.number().finite()]),
+  americanOdds: z.coerce
+    .number()
+    .int()
+    .refine((odds) => (odds >= 100 && odds <= 1_000_000) || (odds <= -100 && odds >= -1_000_000)),
+  stake: z.string().trim(),
+  wagerDate: z.string().refine((value) => !Number.isNaN(Date.parse(value))),
+  status: z.enum(["open", "won", "lost", "push", "void"]),
+  verificationStatus: z.enum(["unverified", "user_attested"]),
+  userNotes: z.string().max(2000),
+});
+
+function value(formData: FormData, name: string) {
+  const candidate = formData.get(name);
+  return typeof candidate === "string" ? candidate : "";
+}
+
+function finish(message: string): never {
+  redirect(`/track-bet?notice=${encodeURIComponent(message)}`);
+}
+
+function databaseMessage(message: string) {
+  if (message.includes("INVALID_GROUP_ASSOCIATION"))
+    return "That group association is not authorized.";
+  if (message.includes("INVALID_COMPETITION")) return "Choose a supported sport and competition.";
+  if (message.includes("INVALID_SPORTSBOOK")) return "Choose a supported sportsbook.";
+  if (message.includes("INVALID_LINE"))
+    return "Spread and total wagers require a line; moneyline wagers do not.";
+  if (message.includes("INVALID_STAKE"))
+    return "Enter a positive unit stake using at most two decimals.";
+  if (message.includes("INVALID_ODDS"))
+    return "Enter valid American odds of +100 or greater, or -100 or lower.";
+  return "The external wager could not be saved. Review the entry and try again.";
+}
+
+export async function createExternalWager(formData: FormData) {
+  const parsed = wagerSchema.safeParse({
+    groupId: value(formData, "groupId"),
+    sportsbookId: value(formData, "sportsbookId"),
+    otherSportsbookName: value(formData, "otherSportsbookName"),
+    sportKey: value(formData, "sportKey"),
+    competitionKey: value(formData, "competitionKey"),
+    eventDescription: value(formData, "eventDescription"),
+    eventDate: value(formData, "eventDate"),
+    selection: value(formData, "selection"),
+    marketType: value(formData, "marketType"),
+    line: value(formData, "line"),
+    americanOdds: value(formData, "americanOdds"),
+    stake: value(formData, "stake"),
+    wagerDate: value(formData, "wagerDate"),
+    status: value(formData, "status"),
+    verificationStatus: value(formData, "verificationStatus"),
+    userNotes: value(formData, "userNotes"),
+  });
+  if (!parsed.success) finish("Review the required external wager fields and try again.");
+
+  const competition = sportsProviderConfiguration.competitions.find(
+    (candidate) =>
+      candidate.id === parsed.data.competitionKey &&
+      candidate.sport === parsed.data.sportKey &&
+      candidate.enabled,
+  );
+  if (!competition) finish("Choose a supported sport and competition.");
+  if (parsed.data.sportsbookId === "other" && parsed.data.otherSportsbookName.length < 2) {
+    finish("Enter the sportsbook name when choosing Other sportsbook.");
+  }
+  if (
+    (parsed.data.marketType === "moneyline" && parsed.data.line !== "") ||
+    (parsed.data.marketType !== "moneyline" && parsed.data.line === "")
+  ) {
+    finish("Spread and total wagers require a line; moneyline wagers do not.");
+  }
+
+  let stake: string;
+  try {
+    stake = formatUnits(parseStakeToMinorUnits(parsed.data.stake));
+  } catch {
+    finish("Enter a positive unit stake using at most two decimals.");
+  }
+
+  const screenshot = formData.get("screenshot");
+  let screenshotExtension: string | undefined;
+  if (screenshot instanceof File && screenshot.size > 0) {
+    screenshotExtension = screenshotExtensions.get(screenshot.type);
+    if (!screenshotExtension || screenshot.size > MAX_SCREENSHOT_BYTES) {
+      finish("Screenshots must be a JPEG, PNG, or WebP file no larger than 5 MB.");
+    }
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data: authData } = await supabase.auth.getUser();
+  if (!authData.user) redirect("/auth");
+
+  const { data, error } = await supabase.rpc("create_external_wager", {
+    p_group_id: parsed.data.groupId || null,
+    p_sportsbook_id: parsed.data.sportsbookId,
+    p_other_sportsbook_name: parsed.data.otherSportsbookName || null,
+    p_sport_key: parsed.data.sportKey,
+    p_competition_key: parsed.data.competitionKey,
+    p_event_description: parsed.data.eventDescription,
+    p_event_date: new Date(parsed.data.eventDate).toISOString(),
+    p_selection: parsed.data.selection,
+    p_market_type: parsed.data.marketType,
+    p_line: parsed.data.line === "" ? null : parsed.data.line,
+    p_american_odds: parsed.data.americanOdds,
+    p_stake_units: stake,
+    p_wager_date: new Date(parsed.data.wagerDate).toISOString(),
+    p_status: parsed.data.status,
+    p_verification_status: parsed.data.verificationStatus,
+    p_user_notes: parsed.data.userNotes || null,
+  });
+  if (error || !data) finish(databaseMessage(error?.message ?? ""));
+
+  const wagerId = String(data);
+  if (screenshot instanceof File && screenshot.size > 0 && screenshotExtension) {
+    const objectPath = `${authData.user.id}/${wagerId}/${randomUUID()}.${screenshotExtension}`;
+    const upload = await supabase.storage
+      .from("external-wager-screenshots")
+      .upload(objectPath, screenshot, { contentType: screenshot.type, upsert: false });
+    if (upload.error) {
+      finish("The wager was saved, but the screenshot upload failed. The wager remains available.");
+    }
+    const attachment = await supabase.rpc("attach_external_wager_screenshot", {
+      p_external_wager_id: wagerId,
+      p_object_path: objectPath,
+    });
+    if (attachment.error) {
+      finish("The wager was saved, but its screenshot could not be attached.");
+    }
+  }
+
+  finish("External wager saved for IRL tracking. Your virtual bankroll was not changed.");
+}
+
+const resultSchema = z.object({
+  wagerId: z.uuid(),
+  status: z.enum(["open", "won", "lost", "push", "void"]),
+});
+
+export async function setExternalWagerResult(formData: FormData) {
+  const parsed = resultSchema.safeParse({
+    wagerId: value(formData, "wagerId"),
+    status: value(formData, "status"),
+  });
+  if (!parsed.success) finish("The result request is invalid.");
+
+  const supabase = await createSupabaseServerClient();
+  const { data: authData } = await supabase.auth.getUser();
+  if (!authData.user) redirect("/auth");
+  const { error } = await supabase.rpc("set_external_wager_result", {
+    p_external_wager_id: parsed.data.wagerId,
+    p_status: parsed.data.status,
+  });
+  if (error) finish("The external wager result could not be updated.");
+  finish("IRL result updated from stored odds and stake. Your virtual bankroll was not changed.");
+}
+
+const externalParlayLegSchema = z.object({
+  sportKey: z.enum(["soccer", "football", "basketball"]),
+  competitionKey: z.string().trim().min(1).max(40),
+  eventDescription: z.string().trim().min(2).max(200),
+  eventDate: z.string().refine((candidate) => !Number.isNaN(Date.parse(candidate))),
+  selection: z.string().trim().min(1).max(120),
+  marketType: z.enum(["moneyline", "spread", "total"]),
+  line: z.number().finite().nullable(),
+  americanOdds: z
+    .number()
+    .int()
+    .refine((odds) => (odds >= 100 && odds <= 1_000_000) || (odds <= -100 && odds >= -1_000_000)),
+  result: z.enum(["open", "won", "lost", "push", "void"]),
+});
+
+const externalParlaySchema = z.object({
+  groupId: z.union([z.literal(""), z.uuid()]),
+  sportsbookId: z.enum(["fanduel", "draftkings", "betmgm", "caesars", "other"]),
+  otherSportsbookName: z.string().trim().max(80),
+  combinedAmericanOdds: z.coerce.number().int(),
+  stake: z.string().trim(),
+  wagerDate: z.string().refine((candidate) => !Number.isNaN(Date.parse(candidate))),
+  status: z.enum(["open", "won", "lost", "push", "void"]),
+  verificationStatus: z.enum(["unverified", "user_attested"]),
+  userNotes: z.string().max(2000),
+  legs: z.array(externalParlayLegSchema).min(2).max(12),
+});
+
+export async function createExternalParlay(formData: FormData) {
+  let legInput: unknown;
+  try {
+    legInput = JSON.parse(value(formData, "legs"));
+  } catch {
+    finish("The external parlay leg list is invalid.");
+  }
+  const parsed = externalParlaySchema.safeParse({
+    groupId: value(formData, "groupId"),
+    sportsbookId: value(formData, "sportsbookId"),
+    otherSportsbookName: value(formData, "otherSportsbookName"),
+    combinedAmericanOdds: value(formData, "combinedAmericanOdds"),
+    stake: value(formData, "stake"),
+    wagerDate: value(formData, "wagerDate"),
+    status: value(formData, "status"),
+    verificationStatus: value(formData, "verificationStatus"),
+    userNotes: value(formData, "userNotes"),
+    legs: legInput,
+  });
+  if (!parsed.success) finish("Review the external parlay and its 2–12 legs.");
+  if (parsed.data.sportsbookId === "other" && parsed.data.otherSportsbookName.length < 2) {
+    finish("Enter the sportsbook name when choosing Other sportsbook.");
+  }
+  for (const leg of parsed.data.legs) {
+    const competition = sportsProviderConfiguration.competitions.find(
+      (candidate) =>
+        candidate.id === leg.competitionKey &&
+        candidate.sport === leg.sportKey &&
+        candidate.enabled,
+    );
+    if (!competition) finish("Each parlay leg needs a supported sport and competition.");
+    if (
+      (leg.marketType === "moneyline" && leg.line !== null) ||
+      (leg.marketType !== "moneyline" && leg.line === null)
+    ) {
+      finish("Each spread or total leg needs a line; moneyline legs do not.");
+    }
+  }
+  let stake: string;
+  try {
+    stake = formatUnits(parseStakeToMinorUnits(parsed.data.stake));
+  } catch {
+    finish("Enter a positive parlay stake using at most two decimals.");
+  }
+
+  const screenshot = formData.get("screenshot");
+  let screenshotExtension: string | undefined;
+  if (screenshot instanceof File && screenshot.size > 0) {
+    screenshotExtension = screenshotExtensions.get(screenshot.type);
+    if (!screenshotExtension || screenshot.size > MAX_SCREENSHOT_BYTES) {
+      finish("Screenshots must be a JPEG, PNG, or WebP file no larger than 5 MB.");
+    }
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data: authData } = await supabase.auth.getUser();
+  if (!authData.user) redirect("/auth");
+  const { data, error } = await supabase.rpc("create_external_parlay", {
+    p_group_id: parsed.data.groupId || null,
+    p_sportsbook_id: parsed.data.sportsbookId,
+    p_other_sportsbook_name: parsed.data.otherSportsbookName || null,
+    p_combined_american_odds: parsed.data.combinedAmericanOdds,
+    p_stake_units: stake,
+    p_wager_date: new Date(parsed.data.wagerDate).toISOString(),
+    p_status: parsed.data.status,
+    p_verification_status: parsed.data.verificationStatus,
+    p_user_notes: parsed.data.userNotes || null,
+    p_legs: parsed.data.legs.map((leg) => ({
+      ...leg,
+      eventDate: new Date(leg.eventDate).toISOString(),
+    })),
+  });
+  if (error || !data) finish(databaseMessage(error?.message ?? ""));
+  const wagerId = String(data);
+  if (screenshot instanceof File && screenshot.size > 0 && screenshotExtension) {
+    const objectPath = `${authData.user.id}/${wagerId}/${randomUUID()}.${screenshotExtension}`;
+    const upload = await supabase.storage
+      .from("external-wager-screenshots")
+      .upload(objectPath, screenshot, { contentType: screenshot.type, upsert: false });
+    if (upload.error) finish("The parlay was saved, but the screenshot upload failed.");
+    const attachment = await supabase.rpc("attach_external_wager_screenshot", {
+      p_external_wager_id: wagerId,
+      p_object_path: objectPath,
+    });
+    if (attachment.error) finish("The parlay was saved, but its screenshot could not be attached.");
+  }
+  finish("External parlay saved for IRL tracking. Your virtual bankroll was not changed.");
+}
+
+const externalParlayResultSchema = z.object({
+  wagerId: z.uuid(),
+  status: z.enum(["open", "won", "lost", "push", "void"]),
+  legResults: z
+    .array(
+      z.object({
+        legNumber: z.number().int().positive(),
+        result: z.enum(["open", "won", "lost", "push", "void"]),
+      }),
+    )
+    .min(2)
+    .max(12),
+});
+
+export async function setExternalParlayResult(formData: FormData) {
+  let legResults: unknown;
+  try {
+    legResults = JSON.parse(value(formData, "legResults"));
+  } catch {
+    finish("The external parlay result payload is invalid.");
+  }
+  const parsed = externalParlayResultSchema.safeParse({
+    wagerId: value(formData, "wagerId"),
+    status: value(formData, "status"),
+    legResults,
+  });
+  if (!parsed.success) finish("Review the ticket and leg results.");
+  const supabase = await createSupabaseServerClient();
+  const { data: authData } = await supabase.auth.getUser();
+  if (!authData.user) redirect("/auth");
+  const { error } = await supabase.rpc("set_external_parlay_result", {
+    p_external_wager_id: parsed.data.wagerId,
+    p_status: parsed.data.status,
+    p_leg_results: parsed.data.legResults,
+  });
+  if (error) finish("The external parlay result is inconsistent or could not be updated.");
+  finish(
+    "IRL parlay and leg results updated with an audit record. Your virtual bankroll was not changed.",
+  );
+}

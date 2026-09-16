@@ -1,0 +1,49 @@
+[
+  {
+    "id": "event-1",
+    "sport_key": "soccer_epl",
+    "commence_time": "2026-09-20T15:00:00Z",
+    "home_team": "Arsenal",
+    "away_team": "Chelsea",
+    "bookmakers": [
+      {
+        "key": "fanduel",
+        "title": "FanDuel",
+        "last_update": "2026-09-12T12:00:00Z",
+        "markets": [
+          {
+            "key": "h2h",
+            "last_update": "2026-09-12T12:00:00Z",
+            "outcomes": [
+              { "name": "Arsenal", "price": 125 },
+              { "name": "Draw", "price": 240 },
+              { "name": "Chelsea", "price": -110 }
+            ]
+          },
+          {
+            "key": "spreads",
+            "last_update": "2026-09-12T12:00:00Z",
+            "outcomes": [
+              { "name": "Arsenal", "price": -105, "point": -0.5 },
+              { "name": "Chelsea", "price": -115, "point": 0.5 }
+            ]
+          },
+          {
+            "key": "totals",
+            "last_update": "2026-09-12T12:00:00Z",
+            "outcomes": [
+              { "name": "Over", "price": -108, "point": 2.5 },
+              { "name": "Under", "price": -112, "point": 2.5 }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "unconfigured_book",
+        "title": "Other",
+        "last_update": "2026-09-12T12:00:00Z",
+        "markets": []
+      }
+    ]
+  }
+]
