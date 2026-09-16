@@ -93,5 +93,3 @@ Individual commands are `npm run format:check`, `npm run lint`, `npm run typeche
 - [Agent guidance](AGENTS.md)
 
 The governing source is `docs/Virtual Sportsbook - Governing Specification V1.docx`. If it conflicts with repository documentation, stop and surface the difference. Later explicit product changes must be recorded rather than silently overriding it.
-
-
