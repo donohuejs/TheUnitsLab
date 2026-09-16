@@ -31,8 +31,8 @@ select is((select file_size_limit from storage.buckets where id='external-wager-
 set local role authenticated;
 select set_config('request.jwt.claim.sub','71000000-0000-0000-0000-000000000001',true);
 
-select is((select count(*) from public.sports_catalog),3::bigint,'authenticated users can read the centralized sport catalog');
-select is((select count(*) from public.competitions_catalog where enabled),4::bigint,'four core competitions are enabled');
+select is((select count(*) from public.sports_catalog),4::bigint,'authenticated users can read the centralized sport catalog');
+select is((select count(*) from public.competitions_catalog where enabled),6::bigint,'six core competitions are enabled');
 select is((select count(*) from public.sportsbooks_catalog where enabled),5::bigint,'external sportsbook choices include configured books and other');
 select throws_ok(
   $$insert into public.external_wagers(user_id,sportsbook_id,sportsbook_name,sport_key,competition_key,competition_name,event_description,event_date,selection,market_type,american_odds,decimal_odds,stake_units,wager_date) values ('72000000-0000-0000-0000-000000000002','fanduel','FanDuel','soccer','epl','English Premier League','Forged',now(),'Home','moneyline',100,2,1,now())$$,

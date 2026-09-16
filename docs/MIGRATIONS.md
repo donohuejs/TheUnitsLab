@@ -14,6 +14,14 @@ Phase 7 adds `20260917100000_phase_7_parlay_market_type.sql` and `20260918000000
 
 Phase 8 adds no database migration. The dashboard and presentation changes consume existing rows and RPCs only; the database, RLS, storage, ledger, settlement, and analytics boundaries remain those established through Phase 7.
 
+The release-candidate UX patch adds `20260920000000_release_candidate_ux_patch_1.sql`. It adds
+configurable hockey/NHL catalog data, enables NFL, introduces immutable synthetic flags for
+administrator settlement tests, filters synthetic rows from ordinary history/analytics/score and
+settlement-job reads, and grants the narrow synthetic create/settle RPCs only to `service_role`.
+`supabase/tests/release_candidate_ux_patch_1.sql` is the corresponding pgTAP authorization,
+settlement, payout, idempotency, and analytics-exclusion test. This migration must replay after the
+Phase 7 migrations and before any release-candidate UAT.
+
 ## Source of truth
 
 Ordered SQL files under `supabase/migrations` are the database source of truth. Configuration in a hosted dashboard is not sufficient. Migrations must include tables, constraints, functions, grants, Row Level Security enablement, policies, storage policies, and indexes needed by the corresponding phase.

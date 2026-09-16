@@ -1,7 +1,11 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { normalizeOddsResponse, americanToDecimal } from "../src/lib/odds/normalize";
-import { canonicalRequestKey, createOddsRequest } from "../src/lib/odds/request";
+import {
+  canonicalRequestKey,
+  createAlternateOddsRequest,
+  createOddsRequest,
+} from "../src/lib/odds/request";
 import { parseQuotaHeaders, quotaState } from "../src/lib/odds/quota";
 
 const fixture = JSON.parse(
@@ -34,15 +38,61 @@ describe("Odds API normalization", () => {
   });
 
   it("maps every initial competition to one stable provider key and canonical request", () => {
-    const keys = (["epl", "ucl", "ncaaf", "ncaab"] as const).map((id) => createOddsRequest(id));
+    const keys = (["epl", "ucl", "ncaaf", "ncaab", "nfl", "nhl"] as const).map((id) =>
+      createOddsRequest(id),
+    );
     expect(keys.map((item) => item.providerSportKey)).toEqual([
       "soccer_epl",
       "soccer_uefa_champs_league",
       "americanfootball_ncaaf",
       "basketball_ncaab",
+      "americanfootball_nfl",
+      "icehockey_nhl",
     ]);
-    expect(new Set(keys.map(canonicalRequestKey))).toHaveLength(4);
+    expect(new Set(keys.map(canonicalRequestKey))).toHaveLength(6);
     expect(keys[0].bookmakers).toEqual(["betmgm", "draftkings", "fanduel"]);
+    expect(createAlternateOddsRequest("nfl", "provider-event")).toMatchObject({
+      endpoint: "event_odds",
+      eventId: "provider-event",
+      markets: ["alternate_spreads", "alternate_totals"],
+    });
+  });
+
+  it("normalizes alternate lines without reusing the featured market price", () => {
+    const [event] = normalizeOddsResponse(
+      [
+        {
+          ...fixture[0],
+          bookmakers: [
+            {
+              ...fixture[0].bookmakers[0],
+              markets: [
+                {
+                  key: "alternate_spreads",
+                  last_update: "2026-09-12T12:00:00Z",
+                  outcomes: [
+                    { name: "Arsenal", point: -18.5, price: -135 },
+                    { name: "Chelsea", point: 18.5, price: 115 },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      "epl",
+      "2026-09-12T12:01:00Z",
+    );
+    expect(event.odds).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          marketType: "spread",
+          point: -18.5,
+          americanOdds: -135,
+          isAlternate: true,
+        }),
+      ]),
+    );
   });
 });
 

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { placeParlayBet, placeStraightBet } from "@/app/sports/bet-actions";
 import { SubmitButton } from "@/components/submit-button";
 import { MarketBadge, SourceBadge, TicketTypeBadge } from "@/components/status-badge";
+import { TeamMark } from "@/components/team-mark";
 import { calculateParlayPotential } from "@/lib/parlays/calculations";
 import { calculatePotential } from "@/lib/wagers/calculations";
 
@@ -64,7 +65,9 @@ export function BetSlip(props: Props) {
   function addCurrentLeg() {
     if (legs.length >= 12) return setParlayNotice("A parlay can contain at most 12 legs.");
     if (legs.some((leg) => leg.eventId === selection.eventId)) {
-      return setParlayNotice("Same-event combinations are not supported in Phase 7.");
+      return setParlayNotice(
+        "Same-game parlay (SGP) pricing is not currently supported; choose a different event.",
+      );
     }
     if (legs.length && legs[0].bookmakerId !== selection.bookmakerId) {
       return setParlayNotice("All simulated parlay legs must use the same bookmaker.");
@@ -112,7 +115,7 @@ export function BetSlip(props: Props) {
           <SourceBadge source="simulated" />
           <TicketTypeBadge ticketType="straight" />
         </div>
-        <h2>One straight selection</h2>
+        <h2>Straight bet — one leg</h2>
         <p className="simulation-label">Virtual units only. No real-money wager is placed.</p>
         <dl className="ticket-details">
           <div>
@@ -121,7 +124,17 @@ export function BetSlip(props: Props) {
           </div>
           <div>
             <dt>Event</dt>
-            <dd>{props.event}</dd>
+            <dd className="team-pair">
+              <span>
+                <TeamMark teamName={props.awayTeam} sport={props.sport} />
+                {props.awayTeam}
+              </span>
+              <span className="event-at">at</span>
+              <span>
+                <TeamMark teamName={props.homeTeam} sport={props.sport} />
+                {props.homeTeam}
+              </span>
+            </dd>
           </div>
           <div>
             <dt>Bookmaker</dt>
@@ -211,10 +224,11 @@ export function BetSlip(props: Props) {
           <SourceBadge source="simulated" />
           <TicketTypeBadge ticketType="parlay" />
         </div>
-        <h2>{legs.length} of 12 legs</h2>
+        <h2>Build a parlay — {legs.length} of 12 legs</h2>
         <p className="muted">
-          Use 2–12 distinct events from one bookmaker. Selections stay in this browser while you
-          move between competitions.
+          Add another eligible selection from a different event to make a standard multi-game
+          parlay. Same-game parlay pricing is not supported because the provider does not supply a
+          valid SGP price here.
         </p>
         {parlayNotice ? <p className="notice">{parlayNotice}</p> : null}
         <ol className="parlay-leg-list">
@@ -222,11 +236,16 @@ export function BetSlip(props: Props) {
             <li key={legKey(leg)}>
               <div>
                 <strong>
-                  {leg.selectionName}
+                  <MarketBadge market={leg.marketType} /> {leg.selectionName}
                   {leg.line === null ? "" : ` ${leg.line > 0 ? "+" : ""}${leg.line}`}
                 </strong>
                 <small>
-                  {leg.event} · {leg.bookmaker} · {americanPrice(leg.americanOdds)}
+                  <span className="team-pair">
+                    <TeamMark teamName={leg.awayTeam} sport={leg.sport} />
+                    {leg.awayTeam} at <TeamMark teamName={leg.homeTeam} sport={leg.sport} />
+                    {leg.homeTeam}
+                  </span>
+                  {leg.bookmaker} · {americanPrice(leg.americanOdds)} ({leg.decimalOdds.toFixed(4)})
                 </small>
               </div>
               <button
@@ -290,6 +309,10 @@ export function BetSlip(props: Props) {
               <dd>{parlayPotential ? `${parlayPotential.return} units` : "—"}</dd>
             </div>
           </dl>
+          <small className="muted">
+            Combined odds and payout are a preview only. The server rechecks every leg, price, line,
+            bookmaker, and event before accepting the ticket.
+          </small>
           <SubmitButton
             pendingLabel="Placing parlay…"
             className="button"

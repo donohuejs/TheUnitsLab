@@ -147,7 +147,10 @@ export async function placeParlayBet(formData: FormData) {
   if (error || !data) {
     const message = error?.message ?? "";
     if (message.includes("SAME_EVENT_PARLAY_NOT_SUPPORTED")) {
-      notice("/sports", "Same-event combinations are not supported in Phase 7.");
+      notice(
+        "/sports",
+        "Same-game parlay (SGP) pricing is not currently supported; choose a different event.",
+      );
     }
     if (message.includes("PARLAY_REQUIRES_ONE_BOOKMAKER")) {
       notice("/sports", "All simulated parlay legs must use the same bookmaker.");

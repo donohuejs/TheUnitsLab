@@ -1,4 +1,4 @@
-export type CompetitionId = "epl" | "ucl" | "ncaaf" | "ncaab";
+export type CompetitionId = "epl" | "ucl" | "ncaaf" | "ncaab" | "nfl" | "nba" | "nhl";
 export type MarketType = "moneyline" | "spread" | "total";
 export type SelectionType = "home" | "away" | "draw" | "over" | "under";
 
@@ -11,6 +11,7 @@ export type NormalizedOdds = {
   point: number | null;
   americanOdds: number;
   decimalOdds: number;
+  isAlternate?: boolean;
   providerUpdatedAt: string;
   fetchedAt: string;
 };
@@ -18,7 +19,7 @@ export type NormalizedOdds = {
 export type NormalizedEvent = {
   id: string;
   providerEventId: string;
-  sport: "soccer" | "football" | "basketball";
+  sport: "soccer" | "football" | "basketball" | "hockey";
   competitionId: CompetitionId;
   competitionName: string;
   homeTeam: string;

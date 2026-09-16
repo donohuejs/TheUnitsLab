@@ -75,4 +75,34 @@ describe("Phase 3 straight-market selection", () => {
       }),
     ).toBeNull();
   });
+
+  it("requires the selected point when alternate lines share a side", () => {
+    const alternateEvent: NormalizedEvent = {
+      ...event,
+      id: "nfl:event-1",
+      providerEventId: "event-1",
+      sport: "football",
+      competitionId: "nfl",
+      competitionName: "NFL",
+      providerSportKey: "americanfootball_nfl",
+      odds: [
+        { ...baseOdds, marketType: "spread", selection: "home", point: -3.5, americanOdds: -110 },
+        { ...baseOdds, marketType: "spread", selection: "home", point: -6.5, americanOdds: 110 },
+      ],
+    };
+    const dataset: OddsDataset = {
+      competitionId: "nfl",
+      fetchedAt: event.odds[0].fetchedAt,
+      events: [alternateEvent],
+    };
+    expect(
+      findStraightSelection(dataset, {
+        eventId: alternateEvent.id,
+        bookmakerId: "fanduel",
+        marketType: "spread",
+        selection: "home",
+        point: "-6.5",
+      })?.odds.americanOdds,
+    ).toBe(110);
+  });
 });

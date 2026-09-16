@@ -9,12 +9,12 @@ import {
 } from "../src/config/sports";
 
 describe("sports and provider configuration", () => {
-  it("enables exactly the four core competitions", () => {
+  it("exposes the six configured core competitions", () => {
     const enabledCoreIds = sportsProviderConfiguration.competitions
       .filter((competition) => competition.enabled && competition.availability === "core")
       .map((competition) => competition.id);
 
-    expect(enabledCoreIds).toEqual(["epl", "ucl", "ncaaf", "ncaab"]);
+    expect(enabledCoreIds).toEqual(["epl", "ucl", "ncaaf", "ncaab", "nfl", "nhl"]);
   });
 
   it("keeps event-based competitions disabled by default", () => {
@@ -22,7 +22,7 @@ describe("sports and provider configuration", () => {
       (competition) => competition.availability === "event_based",
     );
 
-    expect(eventBased).toHaveLength(2);
+    expect(eventBased).toHaveLength(1);
     expect(eventBased.every((competition) => !competition.enabled)).toBe(true);
   });
 

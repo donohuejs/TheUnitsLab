@@ -4,10 +4,11 @@ import { AppNav } from "@/components/app-nav";
 import { BetSlip } from "@/components/bet-slip";
 import { StatusBadge } from "@/components/status-badge";
 import { SubmitButton } from "@/components/submit-button";
+import { TeamMark } from "@/components/team-mark";
 import { sportsProviderConfiguration } from "@/config/sports";
 import { hasPublicEnvironment } from "@/config/env.public";
 import { getCompetition } from "@/lib/odds/request";
-import { getCompetitionOdds } from "@/lib/odds/server";
+import { getCompetitionOdds, getEventAlternateOdds } from "@/lib/odds/server";
 import type { CompetitionId } from "@/lib/odds/types";
 import { findStraightSelection } from "@/lib/wagers/selection";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -21,6 +22,8 @@ type Props = {
     event?: string;
     market?: string;
     selection?: string;
+    point?: string;
+    alternates?: string;
     book?: string;
   }>;
 };
@@ -49,12 +52,40 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
   } catch {
     error = "Odds are temporarily unavailable. Try again later.";
   }
-  const chosen = result
-    ? findStraightSelection(result.dataset, {
+  const baseEvent = result?.dataset.events.find((event) => event.id === query.event);
+  const loadAlternates = Boolean(baseEvent && query.alternates === "1");
+  let alternateResult: Awaited<ReturnType<typeof getEventAlternateOdds>> | null = null;
+  if (loadAlternates && baseEvent) {
+    try {
+      alternateResult = await getEventAlternateOdds(id as CompetitionId, baseEvent.providerEventId);
+    } catch {
+      alternateResult = null;
+    }
+  }
+  const dataset = result
+    ? {
+        ...result.dataset,
+        events: result.dataset.events.map((event) =>
+          alternateResult?.dataset.events.find((alternate) => alternate.id === event.id)
+            ? {
+                ...event,
+                odds: [
+                  ...event.odds,
+                  ...alternateResult.dataset.events.find((alternate) => alternate.id === event.id)!
+                    .odds,
+                ],
+              }
+            : event,
+        ),
+      }
+    : null;
+  const chosen = dataset
+    ? findStraightSelection(dataset, {
         eventId: query.event ?? "",
         bookmakerId: query.book ?? "",
         marketType: query.market ?? "",
         selection: query.selection ?? "",
+        point: query.point,
       })
     : null;
   return (
@@ -113,7 +144,7 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
       </section>
       <div className={chosen ? "sportsbook-layout" : "event-list"}>
         <div className="event-list">
-          {result?.dataset.events.map((event) => {
+          {dataset?.events.map((event) => {
             const odds = event.odds.filter(
               (odd) => selected === "all" || odd.bookmakerId === selected,
             );
@@ -121,8 +152,16 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
               <article className="card event-card" key={event.id}>
                 <div className="event-heading">
                   <div>
-                    <h2>
-                      {event.awayTeam} at {event.homeTeam}
+                    <h2 className="event-teams">
+                      <span>
+                        <TeamMark teamName={event.awayTeam} sport={event.sport} />
+                        {event.awayTeam}
+                      </span>
+                      <span className="event-at">at</span>
+                      <span>
+                        <TeamMark teamName={event.homeTeam} sport={event.sport} />
+                        {event.homeTeam}
+                      </span>
                     </h2>
                     <time dateTime={event.scheduledStart}>
                       {new Date(event.scheduledStart).toLocaleString()}
@@ -138,7 +177,8 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
                           chosen?.event.id === event.id &&
                           chosen.odds.bookmakerId === odd.bookmakerId &&
                           chosen.odds.marketType === odd.marketType &&
-                          chosen.odds.selection === odd.selection
+                          chosen.odds.selection === odd.selection &&
+                          chosen.odds.point === odd.point
                             ? "odd selected"
                             : "odd"
                         }
@@ -148,19 +188,22 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
                           book: odd.bookmakerId,
                           market: odd.marketType,
                           selection: odd.selection,
+                          ...(odd.point === null ? {} : { point: String(odd.point) }),
                         }).toString()}`}
                         key={`${odd.bookmakerId}-${odd.marketType}-${odd.selection}-${odd.point}-${index}`}
                         aria-current={
                           chosen?.event.id === event.id &&
                           chosen.odds.bookmakerId === odd.bookmakerId &&
                           chosen.odds.marketType === odd.marketType &&
-                          chosen.odds.selection === odd.selection
+                          chosen.odds.selection === odd.selection &&
+                          chosen.odds.point === odd.point
                             ? "true"
                             : undefined
                         }
                       >
                         <small>
-                          {odd.bookmakerName} · {odd.marketType}
+                          {odd.bookmakerName} ·{" "}
+                          {odd.isAlternate ? `alternate ${odd.marketType}` : odd.marketType}
                         </small>
                         <strong>
                           {odd.selectionName}
@@ -173,7 +216,8 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
                           {chosen?.event.id === event.id &&
                           chosen.odds.bookmakerId === odd.bookmakerId &&
                           chosen.odds.marketType === odd.marketType &&
-                          chosen.odds.selection === odd.selection
+                          chosen.odds.selection === odd.selection &&
+                          chosen.odds.point === odd.point
                             ? "Selected for simulated slip"
                             : "Select for simulated slip"}
                         </small>
@@ -183,10 +227,26 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
                 ) : (
                   <p className="empty-state">No supported odds from the selected bookmaker.</p>
                 )}
+                {competition.alternateMarkets.length ? (
+                  <p className="alternate-lines-link">
+                    <Link
+                      href={`/sports/${id}?${new URLSearchParams({
+                        ...(selected === "all" ? {} : { bookmaker: selected }),
+                        event: event.id,
+                        alternates: "1",
+                      }).toString()}`}
+                    >
+                      {loadAlternates && baseEvent?.id === event.id
+                        ? "Provider-priced alternate lines loaded"
+                        : "Load provider-priced alternate lines"}
+                    </Link>
+                    <small>Separate on-demand provider pricing; no line interpolation.</small>
+                  </p>
+                ) : null}
               </article>
             );
           })}
-          {result && result.dataset.events.length === 0 ? (
+          {dataset && dataset.events.length === 0 ? (
             <p className="empty-state">
               <strong>No scheduled events are currently available</strong>
               Check back later; odds refreshes are shared and quota-protected.

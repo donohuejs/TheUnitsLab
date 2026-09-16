@@ -1,5 +1,5 @@
 import { effectiveTtlSeconds, mayRefresh, quotaState } from "./quota";
-import { canonicalRequestKey, createOddsRequest } from "./request";
+import { canonicalRequestKey, createOddsRequest, type CanonicalOddsRequest } from "./request";
 import type { CompetitionId, OddsDataset, OddsResult, QuotaMetadata } from "./types";
 
 export type CacheRow = {
@@ -14,10 +14,10 @@ export interface OddsStore {
   read(key: string): Promise<CacheRow | null>;
   acquireLease(key: string, token: string): Promise<boolean>;
   releaseLease(key: string, token: string): Promise<void>;
-  write(row: CacheRow, request: ReturnType<typeof createOddsRequest>): Promise<void>;
+  write(row: CacheRow, request: CanonicalOddsRequest): Promise<void>;
   latestUsed(): Promise<number | null>;
   record(
-    request: ReturnType<typeof createOddsRequest>,
+    request: CanonicalOddsRequest,
     purpose: "page_load" | "manual_refresh",
     key: string,
     quota: QuotaMetadata,
@@ -25,7 +25,7 @@ export interface OddsStore {
   ): Promise<void>;
 }
 
-export type ProviderFetch = (request: ReturnType<typeof createOddsRequest>) => Promise<{
+export type ProviderFetch = (request: CanonicalOddsRequest) => Promise<{
   events: OddsDataset["events"];
   quota: QuotaMetadata;
   status: number;
@@ -38,8 +38,16 @@ export async function getOdds(
   competitionId: CompetitionId,
   options: { manual?: boolean } = {},
 ): Promise<OddsResult> {
+  return getOddsForRequest(dependencies, createOddsRequest(competitionId), competitionId, options);
+}
+
+export async function getOddsForRequest(
+  dependencies: { store: OddsStore; provider: ProviderFetch; now?: () => Date; allowance?: number },
+  request: CanonicalOddsRequest,
+  competitionId: CompetitionId,
+  options: { manual?: boolean } = {},
+): Promise<OddsResult> {
   const now = dependencies.now?.() ?? new Date();
-  const request = createOddsRequest(competitionId);
   const key = canonicalRequestKey(request);
   const cached = await dependencies.store.read(key);
   const used = await dependencies.store.latestUsed();

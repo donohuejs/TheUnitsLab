@@ -5,6 +5,7 @@ export type SelectionIdentifiers = {
   bookmakerId: string;
   marketType: string;
   selection: string;
+  point?: string;
 };
 
 export function isSupportedStraightSelection(event: NormalizedEvent, odds: NormalizedOdds) {
@@ -29,7 +30,9 @@ export function findStraightSelection(dataset: OddsDataset, identifiers: Selecti
     (candidate) =>
       candidate.bookmakerId === identifiers.bookmakerId &&
       candidate.marketType === identifiers.marketType &&
-      candidate.selection === identifiers.selection,
+      candidate.selection === identifiers.selection &&
+      (identifiers.point === undefined ||
+        (candidate.point === null ? "" : String(candidate.point)) === identifiers.point),
   );
   if (!odds || !isSupportedStraightSelection(event, odds)) return null;
   return { event, odds };

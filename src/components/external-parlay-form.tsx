@@ -5,7 +5,11 @@ import { useState } from "react";
 import { createExternalParlay } from "@/app/track-bet/actions";
 import { SubmitButton } from "@/components/submit-button";
 
-type Competition = { id: string; name: string; sport: "soccer" | "football" | "basketball" };
+type Competition = {
+  id: string;
+  name: string;
+  sport: "soccer" | "football" | "basketball" | "hockey";
+};
 type Group = { id: string; name: string };
 type Leg = {
   competitionKey: string;

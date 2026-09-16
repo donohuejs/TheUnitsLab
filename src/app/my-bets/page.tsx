@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { AppNav } from "@/components/app-nav";
 import { MarketBadge, SourceBadge, StatusBadge, TicketTypeBadge } from "@/components/status-badge";
 import { SubmitButton } from "@/components/submit-button";
+import { TeamMark } from "@/components/team-mark";
 import { hasPublicEnvironment } from "@/config/env.public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { liveWagerState } from "@/lib/settlement/grading";
@@ -76,6 +77,7 @@ export default async function MyBetsPage({ searchParams }: Props) {
     )
     .order("created_at", { ascending: false });
   if (view === "open") ticketQuery = ticketQuery.eq("status", "open");
+  ticketQuery = ticketQuery.eq("is_synthetic", false);
   const [{ data: tickets, error: ticketError }, { data: ledger, error: ledgerError }] =
     await Promise.all([ticketQuery, supabase.from("bankroll_ledger").select("amount_units")]);
   const balance = (ledger ?? []).reduce((sum, row) => sum + Number(row.amount_units), 0);
@@ -151,9 +153,16 @@ export default async function MyBetsPage({ searchParams }: Props) {
                     <TicketTypeBadge ticketType={ticket.ticket_type} />
                   </div>
                   <h2>
-                    {ticket.ticket_type === "parlay"
-                      ? `${ticket.leg_count}-leg parlay`
-                      : `${firstLeg.away_team} at ${firstLeg.home_team}`}
+                    {ticket.ticket_type === "parlay" ? (
+                      `${ticket.leg_count}-leg parlay`
+                    ) : (
+                      <span className="team-pair">
+                        <TeamMark teamName={firstLeg.away_team} sport={firstLeg.sport_key} />
+                        {firstLeg.away_team} at
+                        <TeamMark teamName={firstLeg.home_team} sport={firstLeg.sport_key} />
+                        {firstLeg.home_team}
+                      </span>
+                    )}
                   </h2>
                   <time dateTime={ticket.created_at}>
                     {new Date(ticket.created_at).toLocaleString()}
@@ -171,7 +180,13 @@ export default async function MyBetsPage({ searchParams }: Props) {
                       <section className="parlay-ticket-leg" key={leg.id}>
                         <div className="section-heading">
                           <h3>
-                            Leg {index + 1}: {leg.away_team} at {leg.home_team}
+                            <span className="team-pair">
+                              Leg {index + 1}:{" "}
+                              <TeamMark teamName={leg.away_team} sport={leg.sport_key} />
+                              {leg.away_team} at{" "}
+                              <TeamMark teamName={leg.home_team} sport={leg.sport_key} />
+                              {leg.home_team}
+                            </span>
                           </h3>
                           <StatusBadge status={leg.result} />
                         </div>

@@ -4,8 +4,12 @@ import type { CanonicalOddsRequest } from "./request";
 import { parseQuotaHeaders } from "./quota";
 
 export async function fetchOddsProvider(request: CanonicalOddsRequest, apiKey: string) {
+  const endpoint =
+    request.endpoint === "event_odds"
+      ? `events/${encodeURIComponent(request.eventId ?? "")}/odds`
+      : "odds";
   const url = new URL(
-    `https://api.the-odds-api.com/v4/sports/${encodeURIComponent(request.providerSportKey)}/odds`,
+    `https://api.the-odds-api.com/v4/sports/${encodeURIComponent(request.providerSportKey)}/${endpoint}`,
   );
   url.searchParams.set("apiKey", apiKey);
   url.searchParams.set("regions", request.regions.join(","));

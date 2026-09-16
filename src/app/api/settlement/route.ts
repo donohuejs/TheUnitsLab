@@ -27,7 +27,8 @@ export async function POST(request: Request) {
     .from("bets")
     .select("bet_legs(competition_key)")
     .eq("status", "open")
-    .eq("source", "simulated");
+    .eq("source", "simulated")
+    .eq("is_synthetic", false);
   if (error) return Response.json({ error: "Open wagers could not be loaded." }, { status: 500 });
   const competitionIds = (data ?? [])
     .flatMap((ticket) => ticket.bet_legs)

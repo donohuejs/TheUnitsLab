@@ -40,6 +40,10 @@ const phaseSevenMigrationUrl = new URL(
   "../supabase/migrations/20260918000000_phase_7_parlays.sql",
   import.meta.url,
 );
+const releaseCandidateMigrationUrl = new URL(
+  "../supabase/migrations/20260920000000_release_candidate_ux_patch_1.sql",
+  import.meta.url,
+);
 
 describe("Phase 0 database foundation", () => {
   it("keeps server-only objects outside exposed schemas", async () => {
@@ -237,5 +241,19 @@ describe("Phase 7 parlay authorization and settlement migration", () => {
     expect(sql).toMatch(
       /grant execute on function public\.set_external_parlay_result\(uuid, public\.bet_status, jsonb\)[\s\S]*to authenticated/,
     );
+  });
+});
+
+describe("Release candidate UX patch 1 migration", () => {
+  it("keeps synthetic settlement tests flagged, immutable, and outside normal reads", async () => {
+    const sql = await readFile(fileURLToPath(releaseCandidateMigrationUrl), "utf8");
+
+    expect(sql).toContain("add column is_synthetic boolean not null default false");
+    expect(sql).toContain("new.is_synthetic <> old.is_synthetic");
+    expect(sql).toContain("new.leg_count <> old.leg_count");
+    expect(sql).toContain("not ticket.is_synthetic");
+    expect(sql).toContain("where ticket.source = 'simulated' and not ticket.is_synthetic");
+    expect(sql).toContain("revoke all on function public.admin_create_settlement_test");
+    expect(sql).toContain("grant execute on function public.admin_settle_settlement_test");
   });
 });

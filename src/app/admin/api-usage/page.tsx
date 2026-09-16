@@ -5,6 +5,7 @@ import { hasPublicEnvironment } from "@/config/env.public";
 import { quotaState } from "@/lib/odds/quota";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import Link from "next/link";
 
 type Ledger = {
   requested_at: string;
@@ -67,6 +68,7 @@ export default async function ApiUsagePage() {
         <p className="eyebrow">Application administrator</p>
         <h1>API quota</h1>
         <p className="muted">State: {quotaState(used, environment.ODDS_API_MONTHLY_ALLOWANCE)}</p>
+        <Link href="/admin/settlement-tests">Open settlement test harness</Link>
       </header>
       <div className="stats-grid">
         <div className="card">

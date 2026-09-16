@@ -6,7 +6,7 @@ import { PRODUCT_NAME } from "@/lib/ui";
 
 export function AppNav({ active, userId }: { active: string; userId: string }) {
   const navigation = isAdministrator(userId)
-    ? [...primaryNavigation, { href: "/admin/api-usage", key: "admin", label: "Admin" }]
+    ? [...primaryNavigation, { href: "/admin/settlement-tests", key: "admin", label: "Admin" }]
     : primaryNavigation;
 
   return (

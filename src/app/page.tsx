@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { AppNav } from "@/components/app-nav";
 import { SourceBadge, StatusBadge, TicketTypeBadge } from "@/components/status-badge";
+import { TeamMark } from "@/components/team-mark";
 import { hasPublicEnvironment } from "@/config/env.public";
 import {
   filterAnalyticsWagers,
@@ -36,7 +37,7 @@ type RecentTicket = {
   stake_units: string | number;
   status: "open" | "won" | "lost" | "push" | "void";
   created_at: string;
-  bet_legs: { away_team: string; home_team: string; selection_name: string }[];
+  bet_legs: { sport_key: string; away_team: string; home_team: string; selection_name: string }[];
 };
 
 function mapWager(row: DashboardRpcWager): AnalyticsWager {
@@ -105,13 +106,14 @@ export default async function HomePage() {
         .eq("user_id", authData.user.id)
         .single(),
       supabase.from("bankroll_ledger").select("amount_units"),
-      supabase.from("bets").select("id").eq("status", "open"),
+      supabase.from("bets").select("id").eq("status", "open").eq("is_synthetic", false),
       supabase
         .from("bets")
         .select(
-          "id,ticket_type,stake_units,status,created_at,bet_legs(away_team,home_team,selection_name)",
+          "id,ticket_type,stake_units,status,created_at,bet_legs(sport_key,away_team,home_team,selection_name)",
         )
         .neq("status", "open")
+        .eq("is_synthetic", false)
         .order("created_at", { ascending: false })
         .limit(4),
       supabase.rpc("get_personal_analytics_wagers"),
@@ -232,11 +234,24 @@ export default async function HomePage() {
                 <li key={ticket.id}>
                   <div>
                     <strong>
-                      {ticket.ticket_type === "parlay"
-                        ? "Parlay"
-                        : ticket.bet_legs[0]
-                          ? `${ticket.bet_legs[0].away_team} at ${ticket.bet_legs[0].home_team}`
-                          : "Straight bet"}
+                      {ticket.ticket_type === "parlay" ? (
+                        "Parlay"
+                      ) : ticket.bet_legs[0] ? (
+                        <span className="team-pair">
+                          <TeamMark
+                            teamName={ticket.bet_legs[0].away_team}
+                            sport={ticket.bet_legs[0].sport_key}
+                          />
+                          {ticket.bet_legs[0].away_team} at
+                          <TeamMark
+                            teamName={ticket.bet_legs[0].home_team}
+                            sport={ticket.bet_legs[0].sport_key}
+                          />
+                          {ticket.bet_legs[0].home_team}
+                        </span>
+                      ) : (
+                        "Straight bet"
+                      )}
                     </strong>
                     <div className="ticket-meta">
                       <TicketTypeBadge ticketType={ticket.ticket_type} />

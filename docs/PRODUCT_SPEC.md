@@ -56,6 +56,17 @@ Parlay settlement waits for every non-void leg to have a durable final score. An
 
 External parlays use normalized `external_wager_legs`, ticket-level manual result entry, append-only correction audits, and the existing private screenshot controls. They never touch the virtual bankroll. Canonical analytics counts each parent once; mixed-sport or mixed-competition parents use the deterministic `mixed` breakdown classification, without duplicating stake across legs. Same-event correlation pricing, player props, alternate lines, futures, exotic markets, and live wagering remain out of scope.
 
+### Approved release-candidate UX patch 1 clarification 2026-09-16
+
+The owner explicitly authorizes this focused release-candidate usability and testability patch. It does not start Phase 9 and does not change the virtual-only, security, settlement, or $0/month constraints.
+
+- The configured core browse catalog includes NFL (`americanfootball_nfl`) and NHL (`icehockey_nhl`) in addition to the existing soccer and college-football/basketball entries. NBA remains an event-based/deferred catalog entry until a later provider-backed decision.
+- Alternate spreads and alternate totals are provider-priced only. They are requested on demand for one selected event through The Odds API event-odds path, stored through the existing canonical cache, lease, and usage-ledger path, and never interpolated from a base line. Automatic alternate polling is prohibited.
+- Same-game parlays remain unsupported. The UI explains that no correlated SGP price is fabricated, and server validation continues to reject same-event and cross-book simulated parlays. Teasers remain deferred.
+- Team identity uses a centralized best-effort name-to-logo resolver with visible initials fallback. Logos are presentation-only and do not become wager terms or authorization data; provider/league branding availability and licensing remain operational limitations.
+- An administrator-only settlement harness may create explicitly flagged synthetic straight or parlay tickets for win, loss, push, and void scenarios. Synthetic rows are excluded from ordinary ticket history, score reads, analytics, leaderboards, and settlement-job selection. The harness invokes the same authoritative settlement functions and must remain inaccessible to browser roles.
+- IRL/external wager entry remains a separate manual record path. Custom lines and odds remain supported there; teasers and fabricated provider prices are not added to simulated wagering.
+
 ## 1 Project purpose
 
 Build a private, entertainment-focused sports wagering simulator and betting-performance tracker.

@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { getCompetition } from "@/lib/odds/request";
 import { getCompetitionOdds } from "@/lib/odds/server";
+import type { CompetitionId } from "@/lib/odds/types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function refreshOdds(formData: FormData) {
@@ -13,7 +14,7 @@ export async function refreshOdds(formData: FormData) {
   const { data } = await supabase.auth.getUser();
   if (!data.user) redirect("/auth");
   try {
-    await getCompetitionOdds(competition.id as "epl" | "ucl" | "ncaaf" | "ncaab", true);
+    await getCompetitionOdds(competition.id as CompetitionId, true);
     redirect(`/sports/${competition.id}?notice=Refresh+request+completed`);
   } catch {
     redirect(

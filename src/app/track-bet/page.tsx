@@ -182,6 +182,7 @@ export default async function TrackBetPage({ searchParams }: Props) {
                 <option value="soccer">Soccer</option>
                 <option value="football">Football</option>
                 <option value="basketball">Basketball</option>
+                <option value="hockey">Hockey</option>
               </select>
             </label>
             <label className="form-wide">

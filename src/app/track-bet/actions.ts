@@ -20,7 +20,7 @@ const wagerSchema = z.object({
   groupId: z.union([z.literal(""), z.uuid()]),
   sportsbookId: z.enum(["fanduel", "draftkings", "betmgm", "caesars", "other"]),
   otherSportsbookName: z.string().trim().max(80),
-  sportKey: z.enum(["soccer", "football", "basketball"]),
+  sportKey: z.enum(["soccer", "football", "basketball", "hockey"]),
   competitionKey: z.string().trim().min(1).max(40),
   eventDescription: z.string().trim().min(2).max(200),
   eventDate: z.string().refine((value) => !Number.isNaN(Date.parse(value))),
@@ -184,7 +184,7 @@ export async function setExternalWagerResult(formData: FormData) {
 }
 
 const externalParlayLegSchema = z.object({
-  sportKey: z.enum(["soccer", "football", "basketball"]),
+  sportKey: z.enum(["soccer", "football", "basketball", "hockey"]),
   competitionKey: z.string().trim().min(1).max(40),
   eventDescription: z.string().trim().min(2).max(200),
   eventDate: z.string().refine((candidate) => !Number.isNaN(Date.parse(candidate))),

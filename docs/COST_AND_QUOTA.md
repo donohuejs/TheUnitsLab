@@ -84,6 +84,17 @@ ledger/ticket/group data and the canonical analytics RPC; it never requests prov
 render historical summaries. Loading boundaries, status badges, responsive CSS, and the dependency-
 free secret scan add no paid service, package, polling loop, cache path, or provider quota usage.
 
+## Release-candidate UX patch 1 quota impact
+
+Adding NFL and NHL to the browse catalog expands the configured competition set but adds no request
+until a user or bounded refresh path asks for that competition. A normal competition request retains
+the configured featured markets and region/bookmaker set. Alternate spreads and totals are never
+polled automatically; one selected event can trigger one on-demand event-odds request using the
+same shared cache, lease, quota ledger, and conservation checks. The alternate request includes two
+configured markets (`alternate_spreads` and/or `alternate_totals`) and is therefore charged according
+to the provider's current market-by-region rules. Cache reuse and the existing refresh controls remain
+the quota guardrails. No paid dependency, provider key, or uncontrolled client polling loop was added.
+
 ## Highest-risk assumptions
 
 - Exact Odds API credit cost depends on request shape and must be measured without uncontrolled calls.

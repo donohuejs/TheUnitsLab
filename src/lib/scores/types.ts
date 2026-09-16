@@ -4,7 +4,7 @@ export type ScoreState = "scheduled" | "live" | "final";
 
 export type NormalizedScore = {
   providerEventId: string;
-  sport: "soccer" | "football" | "basketball";
+  sport: "soccer" | "football" | "basketball" | "hockey";
   competitionId: CompetitionId;
   providerSportKey: string;
   homeTeam: string;

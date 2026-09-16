@@ -12,7 +12,7 @@ const outcomeSchema = z.object({
   point: z.number().optional(),
 });
 const marketSchema = z.object({
-  key: z.enum(["h2h", "spreads", "totals"]),
+  key: z.enum(["h2h", "spreads", "totals", "alternate_spreads", "alternate_totals"]),
   last_update: z.string().datetime(),
   outcomes: z.array(outcomeSchema),
 });
@@ -51,7 +51,8 @@ export function normalizeOddsResponse(
 ): NormalizedEvent[] {
   const competition = getCompetition(competitionId);
   if (!competition) throw new Error("Unsupported competition");
-  const events = z.array(eventSchema).parse(input);
+  const parsedEvents = z.union([z.array(eventSchema), eventSchema]).parse(input);
+  const events = Array.isArray(parsedEvents) ? parsedEvents : [parsedEvents];
   const configuredBooks = new Map(
     sportsProviderConfiguration.bookmakers
       .filter((book) => book.enabled)
@@ -83,7 +84,7 @@ export function normalizeOddsResponse(
               marketType:
                 market.key === "h2h"
                   ? ("moneyline" as const)
-                  : market.key === "spreads"
+                  : market.key === "spreads" || market.key === "alternate_spreads"
                     ? ("spread" as const)
                     : ("total" as const),
               selection: normalizedSelection,
@@ -91,6 +92,7 @@ export function normalizeOddsResponse(
               point: outcome.point ?? null,
               americanOdds: outcome.price,
               decimalOdds: americanToDecimal(outcome.price),
+              isAlternate: market.key.startsWith("alternate_"),
               providerUpdatedAt: market.last_update || bookmaker.last_update,
               fetchedAt,
             },

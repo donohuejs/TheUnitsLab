@@ -2,10 +2,11 @@ import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-export async function GET(
-  _request: Request,
-  context: RouteContext<"/track-bet/screenshot/[wagerId]">,
-) {
+type ScreenshotRouteContext = {
+  params: Promise<{ wagerId: string }>;
+};
+
+export async function GET(_request: Request, context: ScreenshotRouteContext) {
   const { wagerId } = await context.params;
   const supabase = await createSupabaseServerClient();
   const { data: authData } = await supabase.auth.getUser();

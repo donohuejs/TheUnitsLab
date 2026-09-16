@@ -144,6 +144,33 @@ server-action pending affordances, visible focus rings, captions, responsive dat
 reduced-motion support are presentation concerns only; server-authoritative placement, settlement,
 RLS, screenshot access, and analytics rules are unchanged.
 
+### Release-candidate UX patch 1 boundaries
+
+This focused patch is an owner-approved clarification after Phase 8; it is not Phase 9. The core
+catalog adds provider-backed NFL and NHL browse entries while retaining configurable competition
+metadata rather than scattering sport keys through the UI. NBA remains deferred/event-based.
+
+Alternate lines use `CanonicalOddsRequest.endpoint = event_odds` and include the provider event ID in
+the canonical request key. The event request is made only after an authenticated user selects one
+event, uses the existing PostgreSQL cache row, lease/coalescing logic, quota ledger, and conservation
+policy, and is normalized into the same immutable selection shape. The ordinary competition odds
+request remains featured markets only. No client-side line interpolation, background alternate
+polling, or separate provider key is permitted.
+
+Team identity is resolved in one server/client-safe mapping module. A known name may render a
+best-effort public CDN mark, while every unknown or unavailable mark renders readable initials. The
+resolver is visual only and is not consulted by ticket placement, settlement, analytics, or access
+control.
+
+The settlement test harness is an administrative server boundary. Synthetic `bets` and
+`event_scores` rows carry an immutable `is_synthetic` flag. RLS and application queries exclude
+those rows from ordinary authenticated history, score reads, settlement-job selection, analytics,
+and leaderboards; only the service role can invoke the narrow create/settle RPCs. The harness calls
+the existing settlement and void functions, so idempotency and audit behavior are exercised rather
+than duplicated. Synthetic stake and settlement entries currently use the administrator's virtual
+ledger and are excluded from analytics; this is intentionally visible in the admin UI and must not
+be presented as production user activity.
+
 ### Administration and operations
 
 Administrative capabilities include quota inspection, request history, settlement-failure inspection, safe settlement reruns, bankroll adjustments, group membership management, upload moderation, and competition or bookmaker toggles. The source does not define the boundary between group administration and application administration.
