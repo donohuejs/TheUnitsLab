@@ -1,9 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppNav } from "@/components/app-nav";
-import { InviteForm } from "@/components/invite-form";
-import { SubmitButton } from "@/components/submit-button";
+import { LeaderboardControls, ManageGroupDialog } from "@/components/leaderboard-controls";
 import { createGroup, joinGroup } from "@/app/actions";
 import { hasPublicEnvironment } from "@/config/env.public";
 import {
@@ -17,6 +15,8 @@ import {
   type SourceFilter,
 } from "@/lib/analytics/calculations";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+// ManageGroupDialog owns the InviteForm so invite controls stay behind the compact drawer.
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 type Group = { id: string; name: string; owner_user_id: string };
@@ -150,105 +150,17 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
         </p>
       ) : null}
 
-      <section className="card group-access-card" aria-label="Private group access">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Private groups</p>
-            <h2>{groups.length ? "Manage group access" : "Start a private group"}</h2>
-          </div>
-          <Link className="button secondary" href="/account">
-            Account settings
-          </Link>
-        </div>
-        <p className="muted">
-          Create a group or join with an expiring invite link/token. Group names alone never grant
-          access.
-        </p>
-        <div className="group-access-actions">
-          <form action={createGroup} className="form-stack">
-            <input type="hidden" name="returnTo" value="/leaderboards" />
-            <label>
-              Create Group
-              <input
-                name="groupName"
-                minLength={2}
-                maxLength={80}
-                placeholder="Lab cohort name"
-                required
-              />
-            </label>
-            <SubmitButton className="button" pendingLabel="Creating…">
-              Create Group
-            </SubmitButton>
-          </form>
-          <form action={joinGroup} className="form-stack">
-            <input type="hidden" name="returnTo" value="/leaderboards" />
-            <label>
-              Join Group
-              <input
-                name="inviteToken"
-                minLength={32}
-                maxLength={512}
-                defaultValue={invite}
-                placeholder="Paste invite token"
-                required
-              />
-            </label>
-            <SubmitButton className="button secondary" pendingLabel="Joining…">
-              Join Group
-            </SubmitButton>
-          </form>
-        </div>
-        {invite ? (
-          <p className="muted">
-            An invite token was supplied in this link. Review it before joining; invalid or expired
-            invites are rejected.
-          </p>
-        ) : null}
-      </section>
-
-      <form className="card filter-bar leaderboard-filters" method="get">
-        <label>
-          Group
-          <select name="group" defaultValue={selectedGroup?.id ?? ""} disabled={!groups.length}>
-            {groups.map((group) => (
-              <option key={group.id} value={group.id}>
-                {group.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Category
-          <select name="category" defaultValue={category}>
-            {categories.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Source
-          <select name="source" defaultValue={source}>
-            <option value="combined">All</option>
-            <option value="simulated">Simulated</option>
-            <option value="irl">Imported</option>
-          </select>
-        </label>
-        <label>
-          Period
-          <select name="period" defaultValue={period}>
-            <option value="week">This week</option>
-            <option value="month">This month</option>
-            <option value="season">Season</option>
-            <option value="all">All-time</option>
-          </select>
-        </label>
-        <button className="button secondary" type="submit">
-          Apply filters
-        </button>
-      </form>
+      <LeaderboardControls
+        groups={groups}
+        selectedGroupId={selectedGroup?.id ?? ""}
+        category={category}
+        categoryLabel={
+          categories.find((option) => option.value === category)?.label ?? "Most Vials won"
+        }
+        source={source}
+        period={period}
+        categories={categories}
+      />
 
       {!groups.length ? (
         <p className="empty-state">
@@ -272,48 +184,6 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
         <section className="card leaderboard-card" aria-label={`${selectedGroup.name} leaderboard`}>
           <div className="section-heading">
             <h2>{selectedGroup.name}</h2>
-            <div className="section-heading-actions">
-              <span className="pill">
-                {categories.find((option) => option.value === category)?.label}
-              </span>
-              {(() => {
-                const membership = memberships.find((item) => item.group_id === selectedGroup.id);
-                const canInvite =
-                  selectedGroup.owner_user_id === authData.user.id ||
-                  membership?.role === "owner" ||
-                  membership?.role === "admin";
-                return canInvite ? (
-                  <div className="invite-actions">
-                    <strong>Invite</strong>
-                    <InviteForm groupId={selectedGroup.id} />
-                  </div>
-                ) : null;
-              })()}
-            </div>
-            {invites.length ? (
-              <div className="invite-history" aria-label="Group invite usage">
-                <strong>Invite history</strong>
-                {invites.slice(0, 5).map((invite) => {
-                  const expired = invite.invite_expires_at <= currentIso;
-                  const state = invite.invite_revoked_at
-                    ? "Revoked"
-                    : expired
-                      ? "Expired"
-                      : "Active";
-                  return (
-                    <div className="invite-history-row" key={invite.invite_id}>
-                      <span>{state}</span>
-                      <span>
-                        {invite.invite_use_count} use{invite.invite_use_count === 1 ? "" : "s"} ·{" "}
-                        {invite.invite_max_uses
-                          ? `${invite.invite_max_uses} max`
-                          : "Reusable until expiry"}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : null}
           </div>
           <div className="table-scroll">
             <table>
@@ -352,6 +222,48 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
               </tbody>
             </table>
           </div>
+          <div className="leaderboard-mobile-cards" aria-label="Ranked participant cards">
+            {rows.map((row) => (
+              <article
+                className={
+                  row.eligible
+                    ? "leaderboard-player-card"
+                    : "leaderboard-player-card ineligible-row"
+                }
+                key={row.userId}
+              >
+                <div className="leaderboard-player-heading">
+                  <span className="leaderboard-rank">#{row.rank ?? "—"}</span>
+                  <h3>{row.displayName}</h3>
+                  {!row.eligible ? (
+                    <small>
+                      Needs {row.neededForEligibility} more eligible wager
+                      {row.neededForEligibility === 1 ? "" : "s"}
+                    </small>
+                  ) : null}
+                </div>
+                <strong className="leaderboard-primary-value">
+                  {row.summary.unitsWonLost} Vials
+                </strong>
+                <dl>
+                  <div>
+                    <dt>ROI</dt>
+                    <dd>{row.summary.roiPercent}%</dd>
+                  </div>
+                  <div>
+                    <dt>Record</dt>
+                    <dd>
+                      {row.summary.wins}-{row.summary.losses}-{row.summary.pushes}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Bets</dt>
+                    <dd>{row.summary.totalBets}</dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </div>
           {!rows.length ? (
             <p className="empty-state">
               <strong>No qualifying leaderboard rows yet</strong>
@@ -360,6 +272,15 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
           ) : null}
         </section>
       ) : null}
+      <ManageGroupDialog
+        selectedGroup={selectedGroup}
+        memberships={memberships}
+        invites={invites}
+        inviteToken={invite}
+        nowIso={currentIso}
+        createGroupAction={createGroup}
+        joinGroupAction={joinGroup}
+      />
     </main>
   );
 }

@@ -67,9 +67,12 @@ export function InviteForm({ groupId }: { groupId: string }) {
               {copied ? "Copied" : "Copy Invite Link"}
             </button>
           </div>
-          <p className="muted">
-            Token fallback: <code>{state.token}</code>
-          </p>
+          <details className="disclosure">
+            <summary>Advanced: token fallback</summary>
+            <p className="muted token-fallback">
+              Token fallback: <code>{state.token}</code>
+            </p>
+          </details>
           {state.expiresAt ? (
             <p className="muted">
               Expires <LocalDateTime value={state.expiresAt} />

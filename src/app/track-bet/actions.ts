@@ -22,7 +22,7 @@ const screenshotExtensions = new Map([
 
 const wagerSchema = z.object({
   groupId: z.union([z.literal(""), z.uuid()]),
-  sportsbookId: z.enum(["fanduel", "draftkings", "betmgm", "caesars", "other"]),
+  sportsbookId: z.enum(["", "fanduel", "draftkings", "betmgm", "caesars", "other"]),
   otherSportsbookName: z.string().trim().max(80),
   sportKey: z.enum(["soccer", "football", "basketball", "hockey"]),
   competitionKey: z.string().trim().min(1).max(40),
@@ -75,8 +75,9 @@ const importedWagerSchema = z.object({
   confirmed: z.literal("true"),
   importMethod: z.enum(["screenshot", "paste", "entry"]),
   groupId: z.union([z.literal(""), z.uuid()]),
-  sportsbookId: z.enum(["fanduel", "draftkings", "betmgm", "caesars", "other"]),
+  sportsbookId: z.enum(["", "fanduel", "draftkings", "betmgm", "caesars", "other"]),
   otherSportsbookName: z.string().trim().max(80),
+  ticketType: z.enum(["straight", "parlay"]),
   sportKey: z.enum(["soccer", "football", "basketball", "hockey"]),
   competitionKey: z.string().trim().min(1).max(40),
   eventDescription: z.string().trim().min(2).max(200),
@@ -101,6 +102,7 @@ const importedWagerSchema = z.object({
   verificationStatus: z.enum(["unverified", "user_attested"]),
   userNotes: z.string().max(2000),
   rawText: z.string().max(10000),
+  parlayLegs: z.string().max(100000),
 });
 
 export async function createImportedWager(formData: FormData) {
@@ -110,6 +112,7 @@ export async function createImportedWager(formData: FormData) {
     groupId: value(formData, "groupId"),
     sportsbookId: value(formData, "sportsbookId"),
     otherSportsbookName: value(formData, "otherSportsbookName"),
+    ticketType: value(formData, "ticketType"),
     sportKey: value(formData, "sportKey"),
     competitionKey: value(formData, "competitionKey"),
     eventDescription: value(formData, "eventDescription"),
@@ -128,6 +131,7 @@ export async function createImportedWager(formData: FormData) {
     verificationStatus: value(formData, "verificationStatus") || "unverified",
     userNotes: value(formData, "userNotes"),
     rawText: value(formData, "rawText"),
+    parlayLegs: value(formData, "parlayLegs"),
   });
   if (!parsed.success) finish("Review the required imported betslip fields and try again.");
   if (parsed.data.sportsbookId === "other" && parsed.data.otherSportsbookName.length < 2) {
@@ -150,6 +154,34 @@ export async function createImportedWager(formData: FormData) {
     finish("Enter any two of stake, odds, or payout; the third must be mathematically valid.");
   }
 
+  let importedParlayLegs: z.infer<typeof importedParlayLegSchema>[] = [];
+  if (parsed.data.ticketType === "parlay") {
+    let candidateLegs: unknown;
+    try {
+      candidateLegs = JSON.parse(parsed.data.parlayLegs);
+    } catch {
+      finish("Review the imported parlay and its 2–12 legs.");
+    }
+    const legsResult = z.array(importedParlayLegSchema).min(2).max(12).safeParse(candidateLegs);
+    if (!legsResult.success) finish("Review the imported parlay and its 2–12 legs.");
+    importedParlayLegs = legsResult.data;
+    for (const leg of importedParlayLegs) {
+      const competition = sportsProviderConfiguration.competitions.find(
+        (candidate) =>
+          candidate.id === leg.competitionKey &&
+          candidate.sport === leg.sportKey &&
+          candidate.enabled,
+      );
+      if (!competition) finish("Each parlay leg needs a supported sport and competition.");
+      if (
+        (leg.marketType === "moneyline" && leg.line !== null) ||
+        (leg.marketType !== "moneyline" && leg.line === null)
+      ) {
+        finish("Each spread or total leg needs a line; moneyline legs do not.");
+      }
+    }
+  }
+
   const screenshot = formData.get("screenshot");
   let screenshotExtension: string | undefined;
   if (screenshot instanceof File && screenshot.size > 0) {
@@ -167,9 +199,61 @@ export async function createImportedWager(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) redirect("/auth");
+
+  if (parsed.data.ticketType === "parlay") {
+    const { data, error } = await supabase.rpc("create_imported_parlay", {
+      p_group_id: parsed.data.groupId || null,
+      p_sportsbook_id: parsed.data.sportsbookId || null,
+      p_other_sportsbook_name: parsed.data.otherSportsbookName || null,
+      p_combined_american_odds: economics.americanOdds,
+      p_raw_stake_dollars: economics.stakeDollars,
+      p_raw_return_dollars: economics.returnDollars,
+      p_wager_date: new Date(
+        value(formData, "wagerDateUtc") || parsed.data.wagerDate,
+      ).toISOString(),
+      p_status: "open",
+      p_verification_status: parsed.data.verificationStatus,
+      p_user_notes: parsed.data.userNotes || null,
+      p_import_method: parsed.data.importMethod,
+      p_sportsbook_bet_id: parsed.data.sportsbookBetId || null,
+      p_import_content_hash: contentHash,
+      p_legs: importedParlayLegs.map((leg, index) => ({
+        legNumber: index + 1,
+        sportKey: leg.sportKey,
+        competitionKey: leg.competitionKey,
+        eventDescription: leg.eventDescription,
+        eventDate: new Date(leg.eventDate).toISOString(),
+        selection: leg.selection,
+        selectionKey: leg.selectionKey || null,
+        marketType: leg.marketType,
+        line: leg.line,
+        americanOdds: leg.americanOdds,
+        result: "open",
+        providerEventId: leg.providerEventId || null,
+      })),
+      p_confirmed: true,
+    });
+    if (error || !data) finish(databaseMessage(error?.message ?? ""));
+    const wagerId = String(data);
+    if (screenshot instanceof File && screenshot.size > 0 && screenshotExtension) {
+      const objectPath = `${authData.user.id}/${wagerId}/${randomUUID()}.${screenshotExtension}`;
+      const upload = await supabase.storage
+        .from("external-wager-screenshots")
+        .upload(objectPath, screenshot, { contentType: screenshot.type, upsert: false });
+      if (upload.error) finish("The import was saved, but the private screenshot upload failed.");
+      const attachment = await supabase.rpc("attach_external_wager_screenshot", {
+        p_external_wager_id: wagerId,
+        p_object_path: objectPath,
+      });
+      if (attachment.error)
+        finish("The import was saved, but its screenshot could not be attached.");
+    }
+    finish("Imported parlay saved to My Bets. Your simulated Vial balance was not changed.");
+  }
+
   const { data, error } = await supabase.rpc("create_imported_wager", {
     p_group_id: parsed.data.groupId || null,
-    p_sportsbook_id: parsed.data.sportsbookId,
+    p_sportsbook_id: parsed.data.sportsbookId || null,
     p_other_sportsbook_name: parsed.data.otherSportsbookName || null,
     p_sport_key: parsed.data.sportKey,
     p_competition_key: parsed.data.competitionKey,
@@ -274,7 +358,7 @@ export async function createExternalWager(formData: FormData) {
 
   const { data, error } = await supabase.rpc("create_external_wager", {
     p_group_id: parsed.data.groupId || null,
-    p_sportsbook_id: parsed.data.sportsbookId,
+    p_sportsbook_id: parsed.data.sportsbookId || null,
     p_other_sportsbook_name: parsed.data.otherSportsbookName || null,
     p_sport_key: parsed.data.sportKey,
     p_competition_key: parsed.data.competitionKey,
@@ -362,7 +446,7 @@ const externalParlayLegSchema = z.object({
 
 const externalParlaySchema = z.object({
   groupId: z.union([z.literal(""), z.uuid()]),
-  sportsbookId: z.enum(["fanduel", "draftkings", "betmgm", "caesars", "other"]),
+  sportsbookId: z.enum(["", "fanduel", "draftkings", "betmgm", "caesars", "other"]),
   otherSportsbookName: z.string().trim().max(80),
   combinedAmericanOdds: z.coerce.number().int(),
   stake: z.string().trim(),
@@ -382,7 +466,7 @@ const importedParlaySchema = z.object({
   confirmed: z.literal("true"),
   importMethod: z.enum(["screenshot", "paste", "entry"]),
   groupId: z.union([z.literal(""), z.uuid()]),
-  sportsbookId: z.enum(["fanduel", "draftkings", "betmgm", "caesars", "other"]),
+  sportsbookId: z.enum(["", "fanduel", "draftkings", "betmgm", "caesars", "other"]),
   otherSportsbookName: z.string().trim().max(80),
   combinedAmericanOdds: z.coerce.number().int(),
   rawStakeDollars: z.string().trim(),
@@ -475,7 +559,7 @@ export async function createImportedParlay(formData: FormData) {
   if (!authData.user) redirect("/auth");
   const { data, error } = await supabase.rpc("create_imported_parlay", {
     p_group_id: parsed.data.groupId || null,
-    p_sportsbook_id: parsed.data.sportsbookId,
+    p_sportsbook_id: parsed.data.sportsbookId || null,
     p_other_sportsbook_name: parsed.data.otherSportsbookName || null,
     p_combined_american_odds: parsed.data.combinedAmericanOdds,
     p_raw_stake_dollars: rawStakeDollars,
@@ -578,7 +662,7 @@ export async function createExternalParlay(formData: FormData) {
   if (!authData.user) redirect("/auth");
   const { data, error } = await supabase.rpc("create_external_parlay", {
     p_group_id: parsed.data.groupId || null,
-    p_sportsbook_id: parsed.data.sportsbookId,
+    p_sportsbook_id: parsed.data.sportsbookId || null,
     p_other_sportsbook_name: parsed.data.otherSportsbookName || null,
     p_combined_american_odds: parsed.data.combinedAmericanOdds,
     p_stake_units: stake,

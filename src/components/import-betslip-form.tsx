@@ -5,25 +5,37 @@ import { useMemo, useState, useSyncExternalStore, type FormEvent } from "react";
 import { createImportedWager } from "@/app/track-bet/actions";
 import { CachedEventSearch, type CachedEvent } from "@/components/cached-event-search";
 import { SubmitButton } from "@/components/submit-button";
-import { calculateImportedEconomics } from "@/lib/external-wagers/calculations";
 import {
   extractBetslip,
   parseBetslipText,
   type BetslipDraftFields,
   type ExtractedBetslip,
+  type ExtractedParlayLeg,
 } from "@/lib/betslip/extraction";
+import { calculateImportedEconomics } from "@/lib/external-wagers/calculations";
 import { toDateTimeLocalValue } from "@/lib/time";
 
 type Group = { id: string; name: string };
 type Competition = { id: string; name: string; sport: string };
-type CanonicalEvent = CachedEvent;
 type ImportMethod = "screenshot" | "paste" | "entry";
-type Step = "source" | "event" | "market" | "economics";
-type Duplicate = {
-  wager_id: string;
-  sportsbook_name: string;
-  wager_date: string;
-  duplicate_signal: string;
+type TicketType = "straight" | "parlay";
+type Step = "event" | "market" | "economics";
+type EconomicField = "stakeDollars" | "americanOdds" | "returnDollars";
+type AutoEconomicField = "stake" | "odds" | "return";
+type Result = "open" | "won" | "lost" | "push" | "void";
+
+type ParlayLeg = {
+  sportKey: string;
+  competitionKey: string;
+  eventDescription: string;
+  eventDate: string;
+  selection: string;
+  selectionKey: string;
+  marketType: string;
+  line: string;
+  americanOdds: string;
+  providerEventId: string;
+  result: Result;
 };
 
 type Draft = {
@@ -44,33 +56,74 @@ type Draft = {
   sportsbookBetId: string;
   providerEventId: string;
   groupId: string;
-  status: string;
+  status: Result;
+  verificationStatus: "unverified" | "user_attested";
   userNotes: string;
   rawText: string;
+  ticketType: TicketType;
+  parlayLegs: ParlayLeg[];
 };
 
-type EconomicField = "stakeDollars" | "americanOdds" | "returnDollars";
-type AutoEconomicField = "stake" | "odds" | "return";
+type Duplicate = {
+  wager_id: string;
+  sportsbook_name: string;
+  wager_date: string;
+  duplicate_signal: string;
+};
 
 const autoFieldToDraftField: Record<AutoEconomicField, EconomicField> = {
   stake: "stakeDollars",
   odds: "americanOdds",
   return: "returnDollars",
 };
-
 const inputClass = "form-wide";
 const subscribeToClock = () => () => {};
 const getBrowserNow = () => toDateTimeLocalValue(new Date());
 const progressSteps: { value: Step; label: string }[] = [
-  { value: "source", label: "Sportsbook" },
-  { value: "event", label: "Event" },
+  { value: "event", label: "Find event" },
   { value: "market", label: "Market" },
-  { value: "economics", label: "Stake · odds · payout" },
+  { value: "economics", label: "Stake · odds · total return" },
 ];
 
 function isoOrEmpty(value: string) {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+}
+
+function emptyLeg(competition: Competition | undefined, eventDate = ""): ParlayLeg {
+  return {
+    sportKey: competition?.sport ?? "soccer",
+    competitionKey: competition?.id ?? "epl",
+    eventDescription: "",
+    eventDate,
+    selection: "",
+    selectionKey: "",
+    marketType: "moneyline",
+    line: "",
+    americanOdds: "",
+    providerEventId: "",
+    result: "open",
+  };
+}
+
+function extractedLeg(
+  leg: ExtractedParlayLeg,
+  fallback: Draft,
+  competitions: Competition[],
+): ParlayLeg {
+  const competition = competitions.find((candidate) => candidate.id === fallback.competitionKey);
+  return {
+    ...emptyLeg(
+      competition,
+      leg.eventDate ? toDateTimeLocalValue(leg.eventDate) : fallback.eventDate,
+    ),
+    eventDescription: leg.eventDescription,
+    selection: leg.selection ?? "",
+    selectionKey: leg.selectionKey ?? "",
+    marketType: leg.marketType ?? "moneyline",
+    line: leg.line ?? "",
+    americanOdds: leg.americanOdds ?? "",
+  };
 }
 
 export function ImportBetslipForm({
@@ -82,13 +135,15 @@ export function ImportBetslipForm({
 }: {
   groups: Group[];
   competitions: Competition[];
-  canonicalEvents?: CanonicalEvent[];
+  canonicalEvents?: CachedEvent[];
   nowLocal: string;
   nowIso: string;
 }) {
+  const firstCompetition = competitions[0];
   const [method, setMethod] = useState<ImportMethod>("entry");
-  const [step, setStep] = useState<Step>("source");
+  const [step, setStep] = useState<Step>("event");
   const [reviewing, setReviewing] = useState(false);
+  const [ticketTypeUncertain, setTicketTypeUncertain] = useState(true);
   const [duplicates, setDuplicates] = useState<Duplicate[]>([]);
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   const [processingScreenshot, setProcessingScreenshot] = useState(false);
@@ -96,16 +151,13 @@ export function ImportBetslipForm({
   const [screenshotName, setScreenshotName] = useState("");
   const [extractionMessage, setExtractionMessage] = useState("");
   const [extractionWarnings, setExtractionWarnings] = useState<string[]>([]);
-  const [extractedTicketType, setExtractedTicketType] = useState<"straight" | "parlay" | null>(
-    null,
-  );
   const [stepError, setStepError] = useState("");
   const [autoEconomicField, setAutoEconomicField] = useState<AutoEconomicField | null>(null);
   const [draft, setDraft] = useState<Draft>({
-    sportsbookId: "fanduel",
+    sportsbookId: "",
     otherSportsbookName: "",
-    sportKey: "soccer",
-    competitionKey: competitions[0]?.id ?? "epl",
+    sportKey: firstCompetition?.sport ?? "soccer",
+    competitionKey: firstCompetition?.id ?? "epl",
     eventDescription: "",
     eventDate: "",
     wagerDate: nowLocal,
@@ -120,8 +172,11 @@ export function ImportBetslipForm({
     providerEventId: "",
     groupId: "",
     status: "open",
+    verificationStatus: "unverified",
     userNotes: "",
     rawText: "",
+    ticketType: "straight",
+    parlayLegs: [emptyLeg(firstCompetition), emptyLeg(firstCompetition)],
   });
 
   const browserNowSnapshot = useMemo(() => getBrowserNow, []);
@@ -176,7 +231,7 @@ export function ImportBetslipForm({
               : calculated.returnDollars;
       }
     } catch {
-      // The preview below reports the validation error while the user finishes the pair.
+      // The live preview reports the validation error while the user completes a pair.
     }
     setDraft(nextDraft);
     setAutoEconomicField(nextAutoField);
@@ -184,7 +239,7 @@ export function ImportBetslipForm({
 
   function chooseMethod(nextMethod: ImportMethod) {
     setMethod(nextMethod);
-    setStep("source");
+    setStep("event");
     setReviewing(false);
     setStepError("");
   }
@@ -207,9 +262,13 @@ export function ImportBetslipForm({
       returnDollars: fields.returnDollars ?? current.returnDollars,
       sportsbookBetId: fields.sportsbookBetId ?? current.sportsbookBetId,
       rawText: extraction.rawText,
+      ticketType: extraction.ticketType,
+      parlayLegs: extraction.parlayLegs.length
+        ? extraction.parlayLegs.map((leg) => extractedLeg(leg, current, competitions))
+        : current.parlayLegs,
     }));
+    setTicketTypeUncertain(extraction.ticketTypeConfidence === "low");
     setAutoEconomicField(null);
-    setExtractedTicketType(extraction.ticketType);
     setExtractionWarnings(extraction.warnings);
   }
 
@@ -217,7 +276,6 @@ export function ImportBetslipForm({
     setScreenshotName(file?.name ?? "");
     setExtractionMessage("");
     setExtractionWarnings([]);
-    setExtractedTicketType(null);
     if (!file) return;
     setProcessingScreenshot(true);
     setProcessingProgress(0);
@@ -238,6 +296,7 @@ export function ImportBetslipForm({
         "Local OCR could not read this image. Your private screenshot is attached; continue with the short guided draft.",
       );
       setExtractionWarnings(["No fields were extracted. Enter the missing values manually."]);
+      setTicketTypeUncertain(true);
     } finally {
       setProcessingScreenshot(false);
     }
@@ -248,7 +307,7 @@ export function ImportBetslipForm({
       (candidate) => candidate.providerEventId === providerEventId,
     );
     if (!event) {
-      set("providerEventId", "");
+      setDraft((current) => ({ ...current, providerEventId: "" }));
       return;
     }
     setDraft((current) => ({
@@ -261,26 +320,85 @@ export function ImportBetslipForm({
     }));
   }
 
+  function chooseLegEvent(index: number, providerEventId: string) {
+    const event = canonicalEvents.find(
+      (candidate) => candidate.providerEventId === providerEventId,
+    );
+    if (!event) return;
+    setDraft((current) => ({
+      ...current,
+      parlayLegs: current.parlayLegs.map((leg, candidateIndex) =>
+        candidateIndex === index
+          ? {
+              ...leg,
+              providerEventId: event.providerEventId,
+              sportKey: event.sportKey,
+              competitionKey: event.competitionKey,
+              eventDescription: `${event.awayTeam} at ${event.homeTeam}`,
+              eventDate: toDateTimeLocalValue(event.scheduledStart),
+            }
+          : leg,
+      ),
+    }));
+  }
+
+  function updateLeg(index: number, patch: Partial<ParlayLeg>) {
+    setDraft((current) => ({
+      ...current,
+      parlayLegs: current.parlayLegs.map((leg, candidateIndex) =>
+        candidateIndex === index ? { ...leg, ...patch } : leg,
+      ),
+    }));
+  }
+
+  function selectTicketType(value: TicketType) {
+    setDraft((current) => ({
+      ...current,
+      ticketType: value,
+      parlayLegs:
+        value === "parlay" && current.parlayLegs.length < 2
+          ? [current.parlayLegs[0] ?? emptyLeg(firstCompetition), emptyLeg(firstCompetition)]
+          : current.parlayLegs,
+    }));
+    setTicketTypeUncertain(false);
+  }
+
   function nextStep() {
     setStepError("");
-    if (step === "source") {
+    if (step === "event") {
       if (method === "screenshot" && !screenshotName) {
         setStepError("Attach a screenshot to continue.");
         return;
       }
-      setStep("event");
-      return;
-    }
-    if (step === "event") {
-      if (!draft.eventDescription.trim() || !draft.eventDate) {
-        setStepError("Choose a canonical event or enter the event and kickoff.");
+      if (draft.ticketType === "parlay") {
+        if (
+          draft.parlayLegs.length < 2 ||
+          draft.parlayLegs.some((leg) => !leg.eventDescription.trim() || !leg.eventDate)
+        ) {
+          setStepError("Add an event and kickoff for every parlay leg.");
+          return;
+        }
+      } else if (!draft.eventDescription.trim() || !draft.eventDate) {
+        setStepError("Choose a cached event or enter the event and kickoff.");
         return;
       }
       setStep("market");
       return;
     }
     if (step === "market") {
-      if (!draft.selection.trim() || (draft.marketType !== "moneyline" && !draft.line)) {
+      if (draft.ticketType === "parlay") {
+        if (
+          draft.parlayLegs.some(
+            (leg) =>
+              !leg.selection.trim() ||
+              !leg.americanOdds ||
+              (leg.marketType !== "moneyline" && !leg.line),
+          )
+        ) {
+          setStepError("Complete the market, selection, line, and odds for every leg.");
+          return;
+        }
+      } else if (!draft.selection.trim() || (draft.marketType !== "moneyline" && !draft.line)) {
         setStepError("Enter a selection and line when the market needs one.");
         return;
       }
@@ -290,7 +408,7 @@ export function ImportBetslipForm({
 
   function previousStep() {
     setStepError("");
-    setStep(step === "economics" ? "market" : step === "market" ? "event" : "source");
+    setStep(step === "economics" ? "market" : "event");
   }
 
   async function reviewDraft(event: FormEvent<HTMLFormElement>) {
@@ -299,9 +417,13 @@ export function ImportBetslipForm({
       nextStep();
       return;
     }
+    if (draft.ticketType === "parlay" && draft.parlayLegs.length > 12) {
+      setStepError("A parlay can contain no more than 12 legs.");
+      return;
+    }
     if (!economics.value) {
       setStepError(
-        "Enter any two of stake, odds, or payout; the third is calculated automatically.",
+        "Enter any two of stake, odds, or total return; the third is calculated automatically.",
       );
       return;
     }
@@ -318,12 +440,18 @@ export function ImportBetslipForm({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          sportsbookId: draft.sportsbookId,
+          sportsbookId: draft.sportsbookId || null,
           sportsbookBetId: draft.sportsbookBetId,
           wagerDate: effectiveWagerDate,
           stakeDollars: economics.value.stakeDollars,
           americanOdds: economics.value.americanOdds,
-          eventDescription: draft.eventDescription,
+          eventDescription:
+            draft.ticketType === "parlay"
+              ? draft.parlayLegs
+                  .map((leg) => leg.eventDescription)
+                  .filter(Boolean)
+                  .join(" / ")
+              : draft.eventDescription,
         }),
       });
       const payload = (await response.json()) as { duplicates?: Duplicate[] };
@@ -336,46 +464,42 @@ export function ImportBetslipForm({
     }
   }
 
+  const serializedLegs = JSON.stringify(
+    draft.parlayLegs.map((leg, index) => ({
+      legNumber: index + 1,
+      sportKey: leg.sportKey,
+      competitionKey: leg.competitionKey,
+      eventDescription: leg.eventDescription,
+      eventDate: isoOrEmpty(leg.eventDate),
+      selection: leg.selection,
+      selectionKey: leg.selectionKey,
+      marketType: leg.marketType,
+      line: leg.marketType === "moneyline" || leg.line === "" ? null : Number(leg.line),
+      americanOdds: Number(leg.americanOdds),
+      result: leg.result,
+      providerEventId: leg.providerEventId,
+    })),
+  );
+
   return (
     <form
       action={createImportedWager}
       className="form-stack import-betslip-form"
+      encType="multipart/form-data"
       onSubmit={reviewing ? undefined : reviewDraft}
     >
       <input type="hidden" name="confirmed" value={reviewing ? "true" : "false"} />
+      {!reviewing ? <input type="hidden" name="ticketType" value={draft.ticketType} /> : null}
       <input type="hidden" name="importMethod" value={method} />
       <input type="hidden" name="eventDateUtc" value={isoOrEmpty(draft.eventDate)} />
       <input type="hidden" name="wagerDateUtc" value={isoOrEmpty(effectiveWagerDate)} />
       <input type="hidden" name="canonicalEventId" value={draft.providerEventId} />
-      {step !== "source" ? (
-        <>
-          <input type="hidden" name="sportsbookId" value={draft.sportsbookId} />
-          <input type="hidden" name="otherSportsbookName" value={draft.otherSportsbookName} />
-          <input type="hidden" name="sportsbookBetId" value={draft.sportsbookBetId} />
-        </>
-      ) : null}
-      {step !== "event" ? (
-        <>
-          <input type="hidden" name="sportKey" value={draft.sportKey} />
-          <input type="hidden" name="competitionKey" value={draft.competitionKey} />
-          <input type="hidden" name="eventDescription" value={draft.eventDescription} />
-          <input type="hidden" name="eventDate" value={draft.eventDate} />
-          <input type="hidden" name="providerEventId" value={draft.providerEventId} />
-        </>
-      ) : null}
-      {step !== "market" ? (
-        <>
-          <input type="hidden" name="marketType" value={draft.marketType} />
-          <input type="hidden" name="selection" value={draft.selection} />
-          <input type="hidden" name="selectionKey" value={draft.selectionKey} />
-          <input type="hidden" name="line" value={draft.line} />
-        </>
-      ) : null}
+      <input type="hidden" name="parlayLegs" value={serializedLegs} />
 
       <div className="import-methods" aria-label="Import entry path">
         {(
           [
-            ["screenshot", "Upload Screenshot"],
+            ["screenshot", "Upload Betslip Screenshot"],
             ["paste", "Paste Bet Text"],
             ["entry", "Enter Manually"],
           ] as const
@@ -384,6 +508,7 @@ export function ImportBetslipForm({
             className={method === value ? "pill active" : "pill"}
             key={value}
             type="button"
+            aria-label={value === "screenshot" ? "Upload Screenshot" : undefined}
             onClick={() => chooseMethod(value)}
           >
             {label}
@@ -412,8 +537,9 @@ export function ImportBetslipForm({
         <div className="notice">
           <strong>Private screenshot review</strong>
           <p>
-            Upload screenshot → local OCR → editable review draft → confirm. OCR runs in your
-            browser with open-source tooling; the image is not sent to a paid OCR or vision API.
+            Upload screenshot → local preprocessing → OCR → editable review draft → confirm. OCR
+            runs in your browser with free open-source tooling; the image is never sent to a paid
+            OCR or vision API.
           </p>
           <label>
             Betslip screenshot
@@ -437,11 +563,6 @@ export function ImportBetslipForm({
             <p role="status">Processing screenshot locally… {processingProgress}%</p>
           ) : null}
           {extractionMessage ? <p role="status">{extractionMessage}</p> : null}
-          {extractedTicketType === "parlay" ? (
-            <p className="notice warning" role="status">
-              A parlay was detected. Review each leg in the parlay importer below before saving.
-            </p>
-          ) : null}
           {extractionWarnings.length ? (
             <ul className="extraction-warnings">
               {extractionWarnings.map((warning) => (
@@ -451,6 +572,7 @@ export function ImportBetslipForm({
           ) : null}
         </div>
       ) : null}
+
       {method === "paste" ? (
         <div className="paste-import">
           <label className={inputClass}>
@@ -460,7 +582,7 @@ export function ImportBetslipForm({
               value={draft.rawText}
               onChange={(event) => set("rawText", event.target.value)}
               rows={4}
-              placeholder="Paste the betslip text here; use the guided fields to verify it."
+              placeholder="Paste the betslip text here; the importer will identify a straight or parlay draft."
             />
           </label>
           <button
@@ -482,154 +604,189 @@ export function ImportBetslipForm({
         </div>
       ) : null}
 
-      {step === "source" ? (
-        <section className="guided-step" aria-label="Sportsbook step">
-          <h3>1. Sportsbook</h3>
-          <label>
-            Sportsbook
-            <select
-              name="sportsbookId"
-              value={draft.sportsbookId}
-              onChange={(event) => set("sportsbookId", event.target.value)}
-            >
-              <option value="fanduel">FanDuel</option>
-              <option value="draftkings">DraftKings</option>
-              <option value="betmgm">BetMGM</option>
-              <option value="caesars">Caesars</option>
-              <option value="other">Other</option>
-            </select>
-          </label>
-          {draft.sportsbookId === "other" ? (
-            <label>
-              Other sportsbook name
-              <input
-                name="otherSportsbookName"
-                value={draft.otherSportsbookName}
-                onChange={(event) => set("otherSportsbookName", event.target.value)}
-              />
-            </label>
-          ) : (
-            <input type="hidden" name="otherSportsbookName" value="" />
-          )}
-          <label>
-            Sportsbook bet ID (optional)
-            <input
-              name="sportsbookBetId"
-              value={draft.sportsbookBetId}
-              onChange={(event) => set("sportsbookBetId", event.target.value)}
-            />
-          </label>
-        </section>
+      {step !== "economics" ? (
+        <>
+          <input type="hidden" name="sportsbookId" value={draft.sportsbookId} />
+          <input type="hidden" name="otherSportsbookName" value={draft.otherSportsbookName} />
+          <input type="hidden" name="sportsbookBetId" value={draft.sportsbookBetId} />
+          <input type="hidden" name="verificationStatus" value={draft.verificationStatus} />
+          <input type="hidden" name="groupId" value={draft.groupId} />
+          <input type="hidden" name="userNotes" value={draft.userNotes} />
+        </>
       ) : null}
 
       {step === "event" ? (
         <section className="guided-step" aria-label="Event step">
-          <h3>2. Find the event</h3>
-          <CachedEventSearch
-            events={canonicalEvents}
-            selectedEventId={draft.providerEventId}
+          <h3>1. Find the event</h3>
+          {draft.ticketType === "parlay" ? (
+            <ParlayLegEditor
+              legs={draft.parlayLegs}
+              canonicalEvents={canonicalEvents}
+              competitions={competitions}
+              nowIso={nowIso}
+              onChooseEvent={chooseLegEvent}
+              onUpdate={updateLeg}
+              onAdd={() =>
+                setDraft((current) => ({
+                  ...current,
+                  parlayLegs: [...current.parlayLegs, emptyLeg(firstCompetition)],
+                }))
+              }
+              onRemove={(index) =>
+                setDraft((current) => ({
+                  ...current,
+                  parlayLegs: current.parlayLegs.filter(
+                    (_, candidateIndex) => candidateIndex !== index,
+                  ),
+                }))
+              }
+            />
+          ) : (
+            <>
+              <CachedEventSearch
+                events={canonicalEvents}
+                selectedEventId={draft.providerEventId}
+                nowIso={nowIso}
+                onSelect={chooseCanonicalEvent}
+              />
+              {selectedCanonicalEvent ? (
+                <div className="canonical-event-summary">
+                  <strong>Canonical event selected</strong>
+                  <span>
+                    {selectedCanonicalEvent.awayTeam} at {selectedCanonicalEvent.homeTeam} ·{" "}
+                    {selectedCanonicalEvent.competitionName}
+                  </span>
+                  <small>Event ID: {selectedCanonicalEvent.providerEventId}</small>
+                </div>
+              ) : null}
+              <details className="fallback-event" open={!draft.providerEventId}>
+                <summary>Can&apos;t find my event</summary>
+                <div className="form-grid">
+                  <label>
+                    Sport
+                    <select
+                      name="sportKey"
+                      value={draft.sportKey}
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          sportKey: event.target.value,
+                          competitionKey:
+                            competitions.find((item) => item.sport === event.target.value)?.id ??
+                            "",
+                        }))
+                      }
+                    >
+                      <option value="soccer">Soccer</option>
+                      <option value="football">Football</option>
+                      <option value="basketball">Basketball</option>
+                      <option value="hockey">Hockey</option>
+                    </select>
+                  </label>
+                  <label>
+                    Competition
+                    <select
+                      name="competitionKey"
+                      value={draft.competitionKey}
+                      onChange={(event) => set("competitionKey", event.target.value)}
+                    >
+                      {competitionOptions.map((competition) => (
+                        <option key={competition.id} value={competition.id}>
+                          {competition.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className={inputClass}>
+                    Event or teams
+                    <input
+                      name="eventDescription"
+                      value={draft.eventDescription}
+                      onChange={(event) => set("eventDescription", event.target.value)}
+                      required
+                    />
+                  </label>
+                  <label>
+                    Kickoff
+                    <input
+                      name="eventDate"
+                      type="datetime-local"
+                      value={draft.eventDate}
+                      onChange={(event) => set("eventDate", event.target.value)}
+                      required
+                    />
+                  </label>
+                  <label>
+                    Canonical event ID (optional)
+                    <input
+                      name="providerEventId"
+                      value={draft.providerEventId}
+                      onChange={(event) => set("providerEventId", event.target.value)}
+                      maxLength={160}
+                    />
+                    <small className="muted">
+                      Matched supported events become Auto settlement ready.
+                    </small>
+                  </label>
+                </div>
+              </details>
+            </>
+          )}
+        </section>
+      ) : (
+        <>
+          <input type="hidden" name="sportKey" value={draft.sportKey} />
+          <input type="hidden" name="competitionKey" value={draft.competitionKey} />
+          <input type="hidden" name="eventDescription" value={draft.eventDescription} />
+          <input type="hidden" name="eventDate" value={draft.eventDate} />
+          <input type="hidden" name="providerEventId" value={draft.providerEventId} />
+        </>
+      )}
+
+      {step === "market" && draft.ticketType === "parlay" ? (
+        <section className="guided-step" aria-label="Parlay market step">
+          <h3>2. Review each parlay market</h3>
+          <ParlayLegEditor
+            legs={draft.parlayLegs}
+            canonicalEvents={canonicalEvents}
+            competitions={competitions}
             nowIso={nowIso}
-            onSelect={chooseCanonicalEvent}
+            compact
+            onChooseEvent={chooseLegEvent}
+            onUpdate={updateLeg}
+            onAdd={() =>
+              setDraft((current) => ({
+                ...current,
+                parlayLegs: [...current.parlayLegs, emptyLeg(firstCompetition)],
+              }))
+            }
+            onRemove={(index) =>
+              setDraft((current) => ({
+                ...current,
+                parlayLegs: current.parlayLegs.filter(
+                  (_, candidateIndex) => candidateIndex !== index,
+                ),
+              }))
+            }
           />
-          {selectedCanonicalEvent ? (
-            <div className="canonical-event-summary">
-              <strong>Canonical event selected</strong>
-              <span>
-                {selectedCanonicalEvent.awayTeam} at {selectedCanonicalEvent.homeTeam} ·{" "}
-                {selectedCanonicalEvent.competitionName}
-              </span>
-              <small>Event ID: {selectedCanonicalEvent.providerEventId}</small>
-            </div>
-          ) : null}
-          <details className="fallback-event" open={!draft.providerEventId}>
-            <summary>Can&apos;t find my event</summary>
-            <div className="form-grid">
-              <label>
-                Sport
-                <select
-                  name="sportKey"
-                  value={draft.sportKey}
-                  onChange={(event) => {
-                    setDraft((current) => ({
-                      ...current,
-                      sportKey: event.target.value,
-                      competitionKey:
-                        competitions.find((item) => item.sport === event.target.value)?.id ?? "",
-                    }));
-                  }}
-                >
-                  <option value="soccer">Soccer</option>
-                  <option value="football">Football</option>
-                  <option value="basketball">Basketball</option>
-                  <option value="hockey">Hockey</option>
-                </select>
-              </label>
-              <label>
-                Competition
-                <select
-                  name="competitionKey"
-                  value={draft.competitionKey}
-                  onChange={(event) => set("competitionKey", event.target.value)}
-                >
-                  {competitionOptions.map((competition) => (
-                    <option key={competition.id} value={competition.id}>
-                      {competition.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className={inputClass}>
-                Event or teams
-                <input
-                  name="eventDescription"
-                  value={draft.eventDescription}
-                  onChange={(event) => set("eventDescription", event.target.value)}
-                  required
-                />
-              </label>
-              <label>
-                Kickoff
-                <input
-                  name="eventDate"
-                  type="datetime-local"
-                  value={draft.eventDate}
-                  onChange={(event) => set("eventDate", event.target.value)}
-                  required
-                />
-              </label>
-              <label>
-                Canonical event ID (optional)
-                <input
-                  name="providerEventId"
-                  value={draft.providerEventId}
-                  onChange={(event) => set("providerEventId", event.target.value)}
-                  maxLength={160}
-                />
-                <small className="muted">
-                  Matched supported events become Auto settlement ready.
-                </small>
-              </label>
-            </div>
-          </details>
         </section>
       ) : null}
-
-      {step === "market" ? (
+      {step === "market" && draft.ticketType === "straight" ? (
         <section className="guided-step" aria-label="Market step">
-          <h3>3. Market and selection</h3>
+          <h3>2. Market and selection</h3>
           <div className="form-grid">
             <label>
               Market
               <select
                 name="marketType"
                 value={draft.marketType}
-                onChange={(event) => {
+                onChange={(event) =>
                   setDraft((current) => ({
                     ...current,
                     marketType: event.target.value,
                     line: event.target.value === "moneyline" ? "" : current.line,
-                  }));
-                }}
+                  }))
+                }
               >
                 <option value="moneyline">Moneyline</option>
                 <option value="spread">Spread / Handicap</option>
@@ -676,21 +833,30 @@ export function ImportBetslipForm({
         </section>
       ) : null}
 
+      {step !== "market" ? (
+        <>
+          <input type="hidden" name="marketType" value={draft.marketType} />
+          <input type="hidden" name="selection" value={draft.selection} />
+          <input type="hidden" name="selectionKey" value={draft.selectionKey} />
+          <input type="hidden" name="line" value={draft.line} />
+        </>
+      ) : null}
+
       {step === "economics" ? (
         <section className="guided-step" aria-label="Wager economics step">
-          <h3>4. Enter any TWO values</h3>
+          <h3>3. Enter any TWO values</h3>
           <p className="muted">
-            Stake, American odds, or payout/return. The third is calculated exactly.
+            Stake, American odds, or Total return. The third is calculated exactly.
           </p>
           <div className="form-grid">
             <label>
-              Stake (USD)
+              Stake (source USD)
               <input
                 name="stakeDollars"
                 inputMode="decimal"
                 value={draft.stakeDollars}
                 onChange={(event) => setEconomicField("stakeDollars", event.target.value)}
-                placeholder="e.g. 25.00"
+                placeholder="e.g. 8.00"
               />
             </label>
             <label>
@@ -701,17 +867,17 @@ export function ImportBetslipForm({
                 step="1"
                 value={draft.americanOdds}
                 onChange={(event) => setEconomicField("americanOdds", event.target.value)}
-                placeholder="e.g. -110"
+                placeholder="e.g. -170"
               />
             </label>
             <label>
-              Payout / return (USD)
+              Total return
               <input
                 name="returnDollars"
                 inputMode="decimal"
                 value={draft.returnDollars}
                 onChange={(event) => setEconomicField("returnDollars", event.target.value)}
-                placeholder="e.g. 47.73"
+                placeholder="Stake + profit, e.g. 12.71"
               />
             </label>
             <label>
@@ -729,7 +895,7 @@ export function ImportBetslipForm({
               <select
                 name="status"
                 value={draft.status}
-                onChange={(event) => set("status", event.target.value)}
+                onChange={(event) => set("status", event.target.value as Result)}
               >
                 <option value="open">Open</option>
                 <option value="won">Won</option>
@@ -738,22 +904,86 @@ export function ImportBetslipForm({
                 <option value="void">Void</option>
               </select>
             </label>
-            <label>
-              Optional group
-              <select
-                name="groupId"
-                value={draft.groupId}
-                onChange={(event) => set("groupId", event.target.value)}
-              >
-                <option value="">Private — only me</option>
-                {groups.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.name}
-                  </option>
-                ))}
-              </select>
-            </label>
           </div>
+          <details className="more-details">
+            <summary>More details (optional)</summary>
+            <div className="form-grid">
+              <label>
+                Sportsbook
+                <select
+                  name="sportsbookId"
+                  value={draft.sportsbookId}
+                  onChange={(event) => set("sportsbookId", event.target.value)}
+                >
+                  <option value="">Unknown / not provided</option>
+                  <option value="fanduel">FanDuel</option>
+                  <option value="draftkings">DraftKings</option>
+                  <option value="betmgm">BetMGM</option>
+                  <option value="caesars">Caesars</option>
+                  <option value="other">Other</option>
+                </select>
+              </label>
+              {draft.sportsbookId === "other" ? (
+                <label>
+                  Other sportsbook name
+                  <input
+                    name="otherSportsbookName"
+                    value={draft.otherSportsbookName}
+                    onChange={(event) => set("otherSportsbookName", event.target.value)}
+                  />
+                </label>
+              ) : null}
+              <label>
+                Sportsbook bet ID (optional)
+                <input
+                  name="sportsbookBetId"
+                  value={draft.sportsbookBetId}
+                  onChange={(event) => set("sportsbookBetId", event.target.value)}
+                />
+              </label>
+              <label>
+                Verification
+                <select
+                  name="verificationStatus"
+                  value={draft.verificationStatus}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      verificationStatus: event.target.value as Draft["verificationStatus"],
+                    }))
+                  }
+                >
+                  <option value="unverified">Unverified</option>
+                  <option value="user_attested">User attested</option>
+                </select>
+              </label>
+              <label>
+                Optional group
+                <select
+                  name="groupId"
+                  value={draft.groupId}
+                  onChange={(event) => set("groupId", event.target.value)}
+                >
+                  <option value="">Private — only me</option>
+                  {groups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <label className={inputClass}>
+              Notes (optional)
+              <textarea
+                name="userNotes"
+                value={draft.userNotes}
+                onChange={(event) => set("userNotes", event.target.value)}
+                rows={2}
+                maxLength={2000}
+              />
+            </label>
+          </details>
           {economics.value ? (
             <div className="economics-preview" aria-live="polite">
               <strong>
@@ -761,7 +991,8 @@ export function ImportBetslipForm({
               </strong>
               <span>
                 {economics.value.americanOdds > 0 ? "+" : ""}
-                {economics.value.americanOdds} odds · {economics.value.returnDollars} USD payout
+                {economics.value.americanOdds} odds · {economics.value.returnDollars} USD total
+                return
               </span>
               {economics.value.calculatedField ? (
                 <small>Calculated: {economics.value.calculatedField}</small>
@@ -772,25 +1003,25 @@ export function ImportBetslipForm({
               {economics.error || "Enter any two values to preview the calculated third."}
             </p>
           )}
-          <label className={inputClass}>
-            Notes (optional)
-            <textarea
-              name="userNotes"
-              value={draft.userNotes}
-              onChange={(event) => set("userNotes", event.target.value)}
-              rows={2}
-              maxLength={2000}
-            />
-          </label>
         </section>
-      ) : null}
+      ) : (
+        <>
+          <input type="hidden" name="stakeDollars" value={draft.stakeDollars} />
+          <input type="hidden" name="americanOdds" value={draft.americanOdds} />
+          <input type="hidden" name="returnDollars" value={draft.returnDollars} />
+          <input type="hidden" name="wagerDate" value={effectiveWagerDate} />
+          <input type="hidden" name="status" value={draft.status} />
+          <input type="hidden" name="verificationStatus" value={draft.verificationStatus} />
+          <input type="hidden" name="groupId" value={draft.groupId} />
+          <input type="hidden" name="userNotes" value={draft.userNotes} />
+        </>
+      )}
 
       {stepError ? (
         <p className="notice error" role="alert">
           {stepError}
         </p>
       ) : null}
-
       <p className="muted import-normalization-note">
         Normalization: $1 USD = 1 Vial. Imported source dollars never debit or credit the simulated
         bankroll.
@@ -798,7 +1029,7 @@ export function ImportBetslipForm({
 
       {!reviewing ? (
         <div className="guided-step-actions">
-          {step !== "source" ? (
+          {step !== "event" ? (
             <button className="button secondary" type="button" onClick={previousStep}>
               Back
             </button>
@@ -814,9 +1045,52 @@ export function ImportBetslipForm({
             Nothing has been saved yet. Confirm the editable fields above, then choose the final
             action.
           </p>
+          <label>
+            Ticket type {ticketTypeUncertain ? "(please confirm)" : ""}
+            <select
+              name="ticketType"
+              value={draft.ticketType}
+              onChange={(event) => selectTicketType(event.target.value as TicketType)}
+            >
+              <option value="straight">Straight</option>
+              <option value="parlay">Parlay</option>
+            </select>
+          </label>
+          {draft.ticketType === "parlay" ? (
+            <div className="parlay-review-editor">
+              <p className="muted">
+                Review every extracted leg. Correct or add legs before saving.
+              </p>
+              <ParlayLegEditor
+                legs={draft.parlayLegs}
+                canonicalEvents={canonicalEvents}
+                competitions={competitions}
+                nowIso={nowIso}
+                onChooseEvent={chooseLegEvent}
+                onUpdate={updateLeg}
+                onAdd={() =>
+                  setDraft((current) => ({
+                    ...current,
+                    parlayLegs: [...current.parlayLegs, emptyLeg(firstCompetition)],
+                  }))
+                }
+                onRemove={(index) =>
+                  setDraft((current) => ({
+                    ...current,
+                    parlayLegs: current.parlayLegs.filter(
+                      (_, candidateIndex) => candidateIndex !== index,
+                    ),
+                  }))
+                }
+              />
+            </div>
+          ) : null}
           <p>
-            {draft.eventDescription} · {draft.selection} · {draft.stakeDollars} USD ·{" "}
-            {draft.americanOdds} · {draft.returnDollars} USD payout
+            {draft.ticketType === "parlay"
+              ? `${draft.parlayLegs.length} legs`
+              : `${draft.eventDescription} · ${draft.selection}`}{" "}
+            · {draft.stakeDollars} USD · {draft.americanOdds} · {draft.returnDollars} USD total
+            return
           </p>
           {checkingDuplicates ? <p>Checking for likely duplicates…</p> : null}
           {duplicates.length ? (
@@ -825,7 +1099,8 @@ export function ImportBetslipForm({
               <ul>
                 {duplicates.map((duplicate) => (
                   <li key={duplicate.wager_id}>
-                    {duplicate.sportsbook_name} · {duplicate.duplicate_signal}
+                    {duplicate.sportsbook_name || "Unknown sportsbook"} ·{" "}
+                    {duplicate.duplicate_signal}
                   </li>
                 ))}
               </ul>
@@ -861,5 +1136,178 @@ export function ImportBetslipForm({
         </section>
       )}
     </form>
+  );
+}
+
+function ParlayLegEditor({
+  legs,
+  canonicalEvents,
+  competitions,
+  nowIso,
+  compact = false,
+  onChooseEvent,
+  onUpdate,
+  onAdd,
+  onRemove,
+}: {
+  legs: ParlayLeg[];
+  canonicalEvents: CachedEvent[];
+  competitions: Competition[];
+  nowIso: string;
+  compact?: boolean;
+  onChooseEvent: (index: number, providerEventId: string) => void;
+  onUpdate: (index: number, patch: Partial<ParlayLeg>) => void;
+  onAdd: () => void;
+  onRemove: (index: number) => void;
+}) {
+  return (
+    <div className="parlay-leg-editor">
+      {legs.map((leg, index) => {
+        const selectedCompetition = competitions.find(
+          (competition) => competition.id === leg.competitionKey,
+        );
+        return (
+          <fieldset className="parlay-leg-fieldset" key={`${index}-${leg.providerEventId}`}>
+            <legend>Leg {index + 1}</legend>
+            {!compact ? (
+              <CachedEventSearch
+                inputId={`cached-event-query-${index}`}
+                events={canonicalEvents}
+                selectedEventId={leg.providerEventId}
+                nowIso={nowIso}
+                onSelect={(id) => onChooseEvent(index, id)}
+              />
+            ) : null}
+            <div className="form-grid">
+              <label className="form-wide">
+                Event or matchup
+                <input
+                  value={leg.eventDescription}
+                  onChange={(event) => onUpdate(index, { eventDescription: event.target.value })}
+                  required
+                />
+              </label>
+              <label>
+                Competition
+                <select
+                  value={leg.competitionKey}
+                  onChange={(event) => {
+                    const competition = competitions.find(
+                      (candidate) => candidate.id === event.target.value,
+                    );
+                    onUpdate(index, {
+                      competitionKey: event.target.value,
+                      sportKey: competition?.sport ?? leg.sportKey,
+                    });
+                  }}
+                >
+                  {competitions.map((competition) => (
+                    <option key={competition.id} value={competition.id}>
+                      {competition.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Kickoff
+                <input
+                  type="datetime-local"
+                  value={leg.eventDate}
+                  onChange={(event) => onUpdate(index, { eventDate: event.target.value })}
+                  required
+                />
+              </label>
+              <label>
+                Market
+                <select
+                  value={leg.marketType}
+                  onChange={(event) =>
+                    onUpdate(index, {
+                      marketType: event.target.value,
+                      line: event.target.value === "moneyline" ? "" : leg.line,
+                    })
+                  }
+                >
+                  <option value="moneyline">Moneyline</option>
+                  <option value="spread">Spread / Handicap</option>
+                  <option value="total">Total</option>
+                </select>
+              </label>
+              <label>
+                Selection
+                <input
+                  value={leg.selection}
+                  onChange={(event) => onUpdate(index, { selection: event.target.value })}
+                  required
+                />
+              </label>
+              <label>
+                Line
+                <input
+                  type="number"
+                  step="0.0001"
+                  value={leg.line}
+                  onChange={(event) => onUpdate(index, { line: event.target.value })}
+                  placeholder={leg.marketType === "moneyline" ? "Not used" : "Required"}
+                  required={leg.marketType !== "moneyline"}
+                />
+              </label>
+              <label>
+                American odds
+                <input
+                  type="number"
+                  step="1"
+                  value={leg.americanOdds}
+                  onChange={(event) => onUpdate(index, { americanOdds: event.target.value })}
+                  required
+                />
+              </label>
+              <label>
+                Grading side
+                <select
+                  value={leg.selectionKey}
+                  onChange={(event) => onUpdate(index, { selectionKey: event.target.value })}
+                >
+                  <option value="">Needs review</option>
+                  <option value="home">Home</option>
+                  <option value="away">Away</option>
+                  <option value="draw">Draw</option>
+                  <option value="over">Over</option>
+                  <option value="under">Under</option>
+                </select>
+              </label>
+              <label>
+                Canonical event ID
+                <input
+                  value={leg.providerEventId}
+                  onChange={(event) => onUpdate(index, { providerEventId: event.target.value })}
+                  maxLength={160}
+                  placeholder="Optional for matching"
+                />
+              </label>
+            </div>
+            {selectedCompetition ? (
+              <small className="muted">
+                {selectedCompetition.name} · canonical selection enables Auto settlement ready when
+                every leg is supported.
+              </small>
+            ) : null}
+            {legs.length > 2 ? (
+              <button className="text-button" type="button" onClick={() => onRemove(index)}>
+                Remove leg
+              </button>
+            ) : null}
+          </fieldset>
+        );
+      })}
+      <button
+        className="button secondary"
+        type="button"
+        disabled={legs.length >= 12}
+        onClick={onAdd}
+      >
+        Add parlay leg
+      </button>
+    </div>
   );
 }

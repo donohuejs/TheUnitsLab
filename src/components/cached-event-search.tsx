@@ -43,11 +43,13 @@ export function CachedEventSearch({
   selectedEventId,
   nowIso,
   onSelect,
+  inputId = "cached-event-query",
 }: {
   events: CachedEvent[];
   selectedEventId: string;
   nowIso: string;
   onSelect: (providerEventId: string) => void;
+  inputId?: string;
 }) {
   const [query, setQuery] = useState("");
   const now = new Date(nowIso).getTime();
@@ -72,10 +74,10 @@ export function CachedEventSearch({
 
   return (
     <div className="cached-event-search">
-      <label htmlFor="cached-event-query">
+      <label htmlFor={inputId}>
         Search cached events
         <input
-          id="cached-event-query"
+          id={inputId}
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}

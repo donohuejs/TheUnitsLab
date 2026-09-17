@@ -226,6 +226,38 @@ surface. Group/leaderboard privacy remains governed by the existing Phase 6/7 RP
 dollar values are only shown in the owner's My Bets/import surfaces and are not exposed to other
 participants.
 
+### Release-candidate fix patch 4 boundaries
+
+Patch 4 is the final focused pre-UAT layer after Fix Patch 3; it does not start Phase 9 and does not
+rewrite an applied migration. The new `20260926000000_release_candidate_fix_patch_4.sql` migration
+makes sportsbook identity nullable on external wagers and updates the existing external/imported
+creation boundaries and immutable-field trigger to accept an unknown sportsbook without weakening
+ownership, RLS, grants, ticket immutability, canonical matching, settlement, or bankroll isolation.
+The database stores a stable `Unknown sportsbook` display value when no name is supplied, while a
+missing catalog ID remains distinguishable from a configured sportsbook.
+
+The import surface is one universal `ImportBetslipForm`. Its local-only OCR adapter preprocesses the
+private image through orientation-aware resize/upscale, grayscale/contrast enhancement, and threshold
+passes before running one local Tesseract worker. Progress, partial extraction, uncertainty, and
+failure are represented in the UI; the normalized draft is always editable and requires explicit
+confirmation. Straight and parlay drafts share the save action. Parlay legs preserve event,
+competition, kickoff, market, selection, line, American odds, grading side, provider event ID, and
+selection key when known; the existing parlay RPC validates and stores them immutably as imported
+records. The FanDuel receipt example is covered by a parser acceptance test.
+
+Manual import begins with `CachedEventSearch`, using normalized event identity as the preferred
+canonical source, and exposes a freeform fallback only when the user cannot find the event. Progressive
+fields keep optional metadata out of the primary path. `calculateImportedEconomics` remains the exact
+integer minor-unit boundary for any two of stake, American odds, and total return, with total return
+defined as stake plus profit.
+
+Leaderboards render a compact `LeaderboardControls` summary and a native mobile Filters sheet before
+the ranking surface. Desktop tables remain available, while narrow layouts render ranked participant
+cards with no horizontal scroll. Group discovery and invite actions are owned by a compact
+`ManageGroupDialog`; the existing server actions, reusable invite tokens, expiry, revocation, usage
+limits, and token-hash security model are unchanged. This patch adds no analytics dimensions, provider
+requests, client authorization, or paid dependency.
+
 ### Release-candidate fix patch 1 boundaries
 
 This is a focused production-smoke-test blocker patch after UX Patch 3 and before UAT; it does not

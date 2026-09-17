@@ -228,6 +228,38 @@ bankroll isolation or settlement idempotency, adding provider polling, or adding
   by source contracts and database authorization tests; no real account or screenshot is used during
   browser smoke review.
 
+### Approved release-candidate fix patch 4 clarification 2026-09-17
+
+The owner explicitly authorizes this final pre-UAT release-candidate fix patch. It remains within the
+current phase gate and does not start Phase 9. The patch standardizes betslip import and the mobile
+leaderboard experience while preserving the governing virtual-only, auditable product boundaries.
+
+- `Upload Betslip Screenshot` is one universal entry flow for straight and parlay tickets. Free,
+  browser-local OCR uses orientation handling, bounded resize/upscale, grayscale/contrast and
+  threshold passes, followed by an editable review draft. OCR may infer ticket type and probable parlay
+  legs, but uncertainty is surfaced and the user confirms every extracted field before save. The
+  FanDuel receipt shape (Rutgers at Boston College; Boston College -2.5 Alternate Spread; -170; $8;
+  $12.71 total return; Sep 11 at 7:30 PM ET) is an acceptance target, not a provider integration.
+- A failed or partial OCR run remains private, records a clear state/progress message, and falls back
+  to a guided draft. Screenshots are never sent to a paid OCR or vision API. Screenshot import and
+  manual entry share the same review and save boundary.
+- Sportsbook metadata is optional. Unknown sportsbooks remain saveable as `Unknown sportsbook`; this
+  does not block later canonical matching or manual settlement. Manual import starts with cached-event
+  search, has a `Can't find my event` fallback, and progressively reveals market, selection, line,
+  pricing, and optional details. Any two of stake, American odds, and total return calculate the third
+  using exact deterministic arithmetic; total return includes stake plus profit.
+- Canonical supported matches are marked Auto settlement ready only when their event, market, selection,
+  and pricing evidence is sufficient. Unsupported, unmatched, incomplete, prop, teaser/SGP, cash-out,
+  and promotional records remain manual-review records. Imported records never affect the virtual
+  bankroll.
+- Leaderboards prioritize rankings. Filters are compact controls with a mobile Filters sheet; mobile
+  rankings use dense participant cards. Create Group, Join Group, and Invite remain available behind a
+  compact Manage Group dialog/drawer. Existing reusable, expiring, hashed-token invite behavior is
+  preserved.
+- Release validation covers 390x844 and 375x812 mobile widths, security/authorization regressions,
+  exact economics, OCR/parser contracts, the local database suites, four concurrency suites, lint,
+  typecheck, build, audit, and the existing Phase 0–8 regression suite. No Phase 9 work is included.
+
 ## 1 Project purpose
 
 Build a private, entertainment-focused sports wagering simulator and betting-performance tracker.

@@ -71,6 +71,15 @@ bounded redemption, expiry/revocation rejection, usage counts, grants, and token
 prior migration is edited, and no wager, ledger, provider/cache, quota, storage, or settlement path
 is changed.
 
+Release-candidate fix patch 4 adds the forward-only migration
+`20260926000000_release_candidate_fix_patch_4.sql`. It makes external sportsbook identity optional,
+updates the external and imported wager creation functions to accept a null catalog ID, and keeps
+`Unknown sportsbook` as the stable display fallback. The migration also makes the immutable-field
+trigger null-safe; ownership, RLS, grants, imported canonical matching, settlement idempotency, and
+virtual-bankroll isolation remain unchanged. `supabase/tests/release_candidate_fix_patch_4.sql`
+verifies the nullable schema, authenticated creation with an unknown sportsbook, persisted display
+fallback, no bankroll mutation, and anonymous execute denial. No prior migration is edited.
+
 ## Source of truth
 
 Ordered SQL files under `supabase/migrations` are the database source of truth. Configuration in a hosted dashboard is not sufficient. Migrations must include tables, constraints, functions, grants, Row Level Security enablement, policies, storage policies, and indexes needed by the corresponding phase.

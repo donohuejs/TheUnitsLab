@@ -6,7 +6,6 @@ import { summarizeExternalWagers } from "@/lib/external-wagers/calculations";
 import { hasPublicEnvironment } from "@/config/env.public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { AppNav } from "@/components/app-nav";
-import { ExternalParlayForm } from "@/components/external-parlay-form";
 import { ExternalParlayResultForm } from "@/components/external-parlay-result-form";
 import { ImportBetslipForm } from "@/components/import-betslip-form";
 import { LocalDateTime } from "@/components/local-date-time";
@@ -220,7 +219,7 @@ export default async function TrackBetPage({ searchParams }: Props) {
       </section>
 
       <section className="card track-form-card">
-        <h2>Import a straight betslip</h2>
+        <h2>Upload Betslip Screenshot or Enter Bet</h2>
         <ImportBetslipForm
           groups={(groups ?? []) as Group[]}
           competitions={coreCompetitions.map((competition) => ({
@@ -231,23 +230,6 @@ export default async function TrackBetPage({ searchParams }: Props) {
           canonicalEvents={canonicalEvents}
           nowLocal={nowLocal}
           nowIso={new Date().toISOString()}
-        />
-      </section>
-
-      <section className="card track-form-card">
-        <h2>Import a parlay betslip</h2>
-        <p className="muted">
-          Capture the accepted combined price and each normalized leg. Imported parlays remain
-          separate from the simulated Vial balance.
-        </p>
-        <ExternalParlayForm
-          groups={(groups ?? []) as Group[]}
-          competitions={coreCompetitions.map((competition) => ({
-            id: competition.id,
-            name: competition.name,
-            sport: competition.sport,
-          }))}
-          nowLocal={nowLocal}
         />
       </section>
 
@@ -320,7 +302,7 @@ export default async function TrackBetPage({ searchParams }: Props) {
                 </div>
                 <div>
                   <dt>Sportsbook</dt>
-                  <dd>{wager.sportsbook_name}</dd>
+                  <dd>{wager.sportsbook_name ?? "Unknown sportsbook"}</dd>
                 </div>
                 <div>
                   <dt>{wager.ticket_type === "parlay" ? "Original combined odds" : "Odds"}</dt>

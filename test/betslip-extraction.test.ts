@@ -67,4 +67,32 @@ describe("local betslip text extraction", () => {
       expect.arrayContaining([expect.stringContaining("2 probable legs were extracted")]),
     );
   });
+
+  it("recovers the prominent fields from a FanDuel-style straight receipt", () => {
+    const result = parseBetslipText(`
+      FanDuel
+      Rutgers @ Boston College
+      Alternate Spread
+      Boston College -2.5 -170
+      Stake: $8.00
+      Total Return: $12.71
+      Sep 11, 7:30 PM ET
+    `);
+
+    expect(result.ticketType).toBe("straight");
+    expect(result.fields).toMatchObject({
+      sportsbookId: "fanduel",
+      eventDescription: "Rutgers at Boston College",
+      selection: "Boston College",
+      marketType: "spread",
+      line: "-2.5",
+      americanOdds: "-170",
+      stakeDollars: "8.00",
+      returnDollars: "12.71",
+    });
+    expect(result.fields.eventDate).toBeTruthy();
+    expect(result.uncertainFields).not.toEqual(
+      expect.arrayContaining(["sportsbook", "event", "odds", "stake", "payout"]),
+    );
+  });
 });
