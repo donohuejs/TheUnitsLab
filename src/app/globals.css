@@ -493,6 +493,9 @@ textarea:focus {
 .top-nav {
   justify-content: flex-start;
   border-bottom: 1px solid var(--border);
+  gap: 1.25rem;
+  flex-wrap: nowrap;
+  min-width: 0;
   padding-bottom: 0.85rem;
 }
 
@@ -508,28 +511,18 @@ textarea:focus {
 .nav-brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  line-height: 0;
 }
 
 .nav-brand .brand-lockup {
-  display: inline-flex;
+  display: block;
 }
 
 .nav-brand .brand-lockup img {
-  width: 2rem;
-  height: 2rem;
-}
-
-.nav-brand-text {
-  color: var(--ink-strong);
-}
-
-.nav-brand span {
-  color: var(--accent);
-}
-
-.nav-brand-text span {
-  color: var(--accent);
+  display: block;
+  width: auto;
+  height: 80px;
+  object-fit: contain;
 }
 
 .mobile-nav {
@@ -683,16 +676,19 @@ textarea:focus {
 .nav-links {
   display: flex;
   flex: 1 1 auto;
-  flex-wrap: wrap;
-  gap: 0.35rem;
+  flex-wrap: nowrap;
+  gap: clamp(0.05rem, 0.3vw, 0.35rem);
+  min-width: 0;
 }
 
 .nav-link {
+  flex: 0 0 auto;
   border-radius: 999px;
-  padding: 0.45rem 0.7rem;
+  padding: 0.45rem clamp(0.3rem, 0.55vw, 0.7rem);
   color: #356153;
-  font-size: 0.9rem;
+  font-size: clamp(0.72rem, 0.78vw, 0.9rem);
   font-weight: 750;
+  white-space: nowrap;
   text-decoration: none;
 }
 
@@ -1596,6 +1592,21 @@ thead th {
   th,
   td {
     padding-inline: 0.45rem;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 900px) {
+  .top-nav {
+    gap: 0.55rem;
+  }
+
+  .nav-brand .brand-lockup img {
+    height: 64px;
+  }
+
+  .nav-link {
+    padding-inline: 0.25rem;
+    font-size: 0.72rem;
   }
 }
 

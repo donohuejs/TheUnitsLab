@@ -6,13 +6,21 @@ const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf
 describe("release-candidate fix patch 2 surfaces", () => {
   it("uses the approved reusable laboratory lockup", () => {
     const brand = read("../src/components/brand.tsx");
+    const appNav = read("../src/components/app-nav.tsx");
     const ui = read("../src/lib/ui.ts");
     const home = read("../src/app/page.tsx");
+    const css = read("../src/app/globals.css");
     expect(brand + ui).toContain("The Units Lab");
     expect(brand + ui).toContain("Experiment | Analyze | Improve");
     expect(brand).toContain("BrandLogo");
     expect(brand).not.toContain("🧪");
-    expect(home).toContain('variant="home"');
+    expect(appNav).toContain("<BrandLockup />");
+    expect(appNav).not.toContain("<BrandLockup compact />");
+    expect(home).not.toContain('variant="home"');
+    expect(home).not.toContain("home-lockup");
+    expect(css).toContain("height: 80px");
+    expect(css).toContain("flex-wrap: nowrap");
+    expect(css).toContain("@media (max-width: 760px)");
   });
 
   it("provides mobile navigation and responsive primary workflows", () => {

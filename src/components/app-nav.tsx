@@ -13,10 +13,7 @@ export function AppNav({ active, userId }: { active: string; userId: string }) {
   return (
     <nav className="top-nav" aria-label="Primary navigation">
       <Link className="nav-brand desktop-nav-brand" href="/" aria-label="The Units Lab home">
-        <BrandLockup compact />
-        <span className="nav-brand-text">
-          The Units <span>Lab</span>
-        </span>
+        <BrandLockup />
       </Link>
       <div className="nav-links">
         {navigation.map((item) => (

@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { AppNav } from "@/components/app-nav";
-import { BrandLockup } from "@/components/brand";
 import { SourceBadge, StatusBadge, TicketTypeBadge } from "@/components/status-badge";
 import { TeamMark } from "@/components/team-mark";
 import { hasPublicEnvironment } from "@/config/env.public";
@@ -67,8 +66,7 @@ export default async function HomePage() {
   const configured = hasPublicEnvironment(process.env);
   if (!configured) {
     return (
-      <main className="shell hero">
-        <BrandLockup variant="home" className="home-lockup" />
+      <main className="shell">
         <p className="eyebrow">Private entertainment and statistics</p>
         <h1 className="sr-only">{PRODUCT_NAME}</h1>
         <p className="hero-copy">
@@ -86,8 +84,7 @@ export default async function HomePage() {
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) {
     return (
-      <main className="shell hero">
-        <BrandLockup variant="home" className="home-lockup" />
+      <main className="shell">
         <p className="eyebrow">Private entertainment and statistics</p>
         <h1 className="sr-only">{PRODUCT_NAME}</h1>
         <p className="hero-copy">
@@ -154,7 +151,6 @@ export default async function HomePage() {
       ) : null}
       <header className="page-header dashboard-hero">
         <div>
-          <BrandLockup variant="home" className="home-lockup" />
           <p className="eyebrow">Your activity at a glance</p>
           <h1>Welcome back, {welcomeName(profile?.display_name)}</h1>
           <p className="muted">
