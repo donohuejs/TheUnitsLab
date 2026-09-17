@@ -49,6 +49,18 @@ records success, rejection, or already-settled audit evidence. It does not touch
 refund, idempotent retry, post-kickoff rejection, unchanged open status, and rejection audit. The
 migration is forward-only and must replay after Patch 3.
 
+Release-candidate fix patch 2 adds the forward-only migration
+`20260924000000_release_candidate_fix_patch_2.sql`. It extends immutable simulated leg snapshots with
+provider-anchor and versioned simulated-alternate-spread metadata, adds the server-authoritative
+adjusted-spread placement RPC and parlay validation, and adds canonical imported-wager readiness and
+automatic-settlement state without touching the virtual bankroll. Imported economics remain exact and
+separate from simulated ledger entries. Existing RLS, forced-RLS tables, least-privilege grants,
+private storage, cache leases, quota ledger, settlement idempotency, synthetic isolation, and group
+invite authorization are preserved. `supabase/tests/release_candidate_fix_patch_2.sql` verifies the
+new columns and checks, pricing monotonicity and metadata preservation, canonical imported readiness,
+bankroll isolation, grants, RLS, and anonymous denial. The migration must replay after
+`20260923000000_release_candidate_fix_patch_1.sql`; no applied migration is modified.
+
 ## Source of truth
 
 Ordered SQL files under `supabase/migrations` are the database source of truth. Configuration in a hosted dashboard is not sufficient. Migrations must include tables, constraints, functions, grants, Row Level Security enablement, policies, storage policies, and indexes needed by the corresponding phase.

@@ -18,6 +18,11 @@ const placementSchema = z.object({
     .int()
     .refine((odds) => odds >= 100 || odds <= -100),
   expectedLine: z.union([z.literal(""), z.coerce.number().finite()]),
+  anchorProviderLine: z.union([z.literal(""), z.coerce.number().finite()]).default(""),
+  anchorProviderAmericanOdds: z.union([z.literal(""), z.coerce.number().int()]).default(""),
+  pricingSource: z.enum(["provider", "simulated_alternate"]).default("provider"),
+  pricingModel: z.string().trim().max(80).default(""),
+  pricingModelVersion: z.string().trim().max(20).default(""),
   stake: z.string().trim(),
   groupId: z.union([z.literal(""), z.uuid()]),
 });
@@ -33,6 +38,11 @@ const parlayLegSchema = z.object({
     .int()
     .refine((odds) => odds >= 100 || odds <= -100),
   expectedLine: z.number().finite().nullable(),
+  anchorProviderLine: z.number().finite().nullable().optional(),
+  anchorProviderAmericanOdds: z.number().int().nullable().optional(),
+  pricingSource: z.enum(["provider", "simulated_alternate"]).optional().default("provider"),
+  pricingModel: z.string().trim().max(80).nullable().optional(),
+  pricingModelVersion: z.string().trim().max(20).nullable().optional(),
 });
 
 const parlayPlacementSchema = z.object({
@@ -67,6 +77,9 @@ function placementMessage(message: string) {
   }
   if (message.includes("INSUFFICIENT_BANKROLL")) return "Insufficient Vial balance.";
   if (message.includes("EVENT_ALREADY_STARTED")) return "This event has already started.";
+  if (message.includes("INVALID_SIMULATED_ALTERNATE")) {
+    return "The simulated alternate line is invalid or its provider anchor changed. Review it and try again.";
+  }
   if (message.includes("INVALID_GROUP_ASSOCIATION"))
     return "That group association is not authorized.";
   if (message.includes("OUTCOME_NOT_AVAILABLE") || message.includes("EVENT_NOT_AVAILABLE")) {
@@ -84,6 +97,11 @@ export async function placeStraightBet(formData: FormData) {
     selection: formValue(formData, "selection"),
     expectedAmericanOdds: formValue(formData, "expectedAmericanOdds"),
     expectedLine: formValue(formData, "expectedLine"),
+    anchorProviderLine: formValue(formData, "anchorProviderLine"),
+    anchorProviderAmericanOdds: formValue(formData, "anchorProviderAmericanOdds"),
+    pricingSource: formValue(formData, "pricingSource") || "provider",
+    pricingModel: formValue(formData, "pricingModel"),
+    pricingModelVersion: formValue(formData, "pricingModelVersion"),
     stake: formValue(formData, "stake"),
     groupId: formValue(formData, "groupId"),
   });
@@ -105,17 +123,39 @@ export async function placeStraightBet(formData: FormData) {
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) notice("/auth", "Please sign in to continue.");
 
-  const { data, error } = await supabase.rpc("place_simulated_straight_bet", {
-    p_competition_key: parsed.data.competitionKey,
-    p_event_id: parsed.data.eventId,
-    p_bookmaker_id: parsed.data.bookmakerId,
-    p_market_type: parsed.data.marketType,
-    p_selection: parsed.data.selection,
-    p_expected_american_odds: parsed.data.expectedAmericanOdds,
-    p_expected_line: parsed.data.expectedLine === "" ? null : parsed.data.expectedLine,
-    p_stake_units: stake,
-    p_group_id: parsed.data.groupId || null,
-  });
+  const adjusted = parsed.data.pricingSource === "simulated_alternate";
+  const { data, error } = await supabase.rpc(
+    adjusted ? "place_simulated_adjusted_spread_bet" : "place_simulated_straight_bet",
+    adjusted
+      ? {
+          p_competition_key: parsed.data.competitionKey,
+          p_event_id: parsed.data.eventId,
+          p_bookmaker_id: parsed.data.bookmakerId,
+          p_market_type: parsed.data.marketType,
+          p_selection: parsed.data.selection,
+          p_anchor_provider_line:
+            parsed.data.anchorProviderLine === "" ? null : parsed.data.anchorProviderLine,
+          p_anchor_provider_american_odds:
+            parsed.data.anchorProviderAmericanOdds === ""
+              ? null
+              : parsed.data.anchorProviderAmericanOdds,
+          p_adjusted_line: parsed.data.expectedLine === "" ? null : parsed.data.expectedLine,
+          p_expected_american_odds: parsed.data.expectedAmericanOdds,
+          p_stake_units: stake,
+          p_group_id: parsed.data.groupId || null,
+        }
+      : {
+          p_competition_key: parsed.data.competitionKey,
+          p_event_id: parsed.data.eventId,
+          p_bookmaker_id: parsed.data.bookmakerId,
+          p_market_type: parsed.data.marketType,
+          p_selection: parsed.data.selection,
+          p_expected_american_odds: parsed.data.expectedAmericanOdds,
+          p_expected_line: parsed.data.expectedLine === "" ? null : parsed.data.expectedLine,
+          p_stake_units: stake,
+          p_group_id: parsed.data.groupId || null,
+        },
+  );
   if (error || !data) {
     notice(`/sports/${parsed.data.competitionKey}`, placementMessage(error?.message ?? ""));
   }
@@ -155,17 +195,35 @@ export async function placeStraightBets(formData: FormData) {
   const submittedSlipKeys = parsed.data.slipKeys.split(",").filter(Boolean);
   const placedSlipKeys: string[] = [];
   for (const [index, leg] of parsed.data.legs.entries()) {
-    const { data, error } = await supabase.rpc("place_simulated_straight_bet", {
-      p_competition_key: leg.competitionKey,
-      p_event_id: leg.eventId,
-      p_bookmaker_id: leg.bookmakerId,
-      p_market_type: leg.marketType,
-      p_selection: leg.selection,
-      p_expected_american_odds: leg.expectedAmericanOdds,
-      p_expected_line: leg.expectedLine,
-      p_stake_units: stake,
-      p_group_id: parsed.data.groupId || null,
-    });
+    const adjusted = leg.pricingSource === "simulated_alternate";
+    const { data, error } = await supabase.rpc(
+      adjusted ? "place_simulated_adjusted_spread_bet" : "place_simulated_straight_bet",
+      adjusted
+        ? {
+            p_competition_key: leg.competitionKey,
+            p_event_id: leg.eventId,
+            p_bookmaker_id: leg.bookmakerId,
+            p_market_type: leg.marketType,
+            p_selection: leg.selection,
+            p_anchor_provider_line: leg.anchorProviderLine ?? null,
+            p_anchor_provider_american_odds: leg.anchorProviderAmericanOdds ?? null,
+            p_adjusted_line: leg.expectedLine,
+            p_expected_american_odds: leg.expectedAmericanOdds,
+            p_stake_units: stake,
+            p_group_id: parsed.data.groupId || null,
+          }
+        : {
+            p_competition_key: leg.competitionKey,
+            p_event_id: leg.eventId,
+            p_bookmaker_id: leg.bookmakerId,
+            p_market_type: leg.marketType,
+            p_selection: leg.selection,
+            p_expected_american_odds: leg.expectedAmericanOdds,
+            p_expected_line: leg.expectedLine,
+            p_stake_units: stake,
+            p_group_id: parsed.data.groupId || null,
+          },
+    );
     if (error || !data) {
       firstError ||= error?.message ?? "";
       continue;

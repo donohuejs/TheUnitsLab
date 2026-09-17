@@ -6,6 +6,10 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { sportsProviderConfiguration } from "@/config/sports";
+import {
+  calculateImportedEconomics,
+  parseNonNegativeMoneyToMinorUnits,
+} from "@/lib/external-wagers/calculations";
 import { formatUnits, parseStakeToMinorUnits } from "@/lib/wagers/calculations";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -83,7 +87,13 @@ const importedWagerSchema = z.object({
   selectionKey: z.enum(["", "home", "away", "draw", "over", "under"]),
   marketType: z.enum(["moneyline", "spread", "total"]),
   line: z.union([z.literal(""), z.coerce.number().finite()]),
-  americanOdds: z.coerce.number().int(),
+  americanOdds: z.union([
+    z.literal(""),
+    z.coerce
+      .number()
+      .int()
+      .refine((odds) => odds >= 100 || odds <= -100),
+  ]),
   stakeDollars: z.string().trim(),
   returnDollars: z.string().trim(),
   sportsbookBetId: z.string().trim().max(160),
@@ -129,19 +139,15 @@ export async function createImportedWager(formData: FormData) {
   ) {
     finish("Spread and total imports require a line; moneyline imports do not.");
   }
-  let stakeDollars: string;
+  let economics: ReturnType<typeof calculateImportedEconomics>;
   try {
-    stakeDollars = formatUnits(parseStakeToMinorUnits(parsed.data.stakeDollars));
+    economics = calculateImportedEconomics(
+      parsed.data.stakeDollars,
+      parsed.data.americanOdds,
+      parsed.data.returnDollars,
+    );
   } catch {
-    finish("Enter a positive source-dollar stake using at most two decimals.");
-  }
-  let returnDollars: string | null = null;
-  if (parsed.data.returnDollars) {
-    try {
-      returnDollars = formatUnits(parseStakeToMinorUnits(parsed.data.returnDollars));
-    } catch {
-      finish("Enter a valid source-dollar return using at most two decimals.");
-    }
+    finish("Enter any two of stake, odds, or payout; the third must be mathematically valid.");
   }
 
   const screenshot = formData.get("screenshot");
@@ -173,9 +179,9 @@ export async function createImportedWager(formData: FormData) {
     p_selection_key: parsed.data.selectionKey || null,
     p_market_type: parsed.data.marketType,
     p_line: parsed.data.line === "" ? null : parsed.data.line,
-    p_american_odds: parsed.data.americanOdds,
-    p_raw_stake_dollars: stakeDollars,
-    p_raw_return_dollars: returnDollars,
+    p_american_odds: economics.americanOdds,
+    p_raw_stake_dollars: economics.stakeDollars,
+    p_raw_return_dollars: economics.returnDollars,
     p_wager_date: new Date(value(formData, "wagerDateUtc") || parsed.data.wagerDate).toISOString(),
     p_status: parsed.data.status,
     p_verification_status: parsed.data.verificationStatus,
@@ -442,7 +448,9 @@ export async function createImportedParlay(formData: FormData) {
   let rawReturnDollars: string | null = null;
   if (parsed.data.rawReturnDollars) {
     try {
-      rawReturnDollars = formatUnits(parseStakeToMinorUnits(parsed.data.rawReturnDollars));
+      rawReturnDollars = formatUnits(
+        parseNonNegativeMoneyToMinorUnits(parsed.data.rawReturnDollars),
+      );
     } catch {
       finish("Enter a valid source-dollar return using at most two decimals.");
     }

@@ -11,6 +11,7 @@ import { TeamMark } from "@/components/team-mark";
 import { hasPublicEnvironment } from "@/config/env.public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { liveWagerState } from "@/lib/settlement/grading";
+import { slipSelectionKey } from "@/lib/wagers/slip";
 
 import { cancelSimulatedBet, refreshMyOpenScores } from "./actions";
 
@@ -29,8 +30,10 @@ type Leg = {
   leg_number: number;
   provider_event_id: string;
   sport_key: string;
+  competition_key: string;
   competition_name: string;
   bookmaker_name: string;
+  bookmaker_id: string;
   home_team: string;
   away_team: string;
   scheduled_start: string;
@@ -40,6 +43,9 @@ type Leg = {
   line: number | null;
   american_odds: number;
   decimal_odds: number;
+  pricing_source: "provider" | "simulated_alternate";
+  anchor_provider_line: number | null;
+  anchor_provider_american_odds: number | null;
   result: "open" | "won" | "lost" | "push" | "void";
 };
 type Ticket = {
@@ -78,6 +84,7 @@ type ImportedWager = {
   match_state: "matched" | "partially_matched" | "unmatched" | "needs_review";
   match_reason: string | null;
   settlement_method: "automatic" | "manual";
+  auto_settlement_ready: boolean;
   external_wager_legs: {
     id: string;
     leg_number: number;
@@ -133,7 +140,7 @@ export default async function MyBetsPage({ searchParams }: Props) {
     supabase
       .from("external_wagers")
       .select(
-        "id,sportsbook_name,ticket_type,leg_count,event_description,event_date,wager_date,selection,market_type,line,american_odds,decimal_odds,stake_units,raw_stake_dollars,raw_return_dollars,status,profit_loss_units,match_state,match_reason,settlement_method,external_wager_legs(*)",
+        "id,sportsbook_name,ticket_type,leg_count,event_description,event_date,wager_date,selection,market_type,line,american_odds,decimal_odds,stake_units,raw_stake_dollars,raw_return_dollars,status,profit_loss_units,match_state,match_reason,settlement_method,auto_settlement_ready,external_wager_legs(*)",
       )
       .eq("user_id", authData.user.id)
       .order("wager_date", { ascending: false }),
@@ -141,6 +148,19 @@ export default async function MyBetsPage({ searchParams }: Props) {
   ]);
   const allTickets = (ticketResult.data ?? []) as Ticket[];
   const allImported = (importedResult.data ?? []) as ImportedWager[];
+  const voidedSlipKeys = allTickets
+    .filter((ticket) => ticket.status === "void")
+    .flatMap((ticket) =>
+      ticket.bet_legs.map((leg) =>
+        slipSelectionKey({
+          eventId: `${leg.competition_key}:${leg.provider_event_id}`,
+          bookmakerId: leg.bookmaker_id,
+          marketType: leg.market_type,
+          selection: leg.selection,
+          line: leg.line,
+        }),
+      ),
+    );
   const records = allTickets.filter(
     (ticket) =>
       filter !== "imported" &&
@@ -169,7 +189,11 @@ export default async function MyBetsPage({ searchParams }: Props) {
 
   return (
     <main className="shell">
-      <SlipPlacementCleanup slipKeys={slipKeys} straightSlipKeys={straightSlipKeys} />
+      <SlipPlacementCleanup
+        slipKeys={slipKeys}
+        straightSlipKeys={straightSlipKeys}
+        voidedSlipKeys={voidedSlipKeys}
+      />
       <AppNav active="my-bets" userId={authData.user.id} />
       <header className="account-header">
         <div>
@@ -281,6 +305,9 @@ export default async function MyBetsPage({ searchParams }: Props) {
                           <MarketBadge market={leg.market_type} /> · {leg.bookmaker_name} ·{" "}
                           {price(leg.american_odds)} ({Number(leg.decimal_odds).toFixed(4)})
                         </p>
+                        {leg.pricing_source === "simulated_alternate" ? (
+                          <small className="simulated-label">Simulated alternate line</small>
+                        ) : null}
                         <p className="ticket-time-meta">
                           Kickoff <KickoffTime value={leg.scheduled_start} />
                         </p>
@@ -438,6 +465,16 @@ export default async function MyBetsPage({ searchParams }: Props) {
                 </dd>
               </div>
             </dl>
+            {wager.auto_settlement_ready && wager.status === "open" ? (
+              <p className="notice compact-notice" role="status">
+                Auto settlement ready — the canonical final score will settle this imported record
+                automatically.
+              </p>
+            ) : wager.status === "open" ? (
+              <p className="muted">
+                Manual settlement required{wager.match_reason ? `: ${wager.match_reason}` : "."}
+              </p>
+            ) : null}
           </article>
         ))}
         {!records.length && !importedRecords.length ? (

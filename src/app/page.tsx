@@ -68,9 +68,9 @@ export default async function HomePage() {
   if (!configured) {
     return (
       <main className="shell hero">
-        <BrandLockup />
+        <BrandLockup variant="home" className="home-lockup" />
         <p className="eyebrow">Private entertainment and statistics</p>
-        <h1>{PRODUCT_NAME}</h1>
+        <h1 className="sr-only">{PRODUCT_NAME}</h1>
         <p className="hero-copy">
           Browse real pregame odds and place simulated wagers using Vials. The application never
           accepts or places a real-money wager.
@@ -87,9 +87,9 @@ export default async function HomePage() {
   if (!authData.user) {
     return (
       <main className="shell hero">
-        <BrandLockup />
+        <BrandLockup variant="home" className="home-lockup" />
         <p className="eyebrow">Private entertainment and statistics</p>
-        <h1>{PRODUCT_NAME}</h1>
+        <h1 className="sr-only">{PRODUCT_NAME}</h1>
         <p className="hero-copy">
           Experiment with real pregame odds using Vials, then import wagers placed elsewhere for
           performance statistics.
@@ -154,6 +154,7 @@ export default async function HomePage() {
       ) : null}
       <header className="page-header dashboard-hero">
         <div>
+          <BrandLockup variant="home" className="home-lockup" />
           <p className="eyebrow">Your activity at a glance</p>
           <h1>Welcome back, {welcomeName(profile?.display_name)}</h1>
           <p className="muted">
@@ -275,7 +276,7 @@ export default async function HomePage() {
         <section className="card">
           <div className="section-heading">
             <h2>Your groups</h2>
-            <Link href="/account">Manage groups</Link>
+            <Link href="/leaderboards">Manage groups</Link>
           </div>
           {groupsResult.error ? (
             <p className="empty-state">
@@ -294,7 +295,7 @@ export default async function HomePage() {
           ) : (
             <p className="empty-state">
               <strong>No private groups yet</strong>
-              Create or join a group in Settings to compare performance privately.
+              Create or join a group in Leaderboards to compare performance privately.
             </p>
           )}
         </section>

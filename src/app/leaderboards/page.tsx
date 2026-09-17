@@ -1,6 +1,10 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppNav } from "@/components/app-nav";
+import { InviteForm } from "@/components/invite-form";
+import { SubmitButton } from "@/components/submit-button";
+import { createGroup, joinGroup } from "@/app/actions";
 import { hasPublicEnvironment } from "@/config/env.public";
 import {
   filterAnalyticsWagers,
@@ -15,7 +19,8 @@ import {
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
-type Group = { id: string; name: string };
+type Group = { id: string; name: string; owner_user_id: string };
+type Membership = { group_id: string; role: "owner" | "admin" | "member" };
 type MemberRow = { user_id: string; display_name: string };
 type RpcWager = {
   wager_id: string;
@@ -79,11 +84,14 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
   const supabase = await createSupabaseServerClient();
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) redirect("/auth");
-  const [{ data: groupsData }, { data: profile }] = await Promise.all([
-    supabase.from("groups").select("id,name").order("name"),
+  const [{ data: groupsData }, { data: profile }, { data: membershipData }] = await Promise.all([
+    supabase.from("groups").select("id,name,owner_user_id").order("name"),
     supabase.from("profiles").select("time_zone").eq("user_id", authData.user.id).single(),
+    supabase.from("group_members").select("group_id,role").eq("user_id", authData.user.id),
   ]);
   const groups = (groupsData ?? []) as Group[];
+  const memberships = (membershipData ?? []) as Membership[];
+  const invite = one(query.invite) ?? "";
   const requestedGroup = one(query.group);
   const selectedGroup = groups.find((group) => group.id === requestedGroup) ?? groups[0];
   const source = sourceValue(one(query.source));
@@ -125,6 +133,63 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
           Vials Won is the default ranking. ROI is shown beside every participant.
         </p>
       </header>
+
+      <section className="card group-access-card" aria-label="Private group access">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Private groups</p>
+            <h2>{groups.length ? "Manage group access" : "Start a private group"}</h2>
+          </div>
+          <Link className="button secondary" href="/account">
+            Account settings
+          </Link>
+        </div>
+        <p className="muted">
+          Create a group or join with an expiring invite link/token. Group names alone never grant
+          access.
+        </p>
+        <div className="group-access-actions">
+          <form action={createGroup} className="form-stack">
+            <input type="hidden" name="returnTo" value="/leaderboards" />
+            <label>
+              Create Group
+              <input
+                name="groupName"
+                minLength={2}
+                maxLength={80}
+                placeholder="Lab cohort name"
+                required
+              />
+            </label>
+            <SubmitButton className="button" pendingLabel="Creating…">
+              Create Group
+            </SubmitButton>
+          </form>
+          <form action={joinGroup} className="form-stack">
+            <input type="hidden" name="returnTo" value="/leaderboards" />
+            <label>
+              Join Group
+              <input
+                name="inviteToken"
+                minLength={32}
+                maxLength={512}
+                defaultValue={invite}
+                placeholder="Paste invite token"
+                required
+              />
+            </label>
+            <SubmitButton className="button secondary" pendingLabel="Joining…">
+              Join Group
+            </SubmitButton>
+          </form>
+        </div>
+        {invite ? (
+          <p className="muted">
+            An invite token was supplied in this link. Review it before joining; invalid or expired
+            invites are rejected.
+          </p>
+        ) : null}
+      </section>
 
       <form className="card filter-bar leaderboard-filters" method="get">
         <label>
@@ -191,9 +256,19 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
         <section className="card leaderboard-card" aria-label={`${selectedGroup.name} leaderboard`}>
           <div className="section-heading">
             <h2>{selectedGroup.name}</h2>
-            <span className="pill">
-              {categories.find((option) => option.value === category)?.label}
-            </span>
+            <div className="section-heading-actions">
+              <span className="pill">
+                {categories.find((option) => option.value === category)?.label}
+              </span>
+              {(() => {
+                const membership = memberships.find((item) => item.group_id === selectedGroup.id);
+                const canInvite =
+                  selectedGroup.owner_user_id === authData.user.id ||
+                  membership?.role === "owner" ||
+                  membership?.role === "admin";
+                return canInvite ? <InviteForm groupId={selectedGroup.id} /> : null;
+              })()}
+            </div>
           </div>
           <div className="table-scroll">
             <table>

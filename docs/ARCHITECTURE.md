@@ -262,6 +262,54 @@ normal user-facing timezone. Screenshot import remains review-first when OCR is 
 private file is attached to the saved imported record, the normalized fields remain editable, and
 canonical event ID/matching data can move a supported record to automatic settlement.
 
+### Release-candidate fix patch 2 boundaries
+
+This is the owner-approved focused production-smoke-test patch after Fix Patch 1 and before UAT. It
+does not start Phase 9. The reusable `BrandLockup`/`BrandLogo` components render the approved flask,
+integrated Vial cue, liquid, vapor, wordmark, and subtitle; the mark is presentation-only. `MobileNav`
+replaces the desktop link row at narrow widths with an Escape-closable, focus-managed drawer. Global
+overflow and card/form sizing rules make Home, Browse Odds, the slip, My Bets, Import Betslip,
+Performance, Leaderboards, and Settings single-column or viewport-contained where appropriate.
+
+`src/lib/wagers/slip.ts` now owns one versioned `sportsbook-simulator:pending-slip` external store. Its
+selection map is shared by the straight and parlay views, with a twelve-item cap per view and a bounded
+twenty-four-item union. Legacy parlay/straight storage is migrated into the shared state. The snapshots
+contain displayed provider terms plus optional simulated pricing metadata, but no credentials or bankroll;
+server placement still revalidates current cached terms, kickoff, bookmaker, event uniqueness, and
+simulated pricing. Placement cleanup removes only accepted selection keys, and My Bets cleanup removes
+voided simulated keys without touching imported records.
+
+Browse Odds keeps configured competition and bookmaker data as the source of truth and adds a composable
+market-type filter over the grouped normalized output. Simulated spread adjustment is isolated in a
+deterministic TypeScript/server model. Given provider anchor line `L`, American price `A`, and adjusted
+line `L'`, it uses `p_anchor = americanToImpliedProbability(A)` and
+`p_adjusted = clamp(p_anchor + 0.025 * (L' - L), 0.02, 0.98)`, then converts `p_adjusted` back to
+American odds. At the anchor it preserves the exact provider price; the database RPC independently
+recomputes the same versioned model and rejects client-fabricated adjusted prices. Provider line/price
+and simulated line/price are stored separately in immutable `bet_legs` pricing metadata.
+
+The import surface is progressive and review-first. Screenshot upload retains the private object and
+shows Processing before an explicit guided draft when safe extraction is unavailable. The exact
+`calculateImportedEconomics` helper accepts any two of stake, American odds, and payout/return and
+derives the third using integer minor-unit arithmetic and deterministic half-up rounding. A canonical
+event selected from normalized cache data fills the event identity and metadata. The new imported-wager
+database boundary marks matched supported straight records, and parlays whose every leg is matched and
+gradable, as `auto_settlement_ready`; unsupported, unmatched, or incomplete cases remain manual with a
+reason. These functions never insert into `bankroll_ledger`.
+
+Group create/join discovery is rendered on Leaderboards. Invite creation continues to use the existing
+owner/admin security-definer function, which stores only a SHA-256 token hash and enforces expiry,
+revocation, use count, and membership checks. The UI copies a link or exposes the token fallback;
+invalid or expired attempts are explicit. Settings retains role and membership operations.
+
+The forward-only database change is `20260924000000_release_candidate_fix_patch_2.sql`. It adds the
+immutable simulated-pricing columns and validation, the server-side adjusted-spread placement RPC,
+automatic imported-settlement readiness/evidence, canonical matching helpers, and grants/RLS checks
+without changing existing migrations. `supabase/tests/release_candidate_fix_patch_2.sql` exercises
+pricing monotonicity, metadata preservation, imported bankroll isolation/readiness, function grants,
+and anonymous denial. The provider, shared cache, lease, usage ledger, settlement audit, synthetic-row
+exclusion, and imported-vs-simulated table boundaries remain unchanged.
+
 ### Administration and operations
 
 Administrative capabilities include quota inspection, request history, settlement-failure inspection, safe settlement reruns, bankroll adjustments, group membership management, upload moderation, and competition or bookmaker toggles. The source does not define the boundary between group administration and application administration.

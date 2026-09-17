@@ -17,6 +17,15 @@ import { setExternalWagerResult } from "./actions";
 
 type Props = { searchParams: Promise<{ view?: string; notice?: string }> };
 type Group = { id: string; name: string };
+type CanonicalEvent = {
+  providerEventId: string;
+  sportKey: string;
+  competitionKey: string;
+  competitionName: string;
+  homeTeam: string;
+  awayTeam: string;
+  scheduledStart: string;
+};
 type ExternalWager = {
   id: string;
   source: "external";
@@ -46,6 +55,7 @@ type ExternalWager = {
   match_state: "matched" | "partially_matched" | "unmatched" | "needs_review";
   match_reason: string | null;
   settlement_method: "automatic" | "manual";
+  auto_settlement_ready: boolean;
   external_wager_legs: {
     id: string;
     leg_number: number;
@@ -64,6 +74,48 @@ type ExternalWager = {
 const price = (value: number) => (value > 0 ? `+${value}` : String(value));
 const units = (value: number | string) => Number(value).toFixed(2);
 
+function canonicalEventsFromCache(rows: { normalized_payload: unknown }[]) {
+  const events = new Map<string, CanonicalEvent>();
+  for (const row of rows) {
+    const payload = row.normalized_payload;
+    if (
+      !payload ||
+      typeof payload !== "object" ||
+      !Array.isArray((payload as { events?: unknown }).events)
+    ) {
+      continue;
+    }
+    for (const candidate of (payload as { events: unknown[] }).events) {
+      if (!candidate || typeof candidate !== "object") continue;
+      const event = candidate as Record<string, unknown>;
+      const values = [
+        event.providerEventId,
+        event.sport,
+        event.competitionId,
+        event.competitionName,
+        event.homeTeam,
+        event.awayTeam,
+        event.scheduledStart,
+      ];
+      if (values.some((value) => typeof value !== "string" || !value.trim())) continue;
+      const canonical: CanonicalEvent = {
+        providerEventId: event.providerEventId as string,
+        sportKey: event.sport as string,
+        competitionKey: event.competitionId as string,
+        competitionName: event.competitionName as string,
+        homeTeam: event.homeTeam as string,
+        awayTeam: event.awayTeam as string,
+        scheduledStart: event.scheduledStart as string,
+      };
+      events.set(canonical.providerEventId, canonical);
+    }
+  }
+  return [...events.values()].sort(
+    (left, right) =>
+      new Date(left.scheduledStart).getTime() - new Date(right.scheduledStart).getTime(),
+  );
+}
+
 export default async function TrackBetPage({ searchParams }: Props) {
   if (!hasPublicEnvironment(process.env)) redirect("/auth");
   const query = await searchParams;
@@ -71,25 +123,41 @@ export default async function TrackBetPage({ searchParams }: Props) {
   const supabase = await createSupabaseServerClient();
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) redirect("/auth");
+  const coreCompetitions = sportsProviderConfiguration.competitions.filter(
+    (competition) => competition.enabled,
+  );
 
   let wagerQuery = supabase
     .from("external_wagers")
     .select(
-      "id,source,ticket_type,leg_count,sportsbook_name,competition_name,event_description,event_date,selection,market_type,line,american_odds,decimal_odds,stake_units,status,profit_loss_units,wager_date,screenshot_path,verification_status,user_notes,effective_settlement_decimal_odds,effective_settlement_american_odds,settled_return_units,raw_stake_dollars,raw_return_dollars,match_state,match_reason,settlement_method,external_wager_legs(*)",
+      "id,source,ticket_type,leg_count,sportsbook_name,competition_name,event_description,event_date,selection,market_type,line,american_odds,decimal_odds,stake_units,status,profit_loss_units,wager_date,screenshot_path,verification_status,user_notes,effective_settlement_decimal_odds,effective_settlement_american_odds,settled_return_units,raw_stake_dollars,raw_return_dollars,match_state,match_reason,settlement_method,auto_settlement_ready,external_wager_legs(*)",
     )
     .eq("user_id", authData.user.id)
     .order("wager_date", { ascending: false });
   wagerQuery = view === "open" ? wagerQuery.eq("status", "open") : wagerQuery.neq("status", "open");
 
-  const [{ data: wagers, error: wagerError }, { data: groups, error: groupError }, summaryResult] =
-    await Promise.all([
-      wagerQuery,
-      supabase.from("groups").select("id,name").order("name"),
-      supabase
-        .from("external_wagers")
-        .select("status,stake_units,profit_loss_units")
-        .eq("user_id", authData.user.id),
-    ]);
+  const [
+    { data: wagers, error: wagerError },
+    { data: groups, error: groupError },
+    { data: cacheRows, error: cacheError },
+    summaryResult,
+  ] = await Promise.all([
+    wagerQuery,
+    supabase.from("groups").select("id,name").order("name"),
+    supabase
+      .from("odds_cache")
+      .select("normalized_payload")
+      .in(
+        "competition",
+        coreCompetitions.map((competition) => competition.id),
+      )
+      .order("fetched_at", { ascending: false })
+      .limit(32),
+    supabase
+      .from("external_wagers")
+      .select("status,stake_units,profit_loss_units")
+      .eq("user_id", authData.user.id),
+  ]);
   const records = (wagers ?? []) as ExternalWager[];
   const summary = summarizeExternalWagers(
     (summaryResult.data ?? []).map((record) => ({
@@ -99,8 +167,8 @@ export default async function TrackBetPage({ searchParams }: Props) {
     })),
   );
   const nowLocal = new Date().toISOString().slice(0, 16);
-  const coreCompetitions = sportsProviderConfiguration.competitions.filter(
-    (competition) => competition.enabled,
+  const canonicalEvents = canonicalEventsFromCache(
+    (cacheRows ?? []) as { normalized_payload: unknown }[],
   );
 
   return (
@@ -119,7 +187,7 @@ export default async function TrackBetPage({ searchParams }: Props) {
           {query.notice}
         </p>
       ) : null}
-      {wagerError || groupError || summaryResult.error ? (
+      {wagerError || groupError || cacheError || summaryResult.error ? (
         <p className="notice error" role="alert">
           Some imported-wager data is temporarily unavailable. Your imported records were not
           changed.
@@ -160,6 +228,7 @@ export default async function TrackBetPage({ searchParams }: Props) {
             name: competition.name,
             sport: competition.sport,
           }))}
+          canonicalEvents={canonicalEvents}
           nowLocal={nowLocal}
         />
       </section>
@@ -306,6 +375,16 @@ export default async function TrackBetPage({ searchParams }: Props) {
                 {wager.settlement_method}
                 {wager.match_reason ? ` · ${wager.match_reason}` : ""}
               </p>
+              {wager.auto_settlement_ready && wager.status === "open" ? (
+                <p className="notice compact-notice" role="status">
+                  Auto settlement ready — this matched wager will settle when a canonical final
+                  score is available.
+                </p>
+              ) : wager.status === "open" ? (
+                <p className="muted">
+                  Manual settlement required until the reason above is resolved.
+                </p>
+              ) : null}
               {wager.screenshot_path ? (
                 <p>
                   <Link href={`/track-bet/screenshot/${wager.id}`} target="_blank">

@@ -11,7 +11,7 @@ const labels: Record<string, string> = {
   won: "Won",
   lost: "Lost",
   push: "Push",
-  void: "Void",
+  void: "Void / Cancelled",
   scheduled: "Scheduled",
   live: "LIVE",
   hit: "Fresh",

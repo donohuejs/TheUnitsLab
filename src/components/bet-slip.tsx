@@ -9,6 +9,10 @@ import { MarketBadge, SourceBadge, TicketTypeBadge } from "@/components/status-b
 import { TeamMark } from "@/components/team-mark";
 import { calculateParlayPotential } from "@/lib/parlays/calculations";
 import {
+  alternateSpreadLines,
+  simulateAlternateSpreadPrice,
+} from "@/lib/wagers/simulated-alternate";
+import {
   clearSlip,
   clearStraightSlip,
   getEmptyStraightSlipSnapshot,
@@ -37,6 +41,10 @@ export function BetSlip({ selection, groups }: Props) {
   const [straightStake, setStraightStake] = useState("10.00");
   const [parlayNotice, setParlayNotice] = useState("");
   const [straightNotice, setStraightNotice] = useState("");
+  const [alternateLineState, setAlternateLineState] = useState<{
+    selectionKey: string;
+    line: number;
+  } | null>(null);
   const legs = useSyncExternalStore(subscribeToSlip, getSlipSnapshot, getEmptySlipSnapshot);
   const straightSelections = useSyncExternalStore(
     subscribeToStraightSlip,
@@ -44,8 +52,43 @@ export function BetSlip({ selection, groups }: Props) {
     getEmptyStraightSlipSnapshot,
   );
 
+  const selectionKey = selection ? slipSelectionKey(selection) : "";
+  const alternateLine =
+    alternateLineState?.selectionKey === selectionKey ? alternateLineState.line : null;
+
+  const alternatePrice = useMemo(() => {
+    if (!selection || selection.marketType !== "spread" || selection.line === null) return null;
+    try {
+      return simulateAlternateSpreadPrice({
+        anchorProviderLine: selection.line,
+        anchorProviderAmericanOdds: selection.americanOdds,
+        adjustedLine: alternateLine ?? selection.line,
+      });
+    } catch {
+      return null;
+    }
+  }, [selection, alternateLine]);
+
+  const activeSelection = useMemo(
+    () =>
+      selection && alternatePrice && alternateLine !== null && alternateLine !== selection.line
+        ? {
+            ...selection,
+            line: alternatePrice.adjustedLine,
+            americanOdds: alternatePrice.simulatedAmericanOdds,
+            decimalOdds: alternatePrice.simulatedDecimalOdds,
+            pricingSource: alternatePrice.pricingSource,
+            anchorProviderLine: alternatePrice.anchorProviderLine,
+            anchorProviderAmericanOdds: alternatePrice.anchorProviderAmericanOdds,
+            pricingModel: alternatePrice.pricingModel,
+            pricingModelVersion: alternatePrice.pricingModelVersion,
+          }
+        : selection,
+    [selection, alternatePrice, alternateLine],
+  );
+
   function addCurrentLeg() {
-    if (!selection) {
+    if (!selection || !activeSelection) {
       setParlayNotice("Select a price first, then add it to the parlay.");
       return;
     }
@@ -63,16 +106,16 @@ export function BetSlip({ selection, groups }: Props) {
       setParlayNotice("All simulated parlay legs must use the same bookmaker.");
       return;
     }
-    if (legs.some((leg) => slipSelectionKey(leg) === slipSelectionKey(selection))) {
+    if (legs.some((leg) => slipSelectionKey(leg) === slipSelectionKey(activeSelection))) {
       setParlayNotice("That selection is already in the parlay.");
       return;
     }
-    setSlipSelections([...legs, selection]);
+    setSlipSelections([...legs, activeSelection]);
     setParlayNotice("Selection added to the parlay.");
   }
 
   function addCurrentStraight() {
-    if (!selection) {
+    if (!selection || !activeSelection) {
       setStraightNotice("Select a price first, then add it to the straight-bet slip.");
       return;
     }
@@ -80,22 +123,24 @@ export function BetSlip({ selection, groups }: Props) {
       setStraightNotice("The straight-bet slip can contain at most 12 selections.");
       return;
     }
-    if (straightSelections.some((leg) => slipSelectionKey(leg) === slipSelectionKey(selection))) {
+    if (
+      straightSelections.some((leg) => slipSelectionKey(leg) === slipSelectionKey(activeSelection))
+    ) {
       setStraightNotice("That selection is already in the straight-bet slip.");
       return;
     }
-    setStraightSlipSelections([...straightSelections, selection]);
+    setStraightSlipSelections([...straightSelections, activeSelection]);
     setStraightNotice("Selection added to independent straight bets.");
   }
 
   const straightPotential = useMemo(() => {
-    if (!selection) return null;
+    if (!activeSelection) return null;
     try {
-      return calculatePotential(stake, selection.decimalOdds.toFixed(4));
+      return calculatePotential(stake, activeSelection.decimalOdds.toFixed(4));
     } catch {
       return null;
     }
-  }, [selection, stake]);
+  }, [activeSelection, stake]);
 
   const parlayPotential = useMemo(() => {
     try {
@@ -130,6 +175,11 @@ export function BetSlip({ selection, groups }: Props) {
     selection: leg.selection,
     expectedAmericanOdds: leg.americanOdds,
     expectedLine: leg.line,
+    anchorProviderLine: leg.anchorProviderLine ?? null,
+    anchorProviderAmericanOdds: leg.anchorProviderAmericanOdds ?? null,
+    pricingSource: leg.pricingSource ?? "provider",
+    pricingModel: leg.pricingModel ?? null,
+    pricingModelVersion: leg.pricingModelVersion ?? null,
   }));
   const submittedStraightLegs = straightSelections.map((leg) => ({
     competitionKey: leg.competitionKey,
@@ -139,6 +189,11 @@ export function BetSlip({ selection, groups }: Props) {
     selection: leg.selection,
     expectedAmericanOdds: leg.americanOdds,
     expectedLine: leg.line,
+    anchorProviderLine: leg.anchorProviderLine ?? null,
+    anchorProviderAmericanOdds: leg.anchorProviderAmericanOdds ?? null,
+    pricingSource: leg.pricingSource ?? "provider",
+    pricingModel: leg.pricingModel ?? null,
+    pricingModelVersion: leg.pricingModelVersion ?? null,
   }));
 
   return (
@@ -154,54 +209,132 @@ export function BetSlip({ selection, groups }: Props) {
           <dl className="ticket-details">
             <div>
               <dt>Competition</dt>
-              <dd>{selection.competition}</dd>
+              <dd>{activeSelection?.competition}</dd>
             </div>
             <div>
               <dt>Event</dt>
               <dd className="team-pair">
                 <span>
-                  <TeamMark teamName={selection.awayTeam} sport={selection.sport} />
-                  {selection.awayTeam}
+                  <TeamMark
+                    teamName={activeSelection?.awayTeam ?? ""}
+                    sport={activeSelection?.sport ?? ""}
+                  />
+                  {activeSelection?.awayTeam}
                 </span>
                 <span className="event-at">at</span>
                 <span>
-                  <TeamMark teamName={selection.homeTeam} sport={selection.sport} />
-                  {selection.homeTeam}
+                  <TeamMark
+                    teamName={activeSelection?.homeTeam ?? ""}
+                    sport={activeSelection?.sport ?? ""}
+                  />
+                  {activeSelection?.homeTeam}
                 </span>
               </dd>
             </div>
             <div>
               <dt>Kickoff</dt>
               <dd>
-                <KickoffTime value={selection.scheduledStart} />
+                <KickoffTime value={activeSelection?.scheduledStart ?? ""} />
               </dd>
             </div>
             <div>
               <dt>Bookmaker</dt>
-              <dd>{selection.bookmaker}</dd>
+              <dd>{activeSelection?.bookmaker}</dd>
             </div>
             <div>
               <dt>Market</dt>
               <dd>
-                <MarketBadge market={selection.marketType} />
+                <MarketBadge market={activeSelection?.marketType ?? "moneyline"} />
               </dd>
             </div>
             <div>
               <dt>Selection</dt>
               <dd>
-                {selection.selectionName}
-                {selection.line === null
+                {activeSelection?.selectionName}
+                {activeSelection?.line === null
                   ? ""
-                  : ` ${selection.line > 0 ? "+" : ""}${selection.line}`}
+                  : ` ${activeSelection && activeSelection.line > 0 ? "+" : ""}${activeSelection?.line}`}
               </dd>
             </div>
             <div>
               <dt>Odds</dt>
               <dd>
-                {americanPrice(selection.americanOdds)} ({selection.decimalOdds.toFixed(4)})
+                {activeSelection ? americanPrice(activeSelection.americanOdds) : "—"} (
+                {activeSelection?.decimalOdds.toFixed(4)})
               </dd>
             </div>
           </dl>
+          {selection.marketType === "spread" && selection.line !== null ? (
+            <section className="simulated-alternate" aria-label="Simulated alternate line">
+              <h3>Simulated alternate line</h3>
+              <p>
+                Adjust line is an explicit model estimate. It is not a DraftKings, FanDuel, or other
+                provider-offered price.
+              </p>
+              <label>
+                Adjust line
+                <select
+                  value={alternateLine ?? selection.line}
+                  onChange={(event) => {
+                    const value = Number(event.target.value);
+                    setAlternateLineState(
+                      value === selection.line ? null : { selectionKey, line: value },
+                    );
+                  }}
+                >
+                  {alternateSpreadLines(selection.line).map((line: number) => (
+                    <option key={line} value={line}>
+                      {line > 0 ? "+" : ""}
+                      {line}
+                      {line === selection.line ? " · provider anchor" : " · simulated"}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {alternatePrice ? (
+                <dl className="ticket-details compact">
+                  <div>
+                    <dt>Original provider line</dt>
+                    <dd>
+                      {selection.line > 0 ? "+" : ""}
+                      {selection.line}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Original provider price</dt>
+                    <dd>{americanPrice(selection.americanOdds)}</dd>
+                  </div>
+                  <div>
+                    <dt>Adjusted line</dt>
+                    <dd>
+                      {alternatePrice.adjustedLine > 0 ? "+" : ""}
+                      {alternatePrice.adjustedLine}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Simulated price</dt>
+                    <dd>{americanPrice(alternatePrice.simulatedAmericanOdds)}</dd>
+                  </div>
+                  <div>
+                    <dt>Updated potential return</dt>
+                    <dd>
+                      {alternateLine !== null && alternateLine !== selection.line
+                        ? (() => {
+                            try {
+                              return `${calculatePotential(stake, alternatePrice.simulatedDecimalOdds.toFixed(4)).return} Vials`;
+                            } catch {
+                              return "Enter a valid stake";
+                            }
+                          })()
+                        : straightPotential
+                          ? `${straightPotential.return} Vials`
+                          : "—"}
+                    </dd>
+                  </div>
+                </dl>
+              ) : null}
+            </section>
+          ) : null}
           <div className="inline-actions">
             <button className="button secondary" type="button" onClick={addCurrentStraight}>
               Add to straight bets
@@ -211,13 +344,38 @@ export function BetSlip({ selection, groups }: Props) {
             </button>
           </div>
           <form action={placeStraightBet} className="form-stack">
-            <input type="hidden" name="competitionKey" value={selection.competitionKey} />
-            <input type="hidden" name="eventId" value={selection.eventId} />
-            <input type="hidden" name="bookmakerId" value={selection.bookmakerId} />
-            <input type="hidden" name="marketType" value={selection.marketType} />
-            <input type="hidden" name="selection" value={selection.selection} />
-            <input type="hidden" name="expectedAmericanOdds" value={selection.americanOdds} />
-            <input type="hidden" name="expectedLine" value={selection.line ?? ""} />
+            <input type="hidden" name="competitionKey" value={activeSelection?.competitionKey} />
+            <input type="hidden" name="eventId" value={activeSelection?.eventId} />
+            <input type="hidden" name="bookmakerId" value={activeSelection?.bookmakerId} />
+            <input type="hidden" name="marketType" value={activeSelection?.marketType} />
+            <input type="hidden" name="selection" value={activeSelection?.selection} />
+            <input
+              type="hidden"
+              name="expectedAmericanOdds"
+              value={activeSelection?.americanOdds}
+            />
+            <input type="hidden" name="expectedLine" value={activeSelection?.line ?? ""} />
+            <input
+              type="hidden"
+              name="anchorProviderLine"
+              value={activeSelection?.anchorProviderLine ?? ""}
+            />
+            <input
+              type="hidden"
+              name="anchorProviderAmericanOdds"
+              value={activeSelection?.anchorProviderAmericanOdds ?? ""}
+            />
+            <input
+              type="hidden"
+              name="pricingSource"
+              value={activeSelection?.pricingSource ?? "provider"}
+            />
+            <input type="hidden" name="pricingModel" value={activeSelection?.pricingModel ?? ""} />
+            <input
+              type="hidden"
+              name="pricingModelVersion"
+              value={activeSelection?.pricingModelVersion ?? ""}
+            />
             <label>
               Stake in Vials
               <input
@@ -303,6 +461,9 @@ export function BetSlip({ selection, groups }: Props) {
                         ? `${straightPreviews[index]!.profit} Vials profit`
                         : "—"}
                     </span>
+                    {leg.pricingSource === "simulated_alternate" ? (
+                      <span>Simulated alternate line · provider anchor preserved</span>
+                    ) : null}
                   </small>
                 </div>
                 <button
@@ -420,6 +581,9 @@ export function BetSlip({ selection, groups }: Props) {
                     {leg.bookmaker} · {americanPrice(leg.americanOdds)} (
                     {leg.decimalOdds.toFixed(4)})
                   </span>
+                  {leg.pricingSource === "simulated_alternate" ? (
+                    <span>Simulated alternate line · provider anchor preserved</span>
+                  ) : null}
                 </small>
               </div>
               <button

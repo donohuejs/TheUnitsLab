@@ -34,6 +34,11 @@ body {
     radial-gradient(circle at top right, rgba(18, 183, 106, 0.1), transparent 32rem), #f4f7f8;
 }
 
+html {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 a {
   color: inherit;
 }
@@ -108,6 +113,19 @@ h4 {
   align-items: center;
   gap: 0.75rem;
   color: var(--brand-ink);
+}
+
+.brand-home {
+  gap: 1rem;
+}
+
+.brand-home .brand-name {
+  font-size: clamp(1.8rem, 5vw, 3.25rem);
+}
+
+.brand-home .brand-subtitle {
+  font-size: clamp(0.72rem, 1.4vw, 0.86rem);
+  letter-spacing: 0.16em;
 }
 
 .brand-lockup svg {
@@ -485,6 +503,109 @@ textarea:focus {
   color: var(--accent);
 }
 
+.mobile-nav {
+  display: none;
+}
+
+.mobile-nav-brand {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 0.45rem;
+  color: var(--ink-strong);
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  text-decoration: none;
+}
+
+.mobile-nav-brand .brand-lockup svg {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.mobile-nav-brand strong {
+  color: var(--accent);
+}
+
+.menu-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 5.4rem;
+  min-height: 2.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.75rem;
+  color: var(--ink-strong);
+  background: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.menu-icon {
+  display: grid;
+  gap: 0.22rem;
+  width: 1.1rem;
+}
+
+.menu-icon span {
+  display: block;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.mobile-menu-backdrop {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(18, 63, 46, 0.26);
+}
+
+.mobile-menu {
+  width: min(21rem, 88vw);
+  height: 100%;
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+  padding: 1.25rem;
+  background: #fff;
+  box-shadow: -1rem 0 3rem rgba(18, 63, 46, 0.16);
+}
+
+.mobile-menu-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.mobile-menu-links {
+  display: grid;
+  gap: 0.45rem;
+  padding-top: 1rem;
+}
+
+.mobile-nav-link {
+  display: block;
+  border-radius: 0.6rem;
+  padding: 0.85rem 0.9rem;
+  color: var(--ink-strong);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.mobile-nav-link:hover,
+.mobile-nav-link.active {
+  color: #fff;
+  background: var(--accent);
+}
+
 .import-methods {
   display: flex;
   flex-wrap: wrap;
@@ -557,6 +678,38 @@ textarea:focus {
 }
 .book-filter .pill {
   text-decoration: none;
+}
+
+.book-filter,
+.market-filter {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  max-width: 100%;
+  padding-bottom: 0.15rem;
+  scrollbar-width: thin;
+}
+
+.market-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+
+.market-filter-label {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.market-filter .pill,
+.book-filter .pill {
+  flex: 0 0 auto;
+  min-height: 2.35rem;
+  white-space: nowrap;
 }
 
 .competition-switcher {
@@ -1243,21 +1396,24 @@ thead th {
   }
 
   .top-nav {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 0.65rem;
+    display: block;
+    border-bottom: 0;
+    padding-bottom: 0;
   }
 
-  .nav-links {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    margin-inline: -0.2rem;
-    padding: 0.2rem;
-    scrollbar-width: thin;
+  .desktop-nav-brand,
+  .top-nav > .nav-links {
+    display: none;
   }
 
-  .nav-link {
-    flex: 0 0 auto;
+  .mobile-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    min-width: 0;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.75rem;
   }
 
   .auth-grid,
@@ -1328,6 +1484,66 @@ thead th {
 
   .odds-grid {
     grid-template-columns: 1fr;
+  }
+
+  .card {
+    padding: 1rem;
+  }
+
+  .brand-home {
+    align-items: flex-start;
+  }
+
+  .brand-home .brand-name {
+    font-size: clamp(1.55rem, 9vw, 2.4rem);
+  }
+
+  .brand-home .brand-subtitle {
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+  }
+
+  .brand-home svg {
+    width: 4.5rem;
+    height: 4.5rem;
+  }
+
+  .button,
+  .menu-button,
+  .guided-step-actions .button,
+  .guided-step-actions button {
+    min-height: 2.75rem;
+  }
+
+  .import-methods {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.15rem;
+  }
+
+  .import-methods .pill {
+    flex: 0 0 auto;
+    min-height: 2.5rem;
+    white-space: nowrap;
+  }
+
+  .guided-step-actions {
+    display: grid;
+  }
+
+  .guided-step-actions .button,
+  .guided-step-actions button {
+    width: 100%;
+    text-align: center;
+  }
+
+  .simulated-alternate .ticket-details {
+    grid-template-columns: 1fr;
+  }
+
+  .parlay-leg-list .text-button {
+    flex: 0 0 auto;
+    min-height: 2.4rem;
   }
 
   .event-heading {
@@ -1421,4 +1637,83 @@ thead th {
   margin: 0.7rem 0 0;
   color: #075536;
   font-weight: 700;
+}
+
+.import-progress {
+  display: grid;
+  gap: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  background: #f8fbf9;
+}
+
+.import-progress ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 1rem;
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 750;
+}
+
+.import-progress li.current {
+  color: var(--accent);
+}
+
+.guided-step {
+  display: grid;
+  gap: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  padding: 1rem;
+  background: #fff;
+}
+
+.guided-step h3 {
+  margin-bottom: 0;
+}
+
+.guided-step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.canonical-event-summary {
+  display: grid;
+  gap: 0.25rem;
+  border-left: 4px solid var(--accent);
+  padding: 0.7rem 0.85rem;
+  background: #eff8f3;
+}
+
+.economics-preview {
+  display: grid;
+  gap: 0.35rem;
+  border-radius: 0.7rem;
+  padding: 0.8rem;
+  color: var(--ink-strong);
+  background: #eff8f3;
+}
+
+.simulated-alternate {
+  display: grid;
+  gap: 0.75rem;
+  border: 1px solid #e9a23b;
+  border-radius: 0.75rem;
+  padding: 0.9rem;
+  color: #6b3e00;
+  background: #fff8e8;
+}
+
+.simulated-alternate h3,
+.simulated-alternate p {
+  margin-bottom: 0;
+}
+
+.simulated-alternate .ticket-details {
+  margin: 0;
 }

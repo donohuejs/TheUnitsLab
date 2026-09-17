@@ -41,6 +41,11 @@ function redirectWithNotice(path: string, notice: string): never {
   redirect(`${path}?notice=${encodeURIComponent(notice)}`);
 }
 
+function returnPath(formData: FormData) {
+  const candidate = value(formData, "returnTo");
+  return candidate === "/leaderboards" || candidate === "/account" ? candidate : "/account";
+}
+
 function authErrorMessage(message: string, fallback: string) {
   const normalized = message.toLowerCase();
   if (normalized.includes("invalid login") || normalized.includes("invalid credentials")) {
@@ -162,9 +167,10 @@ export async function updateProfile(formData: FormData) {
 
 export async function createGroup(formData: FormData) {
   const { supabase, user } = await requireAuthenticatedUser();
+  const destination = returnPath(formData);
   const parsed = groupNameSchema.safeParse(value(formData, "groupName"));
   if (!parsed.success) {
-    redirectWithNotice("/account", "Group names must be between 2 and 80 characters.");
+    redirectWithNotice(destination, "Group names must be between 2 and 80 characters.");
   }
 
   const { error } = await supabase.from("groups").insert({
@@ -174,30 +180,36 @@ export async function createGroup(formData: FormData) {
 
   if (error) {
     redirectWithNotice(
-      "/account",
+      destination,
       "The group could not be created. Review the name and try again.",
     );
   }
   revalidatePath("/account");
-  redirectWithNotice("/account", "Group created.");
+  revalidatePath("/leaderboards");
+  redirectWithNotice(destination, "Group created.");
 }
 
 export async function joinGroup(formData: FormData) {
   const { supabase } = await requireAuthenticatedUser();
+  const destination = returnPath(formData);
   const token = value(formData, "inviteToken").trim();
   if (token.length < 32 || token.length > 512) {
-    redirectWithNotice("/account", "Enter a valid invitation token.");
+    redirectWithNotice(destination, "Enter a valid invitation token.");
   }
 
   const { error } = await supabase.rpc("join_group_with_invite", { invite_token: token });
   if (error) {
+    const message = error.message.toLowerCase();
     redirectWithNotice(
-      "/account",
-      "The invitation could not be redeemed. Check the token and try again.",
+      destination,
+      message.includes("expired") || message.includes("invalid") || message.includes("revoked")
+        ? "This invite is invalid, expired, revoked, or already used."
+        : "The invitation could not be redeemed. Check the token and try again.",
     );
   }
   revalidatePath("/account");
-  redirectWithNotice("/account", "Group joined.");
+  revalidatePath("/leaderboards");
+  redirectWithNotice(destination, "Group joined.");
 }
 
 export async function createInvite(

@@ -1,14 +1,7 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import {
-  createGroup,
-  joinGroup,
-  removeMember,
-  setMemberRole,
-  signOut,
-  updateProfile,
-} from "@/app/actions";
-import { InviteForm } from "@/components/invite-form";
+import { removeMember, setMemberRole, signOut, updateProfile } from "@/app/actions";
 import { AppNav } from "@/components/app-nav";
 import { SubmitButton } from "@/components/submit-button";
 import { hasPublicEnvironment } from "@/config/env.public";
@@ -181,24 +174,14 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
         </section>
 
         <section className="card">
-          <h2>Join a group</h2>
-          <p>Paste a valid invitation token from a group owner or admin.</p>
-          <form action={joinGroup} className="form-stack">
-            <label>
-              Invite token
-              <input name="inviteToken" minLength={32} maxLength={512} required />
-            </label>
-            <SubmitButton pendingLabel="Joining…">Join group</SubmitButton>
-          </form>
-
-          <h2 className="section-break">Create a group</h2>
-          <form action={createGroup} className="form-stack">
-            <label>
-              Group name
-              <input name="groupName" minLength={2} maxLength={80} required />
-            </label>
-            <SubmitButton pendingLabel="Creating…">Create group</SubmitButton>
-          </form>
+          <h2>Private group access</h2>
+          <p>
+            Create groups, redeem expiring invites, and share owner/admin invite links from
+            Leaderboards.
+          </p>
+          <Link className="button secondary" href="/leaderboards">
+            Open Leaderboards group access
+          </Link>
         </section>
       </div>
 
@@ -218,9 +201,6 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
             const currentMembership = groupMemberships.find(
               (membership) => membership.user_id === authData.user.id,
             );
-            const canInvite =
-              currentMembership?.role === "owner" || currentMembership?.role === "admin";
-
             return (
               <article className="card group-card" key={group.id}>
                 <div className="group-title">
@@ -238,8 +218,6 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                     </form>
                   ) : null}
                 </div>
-
-                {canInvite ? <InviteForm groupId={group.id} /> : null}
 
                 <h4>Members</h4>
                 <ul className="member-list">

@@ -21,6 +21,7 @@ type Props = {
   params: Promise<{ competition: string }>;
   searchParams: Promise<{
     bookmaker?: string;
+    marketFilter?: string;
     notice?: string;
     event?: string;
     market?: string;
@@ -39,6 +40,20 @@ const marketGroups = [
   ["other", "Props / Other"],
 ] as const;
 
+const marketFilters = [
+  ["all", "All"],
+  ["moneyline", "Moneyline"],
+  ["spread", "Spread / Handicap"],
+  ["total", "Total"],
+  ["other", "Props / Other"],
+] as const;
+
+type MarketFilter = (typeof marketFilters)[number][0];
+
+function selectedMarketFilter(value: string | undefined): MarketFilter {
+  return marketFilters.some(([candidate]) => candidate === value) ? (value as MarketFilter) : "all";
+}
+
 export default async function CompetitionPage({ params, searchParams }: Props) {
   if (!hasPublicEnvironment(process.env)) redirect("/auth");
   const { competition: id } = await params;
@@ -55,6 +70,7 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
   const groups = (groupRows ?? []) as { id: string; name: string }[];
   const books = sportsProviderConfiguration.bookmakers.filter((book) => book.enabled);
   const selected = books.some((book) => book.id === query.bookmaker) ? query.bookmaker : "all";
+  const marketFilter = selectedMarketFilter(query.marketFilter);
   let result;
   let error: string | null = null;
   try {
@@ -119,6 +135,10 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
         line: chosen.odds.point,
         americanOdds: chosen.odds.americanOdds,
         decimalOdds: chosen.odds.decimalOdds,
+        pricingSource: "provider" as const,
+        anchorProviderLine: chosen.odds.marketType === "spread" ? chosen.odds.point : null,
+        anchorProviderAmericanOdds:
+          chosen.odds.marketType === "spread" ? chosen.odds.americanOdds : null,
       }
     : null;
   return (
@@ -160,25 +180,59 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
       ) : null}
       <section className="book-filter">
         <strong>Bookmaker</strong>
-        <Link className={selected === "all" ? "pill active" : "pill"} href={`/sports/${id}`}>
+        <Link
+          className={selected === "all" ? "pill active" : "pill"}
+          href={
+            marketFilter === "all" ? `/sports/${id}` : `/sports/${id}?marketFilter=${marketFilter}`
+          }
+        >
           All
         </Link>
         {books.map((book) => (
           <Link
             className={selected === book.id ? "pill active" : "pill"}
-            href={`/sports/${id}?bookmaker=${book.id}`}
+            href={`/sports/${id}?${new URLSearchParams({
+              bookmaker: book.id,
+              ...(marketFilter === "all" ? {} : { marketFilter }),
+            }).toString()}`}
             key={book.id}
           >
             {book.name}
           </Link>
         ))}
       </section>
+      <section className="market-filter" aria-label="Market type filters">
+        <span className="market-filter-label">Market</span>
+        {marketFilters.map(([value, label]) => {
+          const params = new URLSearchParams();
+          if (selected && selected !== "all") params.set("bookmaker", selected);
+          if (value !== "all") params.set("marketFilter", value);
+          return (
+            <Link
+              className={marketFilter === value ? "pill active" : "pill"}
+              href={`/sports/${id}${params.toString() ? `?${params.toString()}` : ""}`}
+              key={value}
+            >
+              {label}
+            </Link>
+          );
+        })}
+      </section>
+      <p className="muted odds-pricing-note">
+        Provider-priced alternate lines are preferred when available. The Bet Slip’s Adjust line
+        control is a separate simulated estimate and is never presented as bookmaker pricing.
+      </p>
       <div className="sportsbook-layout">
         <div className="event-list">
           {dataset?.events.map((event) => {
             const eventStarted = event.status === "live";
             const odds = event.odds.filter(
-              (odd) => selected === "all" || odd.bookmakerId === selected,
+              (odd) =>
+                (selected === "all" || odd.bookmakerId === selected) &&
+                (marketFilter === "all" || odd.marketType === marketFilter),
+            );
+            const visibleGroups = marketGroups.filter(
+              ([marketType]) => marketFilter === "all" || marketType === marketFilter,
             );
             return (
               <article className="card event-card" key={event.id}>
@@ -202,9 +256,9 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
                   </div>
                   <StatusBadge status={event.status} />
                 </div>
-                {odds.length ? (
+                {odds.length || marketFilter === "other" ? (
                   <div className="market-groups">
-                    {marketGroups.map(([marketType, label]) => {
+                    {visibleGroups.map(([marketType, label]) => {
                       const marketOdds =
                         marketType === "other"
                           ? []
@@ -267,6 +321,7 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
                                       market: odd.marketType,
                                       selection: odd.selection,
                                       ...(odd.point === null ? {} : { point: String(odd.point) }),
+                                      ...(marketFilter === "all" ? {} : { marketFilter }),
                                     }).toString()}`}
                                     key={key}
                                     aria-current={isSelected ? "true" : undefined}
@@ -296,6 +351,7 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
                         ...(selected === "all" ? {} : { bookmaker: selected }),
                         event: event.id,
                         alternates: "1",
+                        ...(marketFilter === "all" ? {} : { marketFilter }),
                       }).toString()}`}
                     >
                       {loadAlternates && baseEvent?.id === event.id

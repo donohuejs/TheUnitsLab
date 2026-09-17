@@ -149,6 +149,48 @@ This clarification resolves the prior cancellation question only for owner-initi
 pre-kickoff simulated cancellation. It does not resolve provider-specific live-market semantics or
 promise that alternate/handicap markets exist for every event, bookmaker, or provider plan.
 
+### Approved release-candidate fix patch 2 clarification 2026-09-17
+
+The owner explicitly authorizes this focused pre-UAT production-smoke-test patch. It does not start
+Phase 9, redesign unrelated architecture, add real-money behavior, weaken RLS, change provider/cache/
+quota protections, alter settlement idempotency, or add a paid dependency.
+
+- The reusable brand treatment is **The Units Lab** with the smaller subtitle `Experiment | Analyze |
+Improve`. The science-forward flask/beaker mark integrates a Vial/money cue in the liquid and vapor
+  from the neck. Home uses the full lockup; navigation may use the compact mark. `Bet Smarter` and
+  placeholder or emoji-style marks are not permitted.
+- Mobile navigation hides the desktop row and provides a keyboard-accessible hamburger drawer with
+  Home, Browse Odds, My Bets, Import Betslip, Performance, Leaderboards, Settings, and authorized Admin.
+  The listed authenticated surfaces are mobile-first release requirements with no horizontal overflow.
+- One non-sensitive browser-persisted slip/cart contains both independent straight selections and parlay
+  legs across all configured competitions. Each view is limited to twelve items while the shared state
+  retains both views; navigation, refresh, back, and forward do not clear it. Placement and fresh-price
+  validation remain server-authoritative. Successful placement and simulated void/cancellation remove
+  only the affected pending selections.
+- Browse Odds adds All, Moneyline, Spread / Handicap, Total, and Props / Other filters. Market and
+  bookmaker filters compose while grouped event presentation remains intact; soccer Spread may be
+  labeled Handicap.
+- Provider alternate lines remain preferred when available. A user-selected spread may optionally use a
+  clearly labeled **Simulated alternate line**. Version `simulated-alternate-spread-v1` derives an
+  adjusted implied probability from the provider anchor and a deterministic per-line-unit adjustment,
+  converts it back to American odds, and stores the provider anchor, adjusted line, simulated price,
+  and model metadata. Easier lines monotonically reduce payout; harder lines increase it. This is not
+  represented as a bookmaker-offered price.
+- Screenshot import always shows attachment, Processing, and an actionable editable review draft. Safe
+  OCR is not fabricated when unavailable; the fallback is a short guided draft with any determinable
+  fields prefilled, followed by explicit confirmation and My Bets.
+- Manual import uses progressive entry: sportsbook, canonical event when available, market, selection,
+  line, and any two of stake, odds, and payout/return. Exact deterministic arithmetic calculates the
+  third. Canonical event selection fills sport, competition, teams, kickoff, and provider event ID.
+  Matched supported records are marked **Auto settlement ready**; unmatched, unsupported, prop, teaser/
+  SGP, cash-out, promo, or incomplete records retain a clear manual-review reason.
+- Group discovery is surfaced in Leaderboards through Create Group and Join Group. Private invites use
+  secure expiring hashed tokens with clear invalid/expired handling and copyable links; knowing a group
+  name alone never grants access. Existing membership management remains available from Settings.
+- Imported real-money records remain separate analytics records: `$1 USD = 1 Vial equivalent` for
+  comparison only, with no simulated-bankroll debit or credit. Pregame/LIVE/Closed labeling and My Bets
+  placed/kickoff/source/status cleanup behavior from the prior fix patch remain required.
+
 ## 1 Project purpose
 
 Build a private, entertainment-focused sports wagering simulator and betting-performance tracker.
