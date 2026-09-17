@@ -52,11 +52,11 @@ describe("release-candidate fix patch 4 surfaces", () => {
       page.indexOf("<ManageGroupDialog"),
     );
     expect(controls).toContain("Filters");
-    expect(controls).toContain("Manage Group");
-    expect(controls).toContain("Create Group");
-    expect(controls).toContain("Join Group");
+    expect(controls).toContain("Manage Study");
+    expect(controls).toContain("Start a Study");
+    expect(controls).toContain("Join a Study");
     expect(controls).toContain("InviteForm");
-    expect(read("../src/components/invite-form.tsx")).toContain("Advanced: token fallback");
+    expect(read("../src/components/invite-form.tsx")).toContain("Advanced");
     expect(css).toContain(".leaderboard-mobile-cards");
     expect(css).toContain(".manage-group-dialog");
   });

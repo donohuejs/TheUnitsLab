@@ -68,6 +68,39 @@ describe("local betslip text extraction", () => {
     );
   });
 
+  it("keeps explicitly numbered parlay legs associated with their own pick and odds", () => {
+    const result = parseBetslipText(`
+      DraftKings
+      Parlay
+      Leg 1
+      Hoffenheim
+      Moneyline (3-way)
+      -350
+      Leg 2
+      Crystal Palace
+      Moneyline (3-way)
+      -340
+      Leg 3
+      Juventus
+      Moneyline (3-way)
+      -750
+      Combined odds: -113
+      Stake: $12.00
+    `);
+
+    expect(result.ticketType).toBe("parlay");
+    expect(result.fields.americanOdds).toBe("-113");
+    expect(result.parlayLegs).toEqual([
+      { eventDescription: "Hoffenheim", selection: "Hoffenheim", americanOdds: "-350" },
+      {
+        eventDescription: "Crystal Palace",
+        selection: "Crystal Palace",
+        americanOdds: "-340",
+      },
+      { eventDescription: "Juventus", selection: "Juventus", americanOdds: "-750" },
+    ]);
+  });
+
   it("recovers the prominent fields from a FanDuel-style straight receipt", () => {
     const result = parseBetslipText(`
       FanDuel

@@ -7,6 +7,7 @@ import { CachedEventSearch, type CachedEvent } from "@/components/cached-event-s
 import { SubmitButton } from "@/components/submit-button";
 import {
   extractBetslip,
+  inferSelectionKey,
   parseBetslipText,
   type BetslipDraftFields,
   type ExtractedBetslip,
@@ -151,6 +152,7 @@ export function ImportBetslipForm({
   const [screenshotName, setScreenshotName] = useState("");
   const [extractionMessage, setExtractionMessage] = useState("");
   const [extractionWarnings, setExtractionWarnings] = useState<string[]>([]);
+  const [stakeMissingFromExtraction, setStakeMissingFromExtraction] = useState(false);
   const [stepError, setStepError] = useState("");
   const [autoEconomicField, setAutoEconomicField] = useState<AutoEconomicField | null>(null);
   const [draft, setDraft] = useState<Draft>({
@@ -268,6 +270,7 @@ export function ImportBetslipForm({
         : current.parlayLegs,
     }));
     setTicketTypeUncertain(extraction.ticketTypeConfidence === "low");
+    setStakeMissingFromExtraction(!fields.stakeDollars);
     setAutoEconomicField(null);
     setExtractionWarnings(extraction.warnings);
   }
@@ -296,6 +299,7 @@ export function ImportBetslipForm({
         "Local OCR could not read this image. Your private screenshot is attached; continue with the short guided draft.",
       );
       setExtractionWarnings(["No fields were extracted. Enter the missing values manually."]);
+      setStakeMissingFromExtraction(true);
       setTicketTypeUncertain(true);
     } finally {
       setProcessingScreenshot(false);
@@ -343,10 +347,24 @@ export function ImportBetslipForm({
   }
 
   function updateLeg(index: number, patch: Partial<ParlayLeg>) {
+    const currentLeg = draft.parlayLegs[index];
+    const selection = patch.selection ?? currentLeg?.selection;
+    const eventDescription = patch.eventDescription ?? currentLeg?.eventDescription;
+    const marketType = (patch.marketType ?? currentLeg?.marketType ?? "moneyline") as
+      "moneyline" | "spread" | "total";
+    const nextPatch =
+      patch.selection !== undefined ||
+      patch.eventDescription !== undefined ||
+      patch.marketType !== undefined
+        ? {
+            ...patch,
+            selectionKey: inferSelectionKey(selection, eventDescription, marketType) ?? "",
+          }
+        : patch;
     setDraft((current) => ({
       ...current,
       parlayLegs: current.parlayLegs.map((leg, candidateIndex) =>
-        candidateIndex === index ? { ...leg, ...patch } : leg,
+        candidateIndex === index ? { ...leg, ...nextPatch } : leg,
       ),
     }));
   }
@@ -365,21 +383,34 @@ export function ImportBetslipForm({
 
   function nextStep() {
     setStepError("");
+    const showFieldError = (message: string, fieldId: string) => {
+      setStepError(message);
+      window.requestAnimationFrame(() => {
+        const field = document.getElementById(fieldId) as HTMLElement | null;
+        field?.focus();
+        field?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    };
     if (step === "event") {
       if (method === "screenshot" && !screenshotName) {
-        setStepError("Attach a screenshot to continue.");
+        showFieldError("Attach a screenshot to continue.", "betslip-screenshot");
         return;
       }
       if (draft.ticketType === "parlay") {
-        if (
-          draft.parlayLegs.length < 2 ||
-          draft.parlayLegs.some((leg) => !leg.eventDescription.trim() || !leg.eventDate)
-        ) {
-          setStepError("Add an event and kickoff for every parlay leg.");
+        const invalidIndex = draft.parlayLegs.findIndex(
+          (leg) => !leg.eventDescription.trim() || !leg.eventDate,
+        );
+        if (draft.parlayLegs.length < 2 || invalidIndex >= 0) {
+          showFieldError(
+            invalidIndex >= 0
+              ? `Leg ${invalidIndex + 1} needs an event and kickoff.`
+              : "A parlay needs at least two legs.",
+            invalidIndex >= 0 ? `parlay-leg-${invalidIndex}-event` : "parlay-leg-0-event",
+          );
           return;
         }
       } else if (!draft.eventDescription.trim() || !draft.eventDate) {
-        setStepError("Choose a cached event or enter the event and kickoff.");
+        showFieldError("Choose an event match and kickoff before continuing.", "event-description");
         return;
       }
       setStep("market");
@@ -387,19 +418,31 @@ export function ImportBetslipForm({
     }
     if (step === "market") {
       if (draft.ticketType === "parlay") {
-        if (
-          draft.parlayLegs.some(
-            (leg) =>
-              !leg.selection.trim() ||
-              !leg.americanOdds ||
-              (leg.marketType !== "moneyline" && !leg.line),
-          )
-        ) {
-          setStepError("Complete the market, selection, line, and odds for every leg.");
+        const invalidIndex = draft.parlayLegs.findIndex(
+          (leg) =>
+            !leg.selection.trim() ||
+            !leg.americanOdds ||
+            (leg.marketType !== "moneyline" && !leg.line),
+        );
+        if (invalidIndex >= 0) {
+          const invalidLeg = draft.parlayLegs[invalidIndex];
+          showFieldError(
+            !invalidLeg?.selection.trim()
+              ? `Leg ${invalidIndex + 1} needs a selection.`
+              : !invalidLeg?.americanOdds
+                ? `Leg ${invalidIndex + 1} needs odds.`
+                : `Leg ${invalidIndex + 1} needs a line.`,
+            `parlay-leg-${invalidIndex}-selection`,
+          );
           return;
         }
       } else if (!draft.selection.trim() || (draft.marketType !== "moneyline" && !draft.line)) {
-        setStepError("Enter a selection and line when the market needs one.");
+        showFieldError(
+          !draft.selection.trim()
+            ? "Your Pick needs a selection."
+            : "Enter a line for this market.",
+          !draft.selection.trim() ? "selection-text" : "selection-line",
+        );
         return;
       }
       setStep("economics");
@@ -425,6 +468,15 @@ export function ImportBetslipForm({
       setStepError(
         "Enter any two of stake, odds, or total return; the third is calculated automatically.",
       );
+      return;
+    }
+    if (stakeMissingFromExtraction && !draft.stakeDollars.trim()) {
+      setStepError("Stake not shown — enter stake before continuing.");
+      window.requestAnimationFrame(() => {
+        const field = document.getElementById("stake-dollars");
+        field?.focus();
+        field?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
       return;
     }
     setDraft((current) => ({
@@ -486,6 +538,7 @@ export function ImportBetslipForm({
       action={createImportedWager}
       className="form-stack import-betslip-form"
       encType="multipart/form-data"
+      noValidate={!reviewing}
       onSubmit={reviewing ? undefined : reviewDraft}
     >
       <input type="hidden" name="confirmed" value={reviewing ? "true" : "false"} />
@@ -544,6 +597,7 @@ export function ImportBetslipForm({
           <label>
             Betslip screenshot
             <input
+              id="betslip-screenshot"
               name="screenshot"
               type="file"
               accept="image/jpeg,image/png,image/webp"
@@ -563,6 +617,11 @@ export function ImportBetslipForm({
             <p role="status">Processing screenshot locally… {processingProgress}%</p>
           ) : null}
           {extractionMessage ? <p role="status">{extractionMessage}</p> : null}
+          {stakeMissingFromExtraction ? (
+            <p className="notice compact-notice" role="status">
+              Stake not shown — enter stake before continuing.
+            </p>
+          ) : null}
           {extractionWarnings.length ? (
             <ul className="extraction-warnings">
               {extractionWarnings.map((warning) => (
@@ -700,6 +759,7 @@ export function ImportBetslipForm({
                   <label className={inputClass}>
                     Event or teams
                     <input
+                      id="event-description"
                       name="eventDescription"
                       value={draft.eventDescription}
                       onChange={(event) => set("eventDescription", event.target.value)}
@@ -794,32 +854,30 @@ export function ImportBetslipForm({
               </select>
             </label>
             <label>
-              Grading side
-              <select
-                name="selectionKey"
-                value={draft.selectionKey}
-                onChange={(event) => set("selectionKey", event.target.value)}
-              >
-                <option value="">Needs review</option>
-                <option value="home">Home</option>
-                <option value="away">Away</option>
-                <option value="draw">Draw</option>
-                <option value="over">Over</option>
-                <option value="under">Under</option>
-              </select>
-            </label>
-            <label>
-              Selection as shown
+              Your Pick
               <input
+                id="selection-text"
                 name="selection"
                 value={draft.selection}
-                onChange={(event) => set("selection", event.target.value)}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    selection: event.target.value,
+                    selectionKey:
+                      inferSelectionKey(
+                        event.target.value,
+                        current.eventDescription,
+                        current.marketType as "moneyline" | "spread" | "total",
+                      ) ?? "",
+                  }))
+                }
                 required
               />
             </label>
             <label>
               Line {draft.marketType === "moneyline" ? "(not used)" : ""}
               <input
+                id="selection-line"
                 name="line"
                 type="number"
                 step="0.0001"
@@ -852,6 +910,7 @@ export function ImportBetslipForm({
             <label>
               Stake (source USD)
               <input
+                id="stake-dollars"
                 name="stakeDollars"
                 inputMode="decimal"
                 value={draft.stakeDollars}
@@ -958,7 +1017,7 @@ export function ImportBetslipForm({
                 </select>
               </label>
               <label>
-                Optional group
+                Optional Study
                 <select
                   name="groupId"
                   value={draft.groupId}
@@ -1182,6 +1241,7 @@ function ParlayLegEditor({
               <label className="form-wide">
                 Event or matchup
                 <input
+                  id={`parlay-leg-${index}-event`}
                   value={leg.eventDescription}
                   onChange={(event) => onUpdate(index, { eventDescription: event.target.value })}
                   required
@@ -1236,6 +1296,7 @@ function ParlayLegEditor({
               <label>
                 Selection
                 <input
+                  id={`parlay-leg-${index}-selection`}
                   value={leg.selection}
                   onChange={(event) => onUpdate(index, { selection: event.target.value })}
                   required
@@ -1262,20 +1323,11 @@ function ParlayLegEditor({
                   required
                 />
               </label>
-              <label>
-                Grading side
-                <select
-                  value={leg.selectionKey}
-                  onChange={(event) => onUpdate(index, { selectionKey: event.target.value })}
-                >
-                  <option value="">Needs review</option>
-                  <option value="home">Home</option>
-                  <option value="away">Away</option>
-                  <option value="draw">Draw</option>
-                  <option value="over">Over</option>
-                  <option value="under">Under</option>
-                </select>
-              </label>
+              <div className="field-readout" aria-live="polite">
+                <span>Your Pick</span>
+                <strong>{leg.selectionKey ? leg.selectionKey : "Needs review"}</strong>
+                <small>Inferred from the pick and event; no manual grading code is required.</small>
+              </div>
               <label>
                 Canonical event ID
                 <input

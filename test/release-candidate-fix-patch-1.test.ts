@@ -16,10 +16,11 @@ describe("release-candidate fix patch 1 surfaces", () => {
 
   it("locks started pregame odds and groups supported markets", () => {
     const source = read("../src/app/sports/[competition]/page.tsx");
-    expect(source).toContain('"LIVE · pregame wagering locked"');
+    const oddsGrid = read("../src/components/odds-selection-grid.tsx");
+    expect(oddsGrid).toContain("LIVE · pregame price locked");
     expect(source).toContain("Point spread / handicap");
     expect(source).toContain("Props / Other");
-    expect(source).toContain("provider-priced alternate locked");
+    expect(source).toContain("Provider-priced alternate lines");
     expect(source).toContain("const marketGroups");
   });
 

@@ -138,11 +138,9 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
     <main className="shell">
       <AppNav active="leaderboards" userId={authData.user.id} />
       <header className="page-header">
-        <p className="eyebrow">Private groups</p>
-        <h1>Leaderboards</h1>
-        <p className="muted">
-          Vials Won is the default ranking. ROI is shown beside every participant.
-        </p>
+        <p className="eyebrow">Study Results</p>
+        <h1>Lab Notes</h1>
+        <p className="muted">Compare results with your Study Partners.</p>
       </header>
       {one(query.notice) ? (
         <p className="notice" role="status" aria-live="polite">
@@ -164,13 +162,13 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
 
       {!groups.length ? (
         <p className="empty-state">
-          <strong>No group selected</strong>
-          Join or create a group to see leaderboards.
+          <strong>No Study selected</strong>
+          Join or start a Study to see Study Results.
         </p>
       ) : null}
       {wagerResult.error || memberResult.error || inviteResult.error ? (
         <p className="notice error" role="alert">
-          This group leaderboard is unavailable or you are not authorized to view it.
+          These Study Results are unavailable or you are not authorized to view them.
         </p>
       ) : null}
       {rateCategory ? (
@@ -181,13 +179,16 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
       ) : null}
 
       {selectedGroup ? (
-        <section className="card leaderboard-card" aria-label={`${selectedGroup.name} leaderboard`}>
+        <section
+          className="card leaderboard-card"
+          aria-label={`${selectedGroup.name} Study Results`}
+        >
           <div className="section-heading">
             <h2>{selectedGroup.name}</h2>
           </div>
           <div className="table-scroll">
             <table>
-              <caption className="sr-only">{selectedGroup.name} leaderboard rankings</caption>
+              <caption className="sr-only">{selectedGroup.name} Study Results rankings</caption>
               <thead>
                 <tr>
                   <th scope="col">Rank</th>
@@ -234,7 +235,10 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
               >
                 <div className="leaderboard-player-heading">
                   <span className="leaderboard-rank">#{row.rank ?? "—"}</span>
-                  <h3>{row.displayName}</h3>
+                  <div>
+                    <span className="leaderboard-partner-label">Study Partner</span>
+                    <h3>{row.displayName}</h3>
+                  </div>
                   {!row.eligible ? (
                     <small>
                       Needs {row.neededForEligibility} more eligible wager

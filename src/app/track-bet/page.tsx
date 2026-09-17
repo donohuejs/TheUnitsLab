@@ -193,7 +193,7 @@ export default async function TrackBetPage({ searchParams }: Props) {
         </p>
       ) : null}
 
-      <section className="stats-grid irl-stats" aria-label="Imported performance summary">
+      <section className="stats-grid irl-stats" aria-label="Imported analysis summary">
         <div className="card">
           <small>Settled imported wagers</small>
           <strong>{summary.totalSettled}</strong>

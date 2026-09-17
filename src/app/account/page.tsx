@@ -86,11 +86,11 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
       <AppNav active="account" userId={authData.user.id} />
       <header className="account-header">
         <div>
-          <p className="eyebrow">Account and private groups</p>
+          <p className="eyebrow">Account and private Studies</p>
           <h1>Settings</h1>
           <p className="muted">
             Signed in as {profile?.display_name ?? "your account"}. Manage your profile and optional
-            wager group associations.
+            wager Study associations.
           </p>
         </div>
         <form action={signOut}>
@@ -162,7 +162,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
               <label>
                 Profile visibility
                 <select name="profileVisibility" defaultValue={profile.profile_visibility}>
-                  <option value="group_members">Shared-group members</option>
+                  <option value="group_members">Shared with Study Partners</option>
                   <option value="private">Private</option>
                 </select>
               </label>
@@ -174,24 +174,21 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
         </section>
 
         <section className="card">
-          <h2>Private group access</h2>
-          <p>
-            Create groups, redeem expiring invites, and share owner/admin invite links from
-            Leaderboards.
-          </p>
+          <h2>Private Study access</h2>
+          <p>Start Studies, redeem expiring invites, and share Study Invites from Lab Notes.</p>
           <Link className="button secondary" href="/leaderboards">
-            Open Leaderboards group access
+            Open Lab Notes Study access
           </Link>
         </section>
       </div>
 
       <section className="groups-section">
         <div className="section-heading">
-          <h2>Your groups</h2>
+          <h2>Your Studies</h2>
           <span className="pill">{groups.length}</span>
         </div>
         {groups.length === 0 ? (
-          <p className="empty-state">You do not belong to a group yet.</p>
+          <p className="empty-state">You do not belong to a Study yet.</p>
         ) : null}
         <div className="group-grid">
           {groups.map((group) => {

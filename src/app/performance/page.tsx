@@ -140,10 +140,8 @@ export default async function PerformancePage({ searchParams }: Props) {
       <AppNav active="performance" userId={authData.user.id} />
       <header className="page-header">
         <p className="eyebrow">Authoritative wager history</p>
-        <h1>Performance</h1>
-        <p className="muted">
-          Profitability is calculated from stored accepted terms and current authoritative results.
-        </p>
+        <h1>Analysis</h1>
+        <p className="muted">Analyze your results and improve your process.</p>
       </header>
 
       <form className="card filter-bar" method="get">
@@ -176,7 +174,7 @@ export default async function PerformancePage({ searchParams }: Props) {
       {wagerResult.error ? (
         <>
           <p className="notice error" role="alert">
-            Performance data is temporarily unavailable. Your stored wagers were not changed.
+            Analysis data is temporarily unavailable. Your stored wagers were not changed.
           </p>
           <p className="empty-state">
             <strong>Metrics are unavailable right now</strong>
@@ -201,7 +199,7 @@ export default async function PerformancePage({ searchParams }: Props) {
       ) : null}
 
       {!wagerResult.error ? (
-        <section className="stats-grid analytics-stats" aria-label="Performance metrics">
+        <section className="stats-grid analytics-stats" aria-label="Analysis metrics">
           <div className="card">
             <small>Total bets</small>
             <strong>{summary.totalBets}</strong>

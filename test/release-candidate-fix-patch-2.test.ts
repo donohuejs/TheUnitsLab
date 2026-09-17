@@ -35,8 +35,8 @@ describe("release-candidate fix patch 2 surfaces", () => {
       "Browse Odds",
       "My Bets",
       "Import Betslip",
-      "Performance",
-      "Leaderboards",
+      "Analysis",
+      "Lab Notes",
       "Settings",
     ]) {
       expect(navigation + nav).toContain(label);
@@ -87,7 +87,7 @@ describe("release-candidate fix patch 2 surfaces", () => {
     expect(leaderboard).toContain("createGroup");
     expect(leaderboard).toContain("joinGroup");
     expect(leaderboard).toContain("InviteForm");
-    expect(account).toContain("Open Leaderboards group access");
+    expect(account).toContain("Open Lab Notes Study access");
     expect(account).not.toContain("<InviteForm");
     expect(migration).toContain("auto_settlement_ready");
     expect(migration).toContain("canonical_import_event_exists");

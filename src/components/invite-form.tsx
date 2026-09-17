@@ -44,7 +44,7 @@ export function InviteForm({ groupId }: { groupId: string }) {
           />
         </label>
         <button className="button secondary" type="submit" disabled={pending}>
-          {pending ? "Creating…" : "Create reusable invite"}
+          {pending ? "Creating…" : "Invite Study Partner"}
         </button>
       </form>
       {state.error ? (
@@ -60,15 +60,15 @@ export function InviteForm({ groupId }: { groupId: string }) {
           </p>
           <div className="invite-link-row">
             <label>
-              Invite link
+              Study Invite
               <input readOnly value={inviteUrl} aria-label="Secure invite link" />
             </label>
             <button className="button secondary" type="button" onClick={copyInviteLink}>
-              {copied ? "Copied" : "Copy Invite Link"}
+              {copied ? "Copied" : "Copy Study Invite"}
             </button>
           </div>
           <details className="disclosure">
-            <summary>Advanced: token fallback</summary>
+            <summary>Advanced</summary>
             <p className="muted token-fallback">
               Token fallback: <code>{state.token}</code>
             </p>
@@ -82,7 +82,7 @@ export function InviteForm({ groupId }: { groupId: string }) {
             <form action={revokeInvite}>
               <input type="hidden" name="inviteId" value={state.inviteId} />
               <button className="button secondary" type="submit">
-                Revoke Invite
+                Revoke Study Invite
               </button>
             </form>
           ) : null}

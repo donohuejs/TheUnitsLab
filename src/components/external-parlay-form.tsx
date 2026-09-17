@@ -41,6 +41,24 @@ const emptyLeg = (competitionKey: string): Leg => ({
 const subscribeToClock = () => () => {};
 const getBrowserNow = () => toDateTimeLocalValue(new Date());
 
+function inferLegSelectionKey(
+  leg: Pick<Leg, "selection" | "eventDescription" | "marketType">,
+): Leg["selectionKey"] {
+  const value = `${leg.selection} ${leg.eventDescription}`.toLowerCase();
+  if (leg.marketType === "total") {
+    if (/\bover\b/.test(value)) return "over";
+    if (/\bunder\b/.test(value)) return "under";
+  }
+  if (/\bdraw\b|\btie\b/.test(value)) return "draw";
+  const matchup = /(.+?)\s+at\s+(.+)/i.exec(leg.eventDescription);
+  if (matchup) {
+    const selection = leg.selection.trim().toLowerCase();
+    if (selection === matchup[1].trim().toLowerCase()) return "away";
+    if (selection === matchup[2].trim().toLowerCase()) return "home";
+  }
+  return "";
+}
+
 export function ExternalParlayForm({
   groups,
   competitions,
@@ -83,7 +101,7 @@ export function ExternalParlayForm({
       americanOdds: Number(leg.americanOdds),
       result: leg.result,
       providerEventId: leg.providerEventId,
-      selectionKey: leg.selectionKey,
+      selectionKey: inferLegSelectionKey(leg),
     };
   });
   async function reviewDraft(event: FormEvent<HTMLFormElement>) {
@@ -202,7 +220,7 @@ export function ExternalParlayForm({
           <input name="sportsbookBetId" maxLength={160} placeholder="Optional" />
         </label>
         <label>
-          Optional group
+          Optional Study
           <select name="groupId" defaultValue="">
             <option value="">Private — only me</option>
             {groups.map((group) => (
@@ -332,22 +350,11 @@ export function ExternalParlayForm({
                   placeholder="Optional for matching"
                 />
               </label>
-              <label>
-                Grading side
-                <select
-                  value={leg.selectionKey}
-                  onChange={(event) =>
-                    update(index, { selectionKey: event.target.value as Leg["selectionKey"] })
-                  }
-                >
-                  <option value="">Needs review</option>
-                  <option value="home">Home</option>
-                  <option value="away">Away</option>
-                  <option value="draw">Draw</option>
-                  <option value="over">Over</option>
-                  <option value="under">Under</option>
-                </select>
-              </label>
+              <div className="field-readout">
+                <span>Your Pick</span>
+                <strong>{inferLegSelectionKey(leg) || "Needs review"}</strong>
+                <small>Inferred from the pick text and matchup.</small>
+              </div>
             </div>
             {legs.length > 2 ? (
               <button

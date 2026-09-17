@@ -258,6 +258,27 @@ cards with no horizontal scroll. Group discovery and invite actions are owned by
 limits, and token-hash security model are unchanged. This patch adds no analytics dimensions, provider
 requests, client authorization, or paid dependency.
 
+### Release-candidate fix patch 5 boundaries
+
+Patch 5 is a forward-only pre-UAT correction within Phase 8. The normalized local OCR parser now
+associates parlay fields within explicit leg/event/odds blocks rather than zipping independent
+arrays. The import form keeps incomplete drafts actionable, focuses the first blocking field, and
+keeps grading keys as private metadata while displaying `Your Pick`.
+
+The `20260927000000_release_candidate_fix_patch_5.sql` migration adds server-side imported grading
+inference for straight wagers and parlay legs, an after-insert settlement retry for supported final
+canonical events, and owner-only pregame Study-assignment RPCs. Assignment changes are protected by
+the existing immutable snapshot triggers through a transaction-local server setting and append
+owner/audit evidence to `wager_study_assignment_audits`; neither path changes accepted terms or the
+virtual bankroll. Imported analytics continue through the existing normalized wager projection.
+
+My Bets is Open-first with a separate Cancelled / Void filter and de-emphasized void cards. Browse
+Odds uses a responsive selection-group component that sorts American prices to expose the best
+available book on mobile and expands the remaining book prices on demand, while preserving started-
+event locking. Visible UI terminology is updated to Analysis, Lab Notes, Study, Study Partner, and
+Study Invite; stable route, RPC, and database `group` identifiers are retained for compatibility.
+This patch adds no provider request, paid dependency, real-money capability, or Phase 9 work.
+
 ### Release-candidate fix patch 1 boundaries
 
 This is a focused production-smoke-test blocker patch after UX Patch 3 and before UAT; it does not

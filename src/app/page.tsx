@@ -186,7 +186,7 @@ export default async function HomePage() {
         <div className="card">
           <small>Vials won / lost</small>
           <strong>{summary?.unitsWonLost ?? "—"}</strong>
-          <Link href="/performance">View performance</Link>
+          <Link href="/performance">View analysis</Link>
         </div>
         <div className="card">
           <small>ROI</small>
@@ -271,27 +271,27 @@ export default async function HomePage() {
 
         <section className="card">
           <div className="section-heading">
-            <h2>Your groups</h2>
-            <Link href="/leaderboards">Manage groups</Link>
+            <h2>Your Studies</h2>
+            <Link href="/leaderboards">Manage Studies</Link>
           </div>
           {groupsResult.error ? (
             <p className="empty-state">
-              <strong>Group information is unavailable</strong>
-              Refresh the page later to load your private groups.
+              <strong>Study information is unavailable</strong>
+              Refresh the page later to load your private Studies.
             </p>
           ) : (groupsResult.data ?? []).length ? (
             <ul className="dashboard-list">
               {(groupsResult.data ?? []).map((group) => (
                 <li key={group.id}>
                   <strong>{group.name}</strong>
-                  <Link href={`/leaderboards?group=${group.id}`}>Leaderboard</Link>
+                  <Link href={`/leaderboards?group=${group.id}`}>Study Results</Link>
                 </li>
               ))}
             </ul>
           ) : (
             <p className="empty-state">
-              <strong>No private groups yet</strong>
-              Create or join a group in Leaderboards to compare performance privately.
+              <strong>No private Studies yet</strong>
+              Start or join a Study in Lab Notes to compare results privately.
             </p>
           )}
         </section>

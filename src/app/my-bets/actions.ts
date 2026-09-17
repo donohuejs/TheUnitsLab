@@ -9,6 +9,44 @@ import { runScoreAndSettlementCycle } from "@/lib/scores/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const betIdSchema = z.uuid();
+const studyAssignmentSchema = z.object({
+  wagerId: z.uuid(),
+  groupId: z.union([z.literal(""), z.uuid()]),
+  source: z.enum(["simulated", "imported"]),
+});
+
+export async function assignWagerStudy(formData: FormData) {
+  const parsed = studyAssignmentSchema.safeParse({
+    wagerId: typeof formData.get("wagerId") === "string" ? formData.get("wagerId") : "",
+    groupId: typeof formData.get("groupId") === "string" ? formData.get("groupId") : "",
+    source: typeof formData.get("source") === "string" ? formData.get("source") : "",
+  });
+  if (!parsed.success)
+    redirect("/my-bets?notice=The%20Study%20assignment%20request%20is%20invalid.");
+
+  const supabase = await createSupabaseServerClient();
+  const { data: authData } = await supabase.auth.getUser();
+  if (!authData.user) redirect("/auth");
+  const rpc =
+    parsed.data.source === "simulated"
+      ? "assign_simulated_bet_study"
+      : "assign_imported_wager_study";
+  const { error } = await supabase.rpc(rpc, {
+    [parsed.data.source === "simulated" ? "p_bet_id" : "p_external_wager_id"]: parsed.data.wagerId,
+    p_group_id: parsed.data.groupId || null,
+  });
+  if (error) {
+    const message = error.message.includes("EVENT_ALREADY_STARTED")
+      ? "Study assignment is locked after the event starts."
+      : error.message.includes("STUDY_ASSIGNMENT_LOCKED")
+        ? "Settled wagers cannot be added to a Study."
+        : error.message.includes("INVALID_GROUP_ASSOCIATION")
+          ? "That Study association is not authorized."
+          : "The Study assignment could not be saved.";
+    redirect(`/my-bets?notice=${encodeURIComponent(message)}`);
+  }
+  redirect("/my-bets?notice=Study assignment saved.");
+}
 
 export async function cancelSimulatedBet(formData: FormData) {
   const betId = formData.get("betId");

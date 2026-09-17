@@ -36,7 +36,7 @@ export function LeaderboardControls({
     <section className="leaderboard-controls" aria-label="Leaderboard controls">
       <div className="leaderboard-control-summary">
         <label>
-          <span>Group</span>
+          <span>Study</span>
           <select
             name="group"
             form="leaderboard-group-form"
@@ -91,7 +91,7 @@ export function LeaderboardControls({
           <div className="dialog-surface">
             <div className="section-heading">
               <div>
-                <p className="eyebrow">Leaderboard</p>
+                <p className="eyebrow">Study Results</p>
                 <h2 id="leaderboard-filter-title">Filters</h2>
               </div>
               <button className="text-button" type="button" onClick={() => setFiltersOpen(false)}>
@@ -163,55 +163,55 @@ export function ManageGroupDialog({
     selectedGroup && (membership?.role === "owner" || membership?.role === "admin"),
   );
   return (
-    <section className="secondary-group-management" aria-label="Group management">
+    <section className="secondary-group-management" aria-label="Study management">
       <div className="section-heading">
         <div>
           <p className="eyebrow">Secondary actions</p>
-          <h2>Group management</h2>
+          <h2>Study management</h2>
         </div>
         <button className="button secondary" type="button" onClick={() => setOpen(true)}>
-          Manage Group
+          Manage Study
         </button>
       </div>
       <p className="muted">
-        Create, join, or share access without pushing group administration above the standings.
+        Start, join, or share access without pushing Study Results below management forms.
       </p>
       {open ? (
         <dialog className="manage-group-dialog" open aria-labelledby="manage-group-title">
           <div className="dialog-surface">
             <div className="section-heading">
               <div>
-                <p className="eyebrow">Private groups</p>
-                <h2 id="manage-group-title">Manage Group</h2>
+                <p className="eyebrow">Study controls</p>
+                <h2 id="manage-group-title">Manage Study</h2>
               </div>
               <button className="text-button" type="button" onClick={() => setOpen(false)}>
                 Close
               </button>
             </div>
             <div className="manage-group-sections">
-              <ManageSection title="Create">
+              <ManageSection title="Start a Study">
                 <form action={createGroupAction} className="form-stack">
                   <input type="hidden" name="returnTo" value="/leaderboards" />
                   <label>
-                    Group name
+                    Study Name
                     <input
                       name="groupName"
                       minLength={2}
                       maxLength={80}
-                      placeholder="Lab cohort name"
+                      placeholder="Study name"
                       required
                     />
                   </label>
                   <button className="button" type="submit">
-                    Create Group
+                    Start Study
                   </button>
                 </form>
               </ManageSection>
-              <ManageSection title="Join">
+              <ManageSection title="Join a Study">
                 <form action={joinGroupAction} className="form-stack">
                   <input type="hidden" name="returnTo" value="/leaderboards" />
                   <label>
-                    Invite link or token
+                    Study Invite
                     <input
                       name="inviteToken"
                       minLength={32}
@@ -222,15 +222,15 @@ export function ManageGroupDialog({
                     />
                   </label>
                   <button className="button secondary" type="submit">
-                    Join Group
+                    Join Study
                   </button>
                 </form>
               </ManageSection>
               {selectedGroup && canInvite ? (
-                <ManageSection title="Invite">
+                <ManageSection title="Study Partners / Invite">
                   <p className="muted">
-                    Create a reusable invite for {selectedGroup.name}. Authenticated people can use
-                    it until expiry or its optional cap.
+                    Create a reusable Study Invite for {selectedGroup.name}. Authenticated people
+                    can use it until expiry or its optional cap.
                   </p>
                   <InviteForm groupId={selectedGroup.id} />
                   {invites.length ? <InviteHistory invites={invites} nowIso={nowIso} /> : null}
@@ -257,7 +257,7 @@ function InviteHistory({ invites, nowIso }: { invites: Invite[]; nowIso: string 
   return (
     <details className="invite-history-disclosure">
       <summary>Invite history</summary>
-      <div className="invite-history" aria-label="Group invite usage">
+      <div className="invite-history" aria-label="Study Invite usage">
         {invites.slice(0, 8).map((invite) => {
           const expired = invite.invite_expires_at <= nowIso;
           const state = invite.invite_revoked_at ? "Revoked" : expired ? "Expired" : "Active";

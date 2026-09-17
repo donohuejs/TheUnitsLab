@@ -260,6 +260,29 @@ leaderboard experience while preserving the governing virtual-only, auditable pr
   exact economics, OCR/parser contracts, the local database suites, four concurrency suites, lint,
   typecheck, build, audit, and the existing Phase 0–8 regression suite. No Phase 9 work is included.
 
+### Approved release-candidate fix patch 5 clarification 2026-09-17
+
+The owner explicitly authorizes this follow-on pre-UAT correction within Phase 8; it does not start
+Phase 9 or change the virtual-only product boundary.
+
+- Universal screenshot parsing remains local and review-first. Parlay association is block-scoped so
+  each leg keeps its own event, pick, and odds; a missing extracted stake remains visible in review
+  and must be supplied before save. Continue actions show field-level errors and focus the first
+  blocking field rather than silently stopping.
+- The form presents the user-facing pick as `Your Pick`. Supported imported straight and parlay
+  grading metadata is inferred server-side from the submitted pick, event, market, and canonical
+  event evidence. Auto-settlement remains limited to deterministic supported markets; all other
+  records retain a visible manual-review reason.
+- Imported records use the existing normalized `$1 USD = 1 Vial` analytics boundary and never enter
+  the simulated bankroll. An open wager may be assigned or reassigned to a Study only before its
+  event starts; accepted terms remain immutable and each association change is audited.
+- My Bets defaults to Open, with cancelled/void records separated and de-emphasized. Browse Odds
+  uses one responsive mobile card per selection with the best available book price and an expandable
+  comparison list. The visible navigation terminology is Analysis, Lab Notes, Study, Study Partner,
+  and Study Invite; existing database `groups` identifiers remain compatibility internals.
+- Patch validation is recorded in `RELEASE_CANDIDATE_FIX_PATCH_5_REPORT.md`. No Phase 9 work is
+  included.
+
 ## 1 Project purpose
 
 Build a private, entertainment-focused sports wagering simulator and betting-performance tracker.

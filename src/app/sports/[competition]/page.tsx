@@ -5,6 +5,7 @@ import { BetSlip } from "@/components/bet-slip";
 import { CompetitionSwitcher } from "@/components/competition-switcher";
 import { KickoffTime } from "@/components/kickoff-time";
 import { LocalDateTime } from "@/components/local-date-time";
+import { OddsSelectionGrid } from "@/components/odds-selection-grid";
 import { StatusBadge } from "@/components/status-badge";
 import { SubmitButton } from "@/components/submit-button";
 import { TeamMark } from "@/components/team-mark";
@@ -31,8 +32,6 @@ type Props = {
     book?: string;
   }>;
 };
-const price = (value: number) => (value > 0 ? `+${value}` : String(value));
-
 const marketGroups = [
   ["moneyline", "Moneyline"],
   ["spread", "Point spread / handicap"],
@@ -267,70 +266,27 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
                         <section className="market-group" key={marketType}>
                           <h3>{label}</h3>
                           {marketOdds.length ? (
-                            <div className="odds-grid">
-                              {marketOdds.map((odd, index) => {
-                                const isSelected =
+                            <OddsSelectionGrid
+                              odds={marketOdds.map((odd) => ({
+                                ...odd,
+                                href: `/sports/${id}?${new URLSearchParams({
+                                  ...(selected === "all" ? {} : { bookmaker: selected }),
+                                  event: event.id,
+                                  book: odd.bookmakerId,
+                                  market: odd.marketType,
+                                  selection: odd.selection,
+                                  ...(odd.point === null ? {} : { point: String(odd.point) }),
+                                  ...(marketFilter === "all" ? {} : { marketFilter }),
+                                }).toString()}`,
+                                isSelected:
                                   chosen?.event.id === event.id &&
                                   chosen.odds.bookmakerId === odd.bookmakerId &&
                                   chosen.odds.marketType === odd.marketType &&
                                   chosen.odds.selection === odd.selection &&
-                                  chosen.odds.point === odd.point;
-                                const content = (
-                                  <>
-                                    <small>
-                                      {odd.bookmakerName} ·{" "}
-                                      {eventStarted
-                                        ? odd.isAlternate
-                                          ? "LIVE · provider-priced alternate locked"
-                                          : "LIVE · pregame price locked"
-                                        : odd.isAlternate
-                                          ? `provider-priced alternate ${odd.marketType}`
-                                          : "pregame price"}
-                                    </small>
-                                    <strong>
-                                      {odd.selectionName}
-                                      {odd.point === null
-                                        ? ""
-                                        : ` ${odd.point > 0 ? "+" : ""}${odd.point}`}
-                                    </strong>
-                                    <span>
-                                      {price(odd.americanOdds)}{" "}
-                                      <small>({odd.decimalOdds.toFixed(2)})</small>
-                                    </span>
-                                    <small>
-                                      {isSelected
-                                        ? "Selected for simulated slip"
-                                        : eventStarted
-                                          ? "LIVE · pregame wagering locked"
-                                          : "Select for simulated slip"}
-                                    </small>
-                                  </>
-                                );
-                                const key = `${odd.bookmakerId}-${odd.marketType}-${odd.selection}-${odd.point}-${index}`;
-                                return eventStarted ? (
-                                  <div className="odd locked" key={key} aria-disabled="true">
-                                    {content}
-                                  </div>
-                                ) : (
-                                  <Link
-                                    className={isSelected ? "odd selected" : "odd"}
-                                    href={`/sports/${id}?${new URLSearchParams({
-                                      ...(selected === "all" ? {} : { bookmaker: selected }),
-                                      event: event.id,
-                                      book: odd.bookmakerId,
-                                      market: odd.marketType,
-                                      selection: odd.selection,
-                                      ...(odd.point === null ? {} : { point: String(odd.point) }),
-                                      ...(marketFilter === "all" ? {} : { marketFilter }),
-                                    }).toString()}`}
-                                    key={key}
-                                    aria-current={isSelected ? "true" : undefined}
-                                  >
-                                    {content}
-                                  </Link>
-                                );
-                              })}
-                            </div>
+                                  chosen.odds.point === odd.point,
+                                eventStarted,
+                              }))}
+                            />
                           ) : marketType === "other" ? (
                             <p className="muted">
                               No props or other markets are returned by the configured provider

@@ -391,9 +391,9 @@ export function BetSlip({ selection, groups }: Props) {
             </label>
             {groups.length ? (
               <label>
-                Group association (optional)
+                Study association (optional)
                 <select name="groupId" defaultValue="">
-                  <option value="">No group</option>
+                  <option value="">No Study</option>
                   {groups.map((group) => (
                     <option key={group.id} value={group.id}>
                       {group.name}
@@ -509,9 +509,9 @@ export function BetSlip({ selection, groups }: Props) {
           </label>
           {groups.length ? (
             <label>
-              Group association (optional)
+              Study association (optional)
               <select name="groupId" defaultValue="">
-                <option value="">No group</option>
+                <option value="">No Study</option>
                 {groups.map((group) => (
                   <option key={group.id} value={group.id}>
                     {group.name}
@@ -622,9 +622,9 @@ export function BetSlip({ selection, groups }: Props) {
           </label>
           {groups.length ? (
             <label>
-              Group association (optional)
+              Study association (optional)
               <select name="groupId" defaultValue="">
-                <option value="">No group</option>
+                <option value="">No Study</option>
                 {groups.map((group) => (
                   <option key={group.id} value={group.id}>
                     {group.name}

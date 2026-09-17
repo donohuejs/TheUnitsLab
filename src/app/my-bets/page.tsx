@@ -13,9 +13,9 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { liveWagerState } from "@/lib/settlement/grading";
 import { slipSelectionKey } from "@/lib/wagers/slip";
 
-import { cancelSimulatedBet, refreshMyOpenScores } from "./actions";
+import { assignWagerStudy, cancelSimulatedBet, refreshMyOpenScores } from "./actions";
 
-type Filter = "all" | "open" | "settled" | "simulated" | "imported";
+type Filter = "all" | "open" | "settled" | "simulated" | "imported" | "cancelled";
 type Props = {
   searchParams: Promise<{
     filter?: string;
@@ -50,6 +50,7 @@ type Leg = {
 };
 type Ticket = {
   id: string;
+  group_id: string | null;
   ticket_type: "straight" | "parlay";
   leg_count: number;
   stake_units: number;
@@ -65,6 +66,7 @@ type Ticket = {
 };
 type ImportedWager = {
   id: string;
+  group_id: string | null;
   sportsbook_name: string;
   ticket_type: "straight" | "parlay";
   leg_count: number;
@@ -105,18 +107,19 @@ type Score = {
 const price = (value: number) => (value > 0 ? `+${value}` : String(value));
 const vials = (value: number) => Number(value).toFixed(2);
 const filters: [Filter, string][] = [
-  ["all", "All"],
   ["open", "Open"],
+  ["all", "All"],
   ["settled", "Settled"],
   ["simulated", "Simulated"],
   ["imported", "Imported"],
+  ["cancelled", "Cancelled / Void"],
 ];
 
 function selectedFilter(query: { filter?: string; view?: string }): Filter {
   if (filters.some(([value]) => value === query.filter)) return query.filter as Filter;
   if (query.view === "history") return "settled";
   if (query.view === "open") return "open";
-  return "all";
+  return "open";
 }
 
 export default async function MyBetsPage({ searchParams }: Props) {
@@ -129,22 +132,23 @@ export default async function MyBetsPage({ searchParams }: Props) {
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) redirect("/auth");
 
-  const [ticketResult, importedResult, ledgerResult] = await Promise.all([
+  const [ticketResult, importedResult, ledgerResult, groupsResult] = await Promise.all([
     supabase
       .from("bets")
       .select(
-        "id,ticket_type,leg_count,stake_units,decimal_equivalent_odds,potential_profit_units,potential_return_units,american_odds,status,settled_profit_units,settled_return_units,created_at,bet_legs(*)",
+        "id,group_id,ticket_type,leg_count,stake_units,decimal_equivalent_odds,potential_profit_units,potential_return_units,american_odds,status,settled_profit_units,settled_return_units,created_at,bet_legs(*)",
       )
       .eq("is_synthetic", false)
       .order("created_at", { ascending: false }),
     supabase
       .from("external_wagers")
       .select(
-        "id,sportsbook_name,ticket_type,leg_count,event_description,event_date,wager_date,selection,market_type,line,american_odds,decimal_odds,stake_units,raw_stake_dollars,raw_return_dollars,status,profit_loss_units,match_state,match_reason,settlement_method,auto_settlement_ready,external_wager_legs(*)",
+        "id,group_id,sportsbook_name,ticket_type,leg_count,event_description,event_date,wager_date,selection,market_type,line,american_odds,decimal_odds,stake_units,raw_stake_dollars,raw_return_dollars,status,profit_loss_units,match_state,match_reason,settlement_method,auto_settlement_ready,external_wager_legs(*)",
       )
       .eq("user_id", authData.user.id)
       .order("wager_date", { ascending: false }),
     supabase.from("bankroll_ledger").select("amount_units"),
+    supabase.from("groups").select("id,name").order("name"),
   ]);
   const allTickets = (ticketResult.data ?? []) as Ticket[];
   const allImported = (importedResult.data ?? []) as ImportedWager[];
@@ -167,7 +171,8 @@ export default async function MyBetsPage({ searchParams }: Props) {
       (filter === "all" ||
         filter === "simulated" ||
         (filter === "open" && ticket.status === "open") ||
-        (filter === "settled" && ticket.status !== "open")),
+        (filter === "settled" && ticket.status !== "open" && ticket.status !== "void") ||
+        (filter === "cancelled" && ticket.status === "void")),
   );
   const importedRecords = allImported.filter(
     (wager) =>
@@ -175,8 +180,11 @@ export default async function MyBetsPage({ searchParams }: Props) {
       (filter === "all" ||
         filter === "imported" ||
         (filter === "open" && wager.status === "open") ||
-        (filter === "settled" && wager.status !== "open")),
+        (filter === "settled" && wager.status !== "open" && wager.status !== "void") ||
+        (filter === "cancelled" && wager.status === "void")),
   );
+  const groups = (groupsResult.data ?? []) as { id: string; name: string }[];
+  const nowMs = new Date().getTime();
   const balance = (ledgerResult.data ?? []).reduce((sum, row) => sum + Number(row.amount_units), 0);
   const eventIds = records.flatMap((ticket) => ticket.bet_legs.map((leg) => leg.provider_event_id));
   const { data: scoreRows, error: scoreError } = eventIds.length
@@ -252,9 +260,12 @@ export default async function MyBetsPage({ searchParams }: Props) {
           if (!firstLeg) return null;
           const canCancel =
             ticket.status === "open" &&
-            ticket.bet_legs.every((leg) => new Date(leg.scheduled_start).getTime() > Date.now());
+            ticket.bet_legs.every((leg) => new Date(leg.scheduled_start).getTime() > nowMs);
           return (
-            <article className="card ticket-card" key={ticket.id}>
+            <article
+              className={`card ticket-card${ticket.status === "void" ? " ticket-cancelled" : ""}`}
+              key={ticket.id}
+            >
               <div className="event-heading">
                 <div>
                   <div className="ticket-meta">
@@ -391,11 +402,26 @@ export default async function MyBetsPage({ searchParams }: Props) {
                   <small className="muted">Available until the event kickoff.</small>
                 </form>
               ) : null}
+              {ticket.status === "open" &&
+              groups.length &&
+              ticket.bet_legs.every(
+                (leg) => new Date(leg.scheduled_start).getTime() > Date.now(),
+              ) ? (
+                <StudyAssignmentForm
+                  wagerId={ticket.id}
+                  source="simulated"
+                  groupId={ticket.group_id}
+                  groups={groups}
+                />
+              ) : null}
             </article>
           );
         })}
         {importedRecords.map((wager) => (
-          <article className="card ticket-card" key={wager.id}>
+          <article
+            className={`card ticket-card${wager.status === "void" ? " ticket-cancelled" : ""}`}
+            key={wager.id}
+          >
             <div className="event-heading">
               <div>
                 <div className="ticket-meta">
@@ -475,6 +501,16 @@ export default async function MyBetsPage({ searchParams }: Props) {
                 Manual settlement required{wager.match_reason ? `: ${wager.match_reason}` : "."}
               </p>
             ) : null}
+            {wager.status === "open" &&
+            groups.length &&
+            new Date(wager.event_date).getTime() > nowMs ? (
+              <StudyAssignmentForm
+                wagerId={wager.id}
+                source="imported"
+                groupId={wager.group_id}
+                groups={groups}
+              />
+            ) : null}
           </article>
         ))}
         {!records.length && !importedRecords.length ? (
@@ -485,5 +521,38 @@ export default async function MyBetsPage({ searchParams }: Props) {
         ) : null}
       </div>
     </main>
+  );
+}
+
+function StudyAssignmentForm({
+  wagerId,
+  source,
+  groupId,
+  groups,
+}: {
+  wagerId: string;
+  source: "simulated" | "imported";
+  groupId: string | null;
+  groups: { id: string; name: string }[];
+}) {
+  return (
+    <form action={assignWagerStudy} className="study-assignment-form">
+      <input type="hidden" name="wagerId" value={wagerId} />
+      <input type="hidden" name="source" value={source} />
+      <label>
+        {groupId ? "Change Study" : "Assign to Study"}
+        <select name="groupId" defaultValue={groupId ?? ""}>
+          <option value="">Private — no Study</option>
+          {groups.map((group) => (
+            <option key={group.id} value={group.id}>
+              {group.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <SubmitButton className="button secondary" pendingLabel="Saving Study…">
+        Save Study
+      </SubmitButton>
+    </form>
   );
 }

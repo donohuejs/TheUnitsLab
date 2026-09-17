@@ -159,6 +159,16 @@ function detectSelectionKey(
   return "";
 }
 
+/** Infer the private grading key from the pick text. The user-facing draft keeps the pick text;
+ * this helper only supplies metadata for deterministic settlement. */
+export function inferSelectionKey(
+  selection: string | undefined,
+  eventDescription: string | undefined,
+  marketType: "moneyline" | "spread" | "total",
+): BetslipDraftFields["selectionKey"] {
+  return detectSelectionKey(selection, eventDescription, marketType);
+}
+
 function detectEventDate(lines: string[], eventDescription: string | undefined) {
   const eventIndex = eventDescription
     ? lines.findIndex((line) => parseEventLine(line)?.eventDescription === eventDescription)
@@ -177,45 +187,110 @@ function detectEventDate(lines: string[], eventDescription: string | undefined) 
   return undefined;
 }
 
+function isLegMetadataLine(line: string) {
+  return /^(?:leg|pick|selection|market|moneyline|spread|handicap|total|odds|price|american|stake|wager|payout|return|total return|potential|combined|parlay|ticket|bet id|placed|wagered|submitted|game time|event time|kickoff|event|game)\b/i.test(
+    line,
+  );
+}
+
+function legBlocks(lines: string[]) {
+  const markerIndexes = lines
+    .map((line, index) => (/^(?:leg|pick)\s*#?\s*\d+\b/i.test(line) ? index : -1))
+    .filter((index) => index >= 0);
+  if (markerIndexes.length >= 2) {
+    return markerIndexes.map((start, index) =>
+      lines.slice(start, markerIndexes[index + 1] ?? lines.length),
+    );
+  }
+
+  const eventIndexes = lines
+    .map((line, index) => (parseEventLine(line) ? index : -1))
+    .filter((index) => index >= 0);
+  if (eventIndexes.length) {
+    return eventIndexes.map((start, index) =>
+      lines.slice(start, eventIndexes[index + 1] ?? lines.length),
+    );
+  }
+
+  // Some receipts show one selection/event heading per block and omit the opponent. In that
+  // layout odds are the reliable boundary. Each odds line owns the nearest preceding pick text;
+  // no field is assembled by zipping independent event/selection/price arrays.
+  const oddsIndexes = lines
+    .map((line, index) => (detectAmericanOdds(line) ? index : -1))
+    .filter((index) => index >= 0);
+  return oddsIndexes.map((oddsIndex, index) => {
+    const previousOddsIndex = oddsIndexes[index - 1] ?? -1;
+    const start = Math.max(previousOddsIndex + 1, oddsIndex - 4);
+    return lines.slice(start, oddsIndex + 1);
+  });
+}
+
+function parseLegBlock(block: string[]): ExtractedParlayLeg | null {
+  if (!block.length) return null;
+  const eventLine = block.find((line) => parseEventLine(line));
+  const event = eventLine ? parseEventLine(eventLine) : undefined;
+  const americanOdds = block.map(detectAmericanOdds).find(Boolean);
+  const marketType = detectMarket(block.join(" "), event?.left ?? block.join(" "));
+  const line = detectLine(block.join(" "), marketType);
+  const selectionSource = block.find(
+    (lineValue) =>
+      Boolean(americanOdds && lineValue.includes(americanOdds)) &&
+      !/^\+?\d+(?:\.\d+)?$/.test(lineValue),
+  );
+  const fallbackSelection = [...block]
+    .reverse()
+    .find(
+      (lineValue) =>
+        !isLegMetadataLine(lineValue) &&
+        !detectAmericanOdds(lineValue) &&
+        !/^[-+]?\d+(?:\.\d+)?$/.test(lineValue),
+    );
+  const selection = event
+    ? selectionSource && selectionSource !== eventLine
+      ? detectSelection([selectionSource], event.eventDescription, americanOdds, line)
+      : event.left
+    : fallbackSelection;
+  const eventDescription = event?.eventDescription ?? selection;
+  if (!eventDescription || !selection) return null;
+  const leg: ExtractedParlayLeg = {
+    eventDescription: cleanLine(eventDescription),
+    selection: cleanLine(selection),
+    americanOdds,
+  };
+  if (marketType !== "moneyline") {
+    leg.marketType = marketType;
+    leg.line = line;
+  }
+  const selectionKey = detectSelectionKey(selection, eventDescription, marketType);
+  if (selectionKey) leg.selectionKey = selectionKey;
+  const eventDate = detectEventDate(block, event?.eventDescription);
+  if (eventDate) leg.eventDate = eventDate;
+  return leg;
+}
+
 function detectParlayLegs(lines: string[]) {
   const legs: ExtractedParlayLeg[] = [];
-  for (let index = 0; index < lines.length; index += 1) {
-    const event = parseEventLine(lines[index]);
-    if (!event) continue;
-    const sameLineOdds = detectAmericanOdds(lines[index]);
-    const nextLine = lines[index + 1];
-    const nextLineOdds = !sameLineOdds && nextLine ? detectAmericanOdds(nextLine) : undefined;
-    const americanOdds = sameLineOdds ?? nextLineOdds;
-    const selectionSource = sameLineOdds ? lines[index] : nextLineOdds ? nextLine : undefined;
-    const marketType = detectMarket(
-      `${lines[index]} ${selectionSource ?? ""}`,
-      selectionSource ?? event.left,
+  for (const block of legBlocks(lines)) {
+    const leg = parseLegBlock(block);
+    if (!leg) continue;
+    const duplicate = legs.some(
+      (candidate) =>
+        candidate.eventDescription === leg.eventDescription &&
+        candidate.americanOdds === leg.americanOdds,
     );
-    const line = detectLine(selectionSource ?? lines[index], marketType);
-    const selection = selectionSource
-      ? sameLineOdds
-        ? event.left
-        : detectSelection([selectionSource], event.eventDescription, americanOdds, line)
-      : event.left;
-    const leg: ExtractedParlayLeg = {
-      eventDescription: event.eventDescription,
-      selection: selection || event.left,
-      americanOdds,
-    };
-    if (marketType !== "moneyline") {
-      leg.marketType = marketType;
-      leg.line = line;
-    }
-    const selectionKey = detectSelectionKey(
-      selection || event.left,
-      event.eventDescription,
-      marketType,
-    );
-    if (selectionKey) leg.selectionKey = selectionKey;
-    if (!legs.some((candidate) => candidate.eventDescription === leg.eventDescription))
-      legs.push(leg);
+    if (!duplicate) legs.push(leg);
   }
   return legs;
+}
+
+function detectTicketOdds(text: string, ticketType: ExtractedTicketType) {
+  if (ticketType === "parlay") {
+    const labeled = /(?:combined|parlay|ticket|total)\s*(?:odds|price)?[^\n]*?([+-]\d{3,7})/i.exec(
+      text,
+    )?.[1];
+    if (labeled) return labeled;
+  }
+  return detectAmericanOdds(text);
 }
 
 /** Parse common receipt labels into a normalized, reviewable draft; it never persists a wager. */
@@ -229,7 +304,10 @@ export function parseBetslipText(rawText: string): ExtractedBetslip {
     "([A-Za-z0-9-]{4,160})",
   );
   const eventDescription = detectEvent(lines);
-  const americanOdds = detectAmericanOdds(text);
+  const explicitParlay = /\b(?:same game )?parlay\b|\bacca\b|\bmultiple\s+legs?\b/i.test(text);
+  const explicitStraight = /\b(?:straight|single)\s+(?:bet|wager|ticket)\b/i.test(text);
+  const ticketType: ExtractedTicketType = explicitParlay ? "parlay" : "straight";
+  const americanOdds = detectTicketOdds(text, ticketType);
   const initialMarket = detectMarket(text, undefined);
   const oddsLine = lines.find((line) => americanOdds && line.includes(americanOdds)) ?? "";
   const selection = detectSelection(
@@ -283,9 +361,6 @@ export function parseBetslipText(rawText: string): ExtractedBetslip {
   const warnings = uncertainFields.map(
     (field) => `${field} was not confidently extracted; review it.`,
   );
-  const explicitParlay = /\b(?:same game )?parlay\b|\bacca\b|\bmultiple\s+legs?\b/i.test(text);
-  const explicitStraight = /\b(?:straight|single)\s+(?:bet|wager|ticket)\b/i.test(text);
-  const ticketType: ExtractedTicketType = explicitParlay ? "parlay" : "straight";
   const ticketTypeConfidence = explicitParlay || explicitStraight ? "high" : "low";
   const parlayLegs = ticketType === "parlay" ? detectParlayLegs(lines) : [];
   if (ticketType === "parlay") {

@@ -959,6 +959,58 @@ textarea:focus {
   grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
   margin-top: 1.25rem;
 }
+.odds-selection-grid {
+  margin-top: 0.25rem;
+}
+.desktop-odds-items,
+.mobile-odds-items {
+  display: grid;
+  gap: 0.75rem;
+}
+.desktop-odds-items {
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+}
+.mobile-odds-items {
+  display: none;
+}
+.mobile-odds-card {
+  display: grid;
+  gap: 0.65rem;
+  border: 1px solid #d7e1dc;
+  border-radius: 0.8rem;
+  padding: 0.85rem;
+  background: #fbfdfc;
+}
+.mobile-odds-summary {
+  display: grid;
+  gap: 0.25rem;
+}
+.mobile-odds-summary span {
+  color: var(--accent);
+  font-weight: 800;
+}
+.mobile-odds-summary .odd {
+  width: fit-content;
+  padding: 0.45rem 0;
+  border: 0;
+  background: transparent;
+}
+.compare-books-button {
+  justify-self: start;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid #b9cfc4;
+  border-radius: 0.5rem;
+  background: white;
+  color: #123f2e;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+.mobile-book-prices {
+  display: grid;
+  gap: 0.5rem;
+}
 .odd {
   display: grid;
   gap: 0.25rem;
@@ -1236,6 +1288,49 @@ textarea:focus {
   padding-top: 1rem;
 }
 
+.study-assignment-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem;
+  border-top: 1px solid #d7e1dc;
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.study-assignment-form label {
+  min-width: min(16rem, 100%);
+  flex: 1;
+}
+
+.ticket-cancelled {
+  filter: saturate(0.45);
+  opacity: 0.76;
+  background: #f4f5f4;
+}
+
+.ticket-cancelled .parlay-ticket-leg p:first-of-type,
+.ticket-cancelled > p {
+  text-decoration: line-through;
+}
+
+.field-readout {
+  display: grid;
+  align-content: start;
+  gap: 0.25rem;
+  min-width: 0;
+  padding: 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background: #f7faf8;
+}
+
+.field-readout span,
+.field-readout small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 .result-form label {
   width: min(12rem, 100%);
 }
@@ -1366,6 +1461,15 @@ table {
 .leaderboard-player-heading h3 {
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+.leaderboard-partner-label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .leaderboard-player-heading small {
@@ -1661,6 +1765,11 @@ thead th {
     flex-direction: column;
   }
 
+  .study-assignment-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .dashboard-actions .button,
   .result-form .button,
   .inline-actions .button {
@@ -1670,6 +1779,14 @@ thead th {
 
   .odds-grid {
     grid-template-columns: 1fr;
+  }
+
+  .desktop-odds-items {
+    display: none;
+  }
+
+  .mobile-odds-items {
+    display: grid;
   }
 
   .card {

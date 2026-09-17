@@ -1,5 +1,5 @@
 import { PageLoading } from "@/components/page-loading";
 
 export default function Loading() {
-  return <PageLoading label="Calculating canonical performance…" />;
+  return <PageLoading label="Calculating canonical analysis…" />;
 }

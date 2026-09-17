@@ -81,7 +81,7 @@ function placementMessage(message: string) {
     return "The simulated alternate line is invalid or its provider anchor changed. Review it and try again.";
   }
   if (message.includes("INVALID_GROUP_ASSOCIATION"))
-    return "That group association is not authorized.";
+    return "That Study association is not authorized.";
   if (message.includes("OUTCOME_NOT_AVAILABLE") || message.includes("EVENT_NOT_AVAILABLE")) {
     return "That market selection is no longer available.";
   }

@@ -26,7 +26,7 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
       <header className="page-header">
         <p className="eyebrow">Private entertainment and statistics</p>
         <h1>{PRODUCT_NAME}</h1>
-        <p>Sign in or create an account to manage your profile and private groups.</p>
+        <p>Sign in or create an account to manage your profile and private Studies.</p>
       </header>
 
       {!configured ? (

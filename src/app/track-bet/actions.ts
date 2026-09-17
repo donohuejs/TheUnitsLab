@@ -53,7 +53,7 @@ function finish(message: string): never {
 
 function databaseMessage(message: string) {
   if (message.includes("INVALID_GROUP_ASSOCIATION"))
-    return "That group association is not authorized.";
+    return "That Study association is not authorized.";
   if (message.includes("INVALID_COMPETITION")) return "Choose a supported sport and competition.";
   if (message.includes("INVALID_SPORTSBOOK")) return "Choose a supported sportsbook.";
   if (message.includes("INVALID_LINE"))

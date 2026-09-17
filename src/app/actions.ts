@@ -173,7 +173,7 @@ export async function createGroup(formData: FormData) {
   const destination = returnPath(formData);
   const parsed = groupNameSchema.safeParse(value(formData, "groupName"));
   if (!parsed.success) {
-    redirectWithNotice(destination, "Group names must be between 2 and 80 characters.");
+    redirectWithNotice(destination, "Study names must be between 2 and 80 characters.");
   }
 
   const { error } = await supabase.from("groups").insert({
@@ -184,12 +184,12 @@ export async function createGroup(formData: FormData) {
   if (error) {
     redirectWithNotice(
       destination,
-      "The group could not be created. Review the name and try again.",
+      "The Study could not be created. Review the name and try again.",
     );
   }
   revalidatePath("/account");
   revalidatePath("/leaderboards");
-  redirectWithNotice(destination, "Group created.");
+  redirectWithNotice(destination, "Study created.");
 }
 
 export async function joinGroup(formData: FormData) {
@@ -212,7 +212,7 @@ export async function joinGroup(formData: FormData) {
   }
   revalidatePath("/account");
   revalidatePath("/leaderboards");
-  redirectWithNotice(destination, "Group joined.");
+  redirectWithNotice(destination, "Study joined.");
 }
 
 export async function createInvite(
@@ -222,7 +222,7 @@ export async function createInvite(
   const { supabase } = await requireAuthenticatedUser();
   const groupId = uuidSchema.safeParse(value(formData, "groupId"));
   if (!groupId.success) {
-    return { error: "Invalid group." };
+    return { error: "Invalid Study." };
   }
   const maxUses = inviteMaxUsesSchema.safeParse(value(formData, "maxUses"));
   if (!maxUses.success) {
@@ -239,7 +239,7 @@ export async function createInvite(
 
   if (error || !data) {
     return {
-      error: "The invitation could not be created. Check your group permissions and try again.",
+      error: "The invitation could not be created. Check your Study permissions and try again.",
     };
   }
 
@@ -323,6 +323,6 @@ export async function removeMember(formData: FormData) {
   revalidatePath("/account");
   redirectWithNotice(
     "/account",
-    parsed.data.userId === user.id ? "You left the group." : "Member removed.",
+    parsed.data.userId === user.id ? "You left the Study." : "Study Partner removed.",
   );
 }

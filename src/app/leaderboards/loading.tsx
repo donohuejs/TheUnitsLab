@@ -1,5 +1,5 @@
 import { PageLoading } from "@/components/page-loading";
 
 export default function Loading() {
-  return <PageLoading label="Loading private group rankings…" />;
+  return <PageLoading label="Loading private Study Results…" />;
 }
