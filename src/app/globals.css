@@ -116,7 +116,15 @@ h4 {
 }
 
 .brand-home {
+  display: block;
+  max-width: min(100%, 46rem);
   gap: 1rem;
+}
+
+.brand-home img {
+  display: block;
+  width: min(100%, 42rem);
+  height: auto;
 }
 
 .brand-home .brand-name {
@@ -128,9 +136,8 @@ h4 {
   letter-spacing: 0.16em;
 }
 
-.brand-lockup svg {
+.brand-lockup img {
   flex: 0 0 auto;
-  color: var(--brand-ink);
 }
 
 .brand-copy {
@@ -330,6 +337,28 @@ textarea:focus {
   padding: 1rem 0;
 }
 
+.invite-actions {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: end;
+}
+
+.invite-history {
+  display: grid;
+  gap: 0.5rem;
+  border-top: 1px solid var(--border);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.invite-history-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
 .token-result {
   margin-top: 0.8rem;
 }
@@ -486,7 +515,7 @@ textarea:focus {
   display: inline-flex;
 }
 
-.nav-brand .brand-lockup svg {
+.nav-brand .brand-lockup img {
   width: 2rem;
   height: 2rem;
 }
@@ -519,7 +548,7 @@ textarea:focus {
   text-decoration: none;
 }
 
-.mobile-nav-brand .brand-lockup svg {
+.mobile-nav-brand .brand-lockup img {
   width: 2.25rem;
   height: 2.25rem;
 }
@@ -1503,9 +1532,9 @@ thead th {
     letter-spacing: 0.1em;
   }
 
-  .brand-home svg {
-    width: 4.5rem;
-    height: 4.5rem;
+  .brand-home img {
+    width: min(100%, 30rem);
+    height: auto;
   }
 
   .button,
@@ -1688,6 +1717,74 @@ thead th {
   border-left: 4px solid var(--accent);
   padding: 0.7rem 0.85rem;
   background: #eff8f3;
+}
+
+.cached-event-search {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.cached-event-results {
+  display: grid;
+  gap: 0.55rem;
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.cached-event {
+  display: grid;
+  gap: 0.25rem;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  padding: 0.75rem 0.85rem;
+  color: var(--ink-strong);
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cached-event:hover,
+.cached-event.selected {
+  border-color: var(--accent);
+  background: #eff8f3;
+}
+
+.cached-event span {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.fallback-event {
+  border-top: 1px solid var(--border);
+  padding-top: 0.8rem;
+}
+
+.fallback-event summary {
+  color: var(--accent);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.fallback-event[open] summary {
+  margin-bottom: 0.8rem;
+}
+
+.extraction-warnings {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: #7a4a00;
+}
+
+.paste-import {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.warning {
+  border-color: #e9a23b;
+  color: #6b3e00;
+  background: #fff8e8;
 }
 
 .economics-preview {

@@ -191,6 +191,43 @@ Improve`. The science-forward flask/beaker mark integrates a Vial/money cue in t
   comparison only, with no simulated-bankroll debit or credit. Pregame/LIVE/Closed labeling and My Bets
   placed/kickoff/source/status cleanup behavior from the prior fix patch remain required.
 
+### Approved release-candidate fix patch 3 clarification 2026-09-17
+
+The owner explicitly authorizes this focused pre-UAT fix patch after the prior clarification that
+safe screenshot OCR was unavailable. This patch records the approved change without starting Phase
+9, redesigning unrelated architecture, changing existing migrations, weakening RLS, altering
+bankroll isolation or settlement idempotency, adding provider polling, or adding a paid dependency.
+
+- The shipped approved assets are used directly: `public/brand/the-units-lab-logo.png` for the full
+  Home lockup and `public/brand/the-units-lab-mark.png` for compact navigation, mobile navigation,
+  and the app icon. The exact subordinate tagline is `Experiment | Analyze | Improve`; `Bet Smarter`,
+  placeholder marks, and hand-redrawn logo variants remain prohibited. Home presents the full mark
+  prominently, followed by `Welcome back, {Name}` with `Scientist` as the fallback greeting.
+- Screenshot import adds a free, browser-local OCR adapter with the clean contract
+  `extractBetslip(image) -> normalized draft`. It shows Processing, attempts sportsbook, bet ID,
+  event, kickoff, market, selection, line, American odds, stake, payout/return, and straight/parlay
+  (including probable parlay legs where present), and exposes uncertainty flags. Every extracted field
+  remains editable and the user must review and explicitly confirm before save. OCR failure falls
+  back to a guided draft; screenshots remain private application evidence and are not sent to a paid
+  OCR or vision API.
+- Mobile manual import is centered on cached-event search: sportsbook, cached event search, market,
+  selection, line, any two of stake/odds/payout, exact calculation of the third, review, and save.
+  `Can't find my event` provides the freeform fallback. Selecting a cached canonical event fills its
+  sport, competition, teams, kickoff, and provider event ID.
+- Imported economics continue to use exact deterministic decimal/integer math. The existing
+  canonical-event matching boundary determines Auto settlement ready versus manual-review states;
+  unsupported, unmatched, prop, teaser/SGP, cash-out, promo, and incomplete records are not
+  auto-settled.
+- Leaderboards provide Create Group, Join Group, Invite, Copy Invite Link, and Revoke Invite. Invite
+  tokens are random, stored hashed, authenticated-join only, expiring after seven days by default,
+  reusable until expiry by default, optionally capped at 1–50 uses, and revocable by the group owner
+  or admin. Usage counts are visible without exposing token material; a group name alone never grants
+  access.
+- Mobile smoke validation covers the rendered Home and authentication surfaces at the narrow in-app
+  viewport. Authenticated import and leaderboard actions remain server-authoritative and are covered
+  by source contracts and database authorization tests; no real account or screenshot is used during
+  browser smoke review.
+
 ## 1 Project purpose
 
 Build a private, entertainment-focused sports wagering simulator and betting-performance tracker.

@@ -230,6 +230,7 @@ export default async function TrackBetPage({ searchParams }: Props) {
           }))}
           canonicalEvents={canonicalEvents}
           nowLocal={nowLocal}
+          nowIso={new Date().toISOString()}
         />
       </section>
 

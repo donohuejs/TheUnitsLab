@@ -8,8 +8,10 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type InviteActionState = {
   error?: string;
+  inviteId?: string;
   token?: string;
   expiresAt?: string;
+  maxUses?: number | null;
 };
 
 const credentialsSchema = z.object({
@@ -23,6 +25,7 @@ const signupSchema = credentialsSchema.extend({
 
 const uuidSchema = z.uuid();
 const groupNameSchema = z.string().trim().min(2).max(80);
+const inviteMaxUsesSchema = z.union([z.literal(""), z.coerce.number().int().min(1).max(50)]);
 const profileSchema = z.object({
   displayName: z.string().trim().min(2).max(50),
   avatarUrl: z.union([z.url().max(500), z.literal("")]),
@@ -203,7 +206,7 @@ export async function joinGroup(formData: FormData) {
     redirectWithNotice(
       destination,
       message.includes("expired") || message.includes("invalid") || message.includes("revoked")
-        ? "This invite is invalid, expired, revoked, or already used."
+        ? "This invite is invalid, expired, revoked, or no longer available."
         : "The invitation could not be redeemed. Check the token and try again.",
     );
   }
@@ -221,12 +224,16 @@ export async function createInvite(
   if (!groupId.success) {
     return { error: "Invalid group." };
   }
+  const maxUses = inviteMaxUsesSchema.safeParse(value(formData, "maxUses"));
+  if (!maxUses.success) {
+    return { error: "Maximum uses must be blank or an integer from 1 to 50." };
+  }
 
   const { data, error } = await supabase
     .rpc("create_group_invite", {
       target_group_id: groupId.data,
       valid_for: "7 days",
-      allowed_uses: 1,
+      allowed_uses: maxUses.data === "" ? null : maxUses.data,
     })
     .single();
 
@@ -237,14 +244,34 @@ export async function createInvite(
   }
 
   const invitation = data as {
+    invite_id: string;
     invite_token: string;
     invite_expires_at: string;
+    invite_max_uses: number | null;
   };
 
   return {
+    inviteId: invitation.invite_id,
     token: invitation.invite_token,
     expiresAt: invitation.invite_expires_at,
+    maxUses: invitation.invite_max_uses,
   };
+}
+
+export async function revokeInvite(formData: FormData) {
+  const { supabase } = await requireAuthenticatedUser();
+  const inviteId = uuidSchema.safeParse(value(formData, "inviteId"));
+  if (!inviteId.success) {
+    redirectWithNotice("/leaderboards", "That invite is invalid.");
+  }
+  const { error } = await supabase.rpc("revoke_group_invite", {
+    target_invite_id: inviteId.data,
+  });
+  if (error) {
+    redirectWithNotice("/leaderboards", "The invite could not be revoked.");
+  }
+  revalidatePath("/leaderboards");
+  redirectWithNotice("/leaderboards", "Invite revoked.");
 }
 
 export async function setMemberRole(formData: FormData) {

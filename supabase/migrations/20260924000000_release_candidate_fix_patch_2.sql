@@ -9,10 +9,9 @@ alter table public.bet_legs
   add column pricing_model text,
   add column pricing_model_version text;
 
-update public.bet_legs
-set anchor_provider_line = line,
-    anchor_provider_american_odds = american_odds
-where market_type = 'spread';
+-- Historical accepted bet-leg snapshots are immutable.
+-- Existing provider-priced spread legs intentionally retain null anchor fields.
+-- Anchor values are populated only for newly created simulated-alternate legs.
 
 alter table public.bet_legs
   add constraint bet_legs_pricing_source_shape check (

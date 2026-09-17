@@ -22,6 +22,13 @@ type Props = { searchParams: Promise<Record<string, string | string[] | undefine
 type Group = { id: string; name: string; owner_user_id: string };
 type Membership = { group_id: string; role: "owner" | "admin" | "member" };
 type MemberRow = { user_id: string; display_name: string };
+type InviteRow = {
+  invite_id: string;
+  invite_expires_at: string;
+  invite_max_uses: number | null;
+  invite_use_count: number;
+  invite_revoked_at: string | null;
+};
 type RpcWager = {
   wager_id: string;
   user_id: string;
@@ -98,12 +105,14 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
   const period = periodValue(one(query.period));
   const category = categoryValue(one(query.category));
 
-  const [wagerResult, memberResult] = selectedGroup
+  const [wagerResult, memberResult, inviteResult] = selectedGroup
     ? await Promise.all([
         supabase.rpc("get_group_analytics_wagers", { p_group_id: selectedGroup.id }),
         supabase.rpc("get_group_leaderboard_members", { p_group_id: selectedGroup.id }),
+        supabase.rpc("list_group_invites", { target_group_id: selectedGroup.id }),
       ])
     : [
+        { data: [], error: null },
         { data: [], error: null },
         { data: [], error: null },
       ];
@@ -122,6 +131,8 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
     category,
   );
   const rateCategory = category === "roi" || category === "win_percentage";
+  const invites = (inviteResult.data ?? []) as InviteRow[];
+  const currentIso = new Date().toISOString();
 
   return (
     <main className="shell">
@@ -133,6 +144,11 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
           Vials Won is the default ranking. ROI is shown beside every participant.
         </p>
       </header>
+      {one(query.notice) ? (
+        <p className="notice" role="status" aria-live="polite">
+          {one(query.notice)}
+        </p>
+      ) : null}
 
       <section className="card group-access-card" aria-label="Private group access">
         <div className="section-heading">
@@ -240,7 +256,7 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
           Join or create a group to see leaderboards.
         </p>
       ) : null}
-      {wagerResult.error || memberResult.error ? (
+      {wagerResult.error || memberResult.error || inviteResult.error ? (
         <p className="notice error" role="alert">
           This group leaderboard is unavailable or you are not authorized to view it.
         </p>
@@ -266,9 +282,38 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
                   selectedGroup.owner_user_id === authData.user.id ||
                   membership?.role === "owner" ||
                   membership?.role === "admin";
-                return canInvite ? <InviteForm groupId={selectedGroup.id} /> : null;
+                return canInvite ? (
+                  <div className="invite-actions">
+                    <strong>Invite</strong>
+                    <InviteForm groupId={selectedGroup.id} />
+                  </div>
+                ) : null;
               })()}
             </div>
+            {invites.length ? (
+              <div className="invite-history" aria-label="Group invite usage">
+                <strong>Invite history</strong>
+                {invites.slice(0, 5).map((invite) => {
+                  const expired = invite.invite_expires_at <= currentIso;
+                  const state = invite.invite_revoked_at
+                    ? "Revoked"
+                    : expired
+                      ? "Expired"
+                      : "Active";
+                  return (
+                    <div className="invite-history-row" key={invite.invite_id}>
+                      <span>{state}</span>
+                      <span>
+                        {invite.invite_use_count} use{invite.invite_use_count === 1 ? "" : "s"} ·{" "}
+                        {invite.invite_max_uses
+                          ? `${invite.invite_max_uses} max`
+                          : "Reusable until expiry"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
           </div>
           <div className="table-scroll">
             <table>

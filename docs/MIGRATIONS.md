@@ -61,6 +61,16 @@ new columns and checks, pricing monotonicity and metadata preservation, canonica
 bankroll isolation, grants, RLS, and anonymous denial. The migration must replay after
 `20260923000000_release_candidate_fix_patch_1.sql`; no applied migration is modified.
 
+Release-candidate fix patch 3 adds the forward-only migration
+`20260925000000_release_candidate_fix_patch_3.sql`. It changes new group invites to reusable until
+expiry by default, keeps an optional 1–50 use cap, preserves random token generation and hashed token
+storage, and retains authenticated-only join plus owner/admin revoke authorization. The
+`list_group_invites` RPC returns expiry, revocation, cap, and usage metadata without token material.
+`supabase/tests/release_candidate_fix_patch_3.sql` verifies the nullable cap, repeated redemption,
+bounded redemption, expiry/revocation rejection, usage counts, grants, and token non-disclosure. No
+prior migration is edited, and no wager, ledger, provider/cache, quota, storage, or settlement path
+is changed.
+
 ## Source of truth
 
 Ordered SQL files under `supabase/migrations` are the database source of truth. Configuration in a hosted dashboard is not sufficient. Migrations must include tables, constraints, functions, grants, Row Level Security enablement, policies, storage policies, and indexes needed by the corresponding phase.
