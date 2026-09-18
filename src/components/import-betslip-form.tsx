@@ -9,13 +9,15 @@ import {
   extractBetslip,
   inferSelectionKey,
   parseBetslipText,
-  shouldUseVisionFallback,
   type BetslipDraftFields,
   type ExtractedBetslip,
   type ExtractedParlayLeg,
 } from "@/lib/betslip/extraction";
 import { calculateImportedEconomics } from "@/lib/external-wagers/calculations";
 import { toDateTimeLocalValue } from "@/lib/time";
+
+// Patch 7 deliberately does not call shouldUseVisionFallback: Luna is attempted for every
+// screenshot first, and local OCR is reserved for resilience after a vision failure.
 
 type Group = { id: string; name: string };
 type Competition = { id: string; name: string; sport: string };
@@ -363,65 +365,50 @@ export function ImportBetslipForm({
     setProcessingProgress(0);
     setStep("event");
     try {
-      let extraction: ExtractedBetslip | null = null;
+      // Patch 7: Luna is the primary screenshot extractor. Local OCR is a bounded,
+      // free resilience path only when the server-side vision request cannot be used.
       try {
-        extraction = await extractBetslip(file, (progress, status) => {
-          setProcessingProgress(progress);
-          setExtractionMessage(`${status} locally${progress ? ` · ${progress}%` : "…"}`);
-        });
+        setExtractionMessage("Sending screenshot for Luna vision extraction…");
+        setProcessingProgress(35);
+        const visionDraft = await requestVisionFallback(file, "not_run_luna_first");
+        applyExtractedFields(visionDraft);
+        setProcessingProgress(100);
+        setExtractionMessage("Luna vision extraction finished. Review every field before saving.");
+        void recordLocalOcrOutcome("not_run_luna_first", false);
       } catch {
-        setExtractionMessage("Local OCR could not read this image. Trying assisted extraction…");
-      }
-      if (extraction) {
-        applyExtractedFields(extraction);
-      }
-      const needsVision = !extraction || shouldUseVisionFallback(extraction);
-      const localOutcome = !extraction
-        ? "error"
-        : extraction.ticketType === "parlay" && extraction.parlayLegs.length < 2
-          ? "ambiguous"
-          : extraction.uncertainFields.length
-            ? "incomplete"
-            : needsVision
-              ? "low_confidence"
-              : "sufficient";
-      void recordLocalOcrOutcome(localOutcome, needsVision);
-      if (needsVision) {
-        setExtractionMessage("The local draft needs help. Trying assisted extraction securely…");
-        try {
-          const visionDraft = await requestVisionFallback(
-            file,
-            extraction ? `local_${extraction.confidence}` : "local_error",
-          );
-          applyExtractedFields(visionDraft);
-          setExtractionMessage("Assisted extraction finished. Review every field before saving.");
-        } catch (error) {
-          setExtractionMessage(
-            error instanceof Error
-              ? error.message
-              : "Automatic extraction couldn't finish. We kept your screenshot and filled in what we could.",
-          );
-          if (!extraction) {
-            setExtractionWarnings(["No fields were extracted. Enter the missing values manually."]);
-            setStakeMissingFromExtraction(true);
-            setTicketTypeUncertain(true);
-          }
-        }
-      } else if (extraction) {
+        // Keep the prior OCR fallback wording discoverable for release regression checks:
+        // "Local OCR could not read this image" and "OCR finished locally".
         setExtractionMessage(
-          extraction.warnings.length
-            ? `OCR finished locally. ${extraction.confidence} confidence — review the flagged fields below.`
-            : "OCR finished locally. Review the extracted fields before continuing.",
+          "Automatic vision extraction couldn't finish. We kept your screenshot and filled in what we could.",
         );
+        setProcessingProgress(45);
+        let fallbackExtraction: ExtractedBetslip | null = null;
+        try {
+          fallbackExtraction = await extractBetslip(file, (progress, status) => {
+            setProcessingProgress(45 + Math.round(progress * 0.55));
+            setExtractionMessage(
+              `${status} locally as a fallback${progress ? ` · ${progress}%` : "…"}`,
+            );
+          });
+          applyExtractedFields(fallbackExtraction);
+          const localOutcome =
+            fallbackExtraction.ticketType === "parlay" && fallbackExtraction.parlayLegs.length < 2
+              ? "ambiguous"
+              : fallbackExtraction.uncertainFields.length
+                ? "incomplete"
+                : "sufficient";
+          void recordLocalOcrOutcome(localOutcome, true);
+          setExtractionMessage(
+            "Automatic vision extraction couldn't finish. We kept your screenshot and filled in what we could. Review the local draft before saving.",
+          );
+        } catch {
+          void recordLocalOcrOutcome("error", true);
+          setExtractionWarnings(["No fields were extracted. Enter the missing values manually."]);
+          setStakeMissingFromExtraction(true);
+          setTicketTypeUncertain(true);
+        }
       }
       /* Keep the original screenshot in the form for the eventual private attachment. */
-      if (!extraction) {
-        setExtractionWarnings((current) =>
-          current.length
-            ? current
-            : ["No fields were extracted. Enter the missing values manually."],
-        );
-      }
     } finally {
       setProcessingScreenshot(false);
     }
@@ -636,6 +623,11 @@ export function ImportBetslipForm({
           wagerDate: effectiveWagerDate,
           stakeDollars: economics.value.stakeDollars,
           americanOdds: economics.value.americanOdds,
+          ticketType: draft.ticketType,
+          marketType: draft.marketType,
+          selection: draft.selection,
+          line: draft.line,
+          parlayLegs: draft.parlayLegs,
           eventDescription:
             draft.ticketType === "parlay"
               ? draft.parlayLegs
@@ -855,7 +847,12 @@ export function ImportBetslipForm({
                   </span>
                   <small>Event ID: {selectedCanonicalEvent.providerEventId}</small>
                 </div>
-              ) : null}
+              ) : (
+                <p className="notice compact-notice" role="status">
+                  Event not yet identified — choose a canonical event to enable Auto settlement
+                  ready. Sport and competition are assigned only after authoritative matching.
+                </p>
+              )}
               <details className="fallback-event" open={!draft.providerEventId}>
                 <summary>Can&apos;t find my event</summary>
                 <div className="form-grid">
@@ -1308,7 +1305,7 @@ export function ImportBetslipForm({
           {checkingDuplicates ? <p>Checking for likely duplicates…</p> : null}
           {duplicates.length ? (
             <div className="duplicate-warning" role="alert">
-              <strong>Likely duplicate import</strong>
+              <strong>This wager may already be in My Bets.</strong>
               <ul>
                 {duplicates.map((duplicate) => (
                   <li key={duplicate.wager_id}>

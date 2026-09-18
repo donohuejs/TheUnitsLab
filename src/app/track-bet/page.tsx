@@ -155,6 +155,7 @@ export default async function TrackBetPage({ searchParams }: Props) {
   const supabase = await createSupabaseServerClient();
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) redirect("/auth");
+  const reconciliationResult = await supabase.rpc("reconcile_imported_wagers");
   const coreCompetitions = sportsProviderConfiguration.competitions.filter(
     (competition) => competition.enabled,
   );
@@ -237,7 +238,12 @@ export default async function TrackBetPage({ searchParams }: Props) {
           {query.notice}
         </p>
       ) : null}
-      {wagerError || groupError || cacheError || scoreError || summaryResult.error ? (
+      {wagerError ||
+      groupError ||
+      cacheError ||
+      scoreError ||
+      summaryResult.error ||
+      reconciliationResult.error ? (
         <p className="notice error" role="alert">
           Some imported-wager data is temporarily unavailable. Your imported records were not
           changed.

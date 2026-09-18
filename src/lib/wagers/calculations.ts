@@ -51,12 +51,21 @@ export function decimalToAmerican(decimal: string | number) {
 }
 
 export function parseStakeToMinorUnits(input: string) {
-  const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(input.trim());
+  const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(normalizeCurrencyInput(input));
   if (!match) throw new Error("Stake must use at most two decimal places");
   const minor = BigInt(match[1]) * UNIT_SCALE + BigInt((match[2] ?? "").padEnd(2, "0"));
   if (minor <= 0n) throw new Error("Stake must be greater than zero");
   if (minor > MAX_STAKE_MINOR) throw new Error("Stake exceeds the supported range");
   return minor;
+}
+
+/** Normalize harmless currency presentation characters before fixed-point validation. */
+export function normalizeCurrencyInput(input: string) {
+  const normalized = String(input)
+    .trim()
+    .replace(/[$,\s]/g, "");
+  if (!normalized) throw new Error("Currency value is required");
+  return normalized;
 }
 
 export function formatUnits(minorUnits: bigint) {

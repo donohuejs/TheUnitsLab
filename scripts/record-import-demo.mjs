@@ -1,89 +1,80 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, readdir, rename } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { chromium } from "@playwright/test";
 
 const outputDirectory = resolve("public/help");
+const baseUrl = process.env.IMPORT_DEMO_BASE_URL ?? "http://127.0.0.1:3000";
+const storageState = process.env.IMPORT_DEMO_STORAGE_STATE
+  ? resolve(process.env.IMPORT_DEMO_STORAGE_STATE)
+  : undefined;
+
 await mkdir(outputDirectory, { recursive: true });
 
 const browser = await chromium.launch();
 const context = await browser.newContext({
+  ...(storageState ? { storageState } : {}),
   viewport: { width: 390, height: 844 },
   recordVideo: { dir: outputDirectory, size: { width: 390, height: 844 } },
 });
 const page = await context.newPage();
-await page.setContent(`
-  <style>
-    :root { color-scheme: light; font-family: system-ui, sans-serif; }
-    body { margin: 0; padding: 28px 20px; background: #f5fbf3; color: #163331; }
-    .phone { display: grid; gap: 18px; }
-    .brand { font-size: 28px; font-weight: 900; }
-    .card { padding: 18px; border: 1px solid #cfe2d2; border-radius: 18px; background: white; box-shadow: 0 10px 30px #16333112; }
-    .callout { color: #087443; font-weight: 800; }
-    label { display: grid; gap: 6px; margin-top: 12px; font-weight: 700; }
-    input, select, button { font: inherit; padding: 11px; border: 1px solid #a9c4af; border-radius: 10px; }
-    button { background: #087443; color: white; font-weight: 800; }
-    .hidden { display: none; }
-  </style>
-  <main class="phone">
-    <div class="brand">The Units Lab</div>
-    <p class="callout" id="callout">Open Import Betslip</p>
-    <section class="card">
-      <h1>Import Betslip</h1>
-      <label>Upload your sportsbook screenshot<input id="upload" type="file" /></label>
-      <p id="status">Waiting for a screenshot…</p>
-      <div id="draft" class="hidden">
-        <p class="callout">Review the extracted wager</p>
-        <label>Event<input id="event" value="Rutgers at Boston College" /></label>
-        <label>Your pick<input id="pick" value="Boston College -2.5" /></label>
-        <label>Odds<input id="odds" value="-170" /></label>
-        <label>Study<select id="study"><option>No Study — Personal</option></select></label>
-        <button id="confirm">Confirm and save to My Bets</button>
-      </div>
-    </section>
-  </main>
-`);
+page.setDefaultTimeout(45_000);
 
-async function pause(milliseconds) {
-  await page.waitForTimeout(milliseconds);
+await page.goto(`${baseUrl}/track-bet`, { waitUntil: "networkidle" });
+if (page.url().includes("/auth")) {
+  throw new Error(
+    "The real Import Betslip route requires an authenticated storage state. Set IMPORT_DEMO_STORAGE_STATE to a Playwright state file.",
+  );
 }
 
-await pause(1500);
-await page.locator("#upload").setInputFiles({
+await page.getByRole("button", { name: "Upload Screenshot" }).click();
+await page.getByLabel("Betslip screenshot").setInputFiles({
   name: "synthetic-fanduel-example.png",
   mimeType: "image/png",
-  buffer: Buffer.from("synthetic-private-safe-demo"),
+  // 1x1 transparent synthetic PNG; synthetic-private-safe-demo data only. The recording
+  // exercises the real upload/review UI only.
+  buffer: Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+    "base64",
+  ),
 });
-await page.locator("#status").evaluate((node) => (node.textContent = "Extracting locally…"));
-await pause(1800);
 await page
-  .locator("#status")
-  .evaluate((node) => (node.textContent = "Extraction ready — review every field."));
-await page.locator("#draft").evaluate((node) => node.classList.remove("hidden"));
+  .getByText(/Luna|Automatic vision extraction|OCR|screenshot/i)
+  .first()
+  .waitFor();
+
+// Complete the same guided review a user performs after an uncertain or empty extraction.
+const eventField = page.getByLabel("Event or teams");
+if (await eventField.isVisible().catch(() => false)) {
+  await eventField.fill("Rutgers at Boston College");
+  await page.getByLabel("Sport").selectOption("football");
+  await page.getByLabel("Competition").selectOption({ label: /College Football/i });
+  await page.getByLabel("Kickoff").fill("2026-09-11T19:30");
+}
+await page.getByRole("button", { name: "Continue" }).click();
+await page.getByLabel("Your Pick").fill("Boston College");
+await page.getByRole("button", { name: "Continue" }).click();
+await page.getByLabel("Study (required)").selectOption({ label: "No Study — Personal" });
+await page.getByLabel("Stake (source USD)").fill("$8.00");
+await page.getByLabel("Odds (American)").fill("-170");
+await page.getByRole("button", { name: "Review draft" }).click();
+await page.getByRole("button", { name: "Confirm and save to My Bets" }).click();
+await page.waitForURL(/\/track-bet/);
+await page.goto(`${baseUrl}/my-bets?filter=imported`, { waitUntil: "networkidle" });
 await page
-  .locator("#callout")
-  .evaluate((node) => (node.textContent = "AI can make mistakes — verify your pick and odds"));
-await pause(2200);
-await page.locator("#pick").fill("Boston College -2.5");
-await page.locator("#study").selectOption({ label: "No Study — Personal" });
-await page
-  .locator("#callout")
-  .evaluate((node) => (node.textContent = "Choose a Study or No Study — Personal"));
-await pause(1800);
-await page.locator("#confirm").click();
-await page
-  .locator("#status")
-  .evaluate((node) => (node.textContent = "Saved to My Bets — simulated balance unchanged."));
-await page
-  .locator("#callout")
-  .evaluate((node) => (node.textContent = "Confirm to add it to My Bets"));
-await pause(1800);
+  .getByText(/Imported|Boston College|Rutgers/i)
+  .first()
+  .waitFor();
+
 await context.close();
 await browser.close();
 
-const videos = await (await import("node:fs/promises")).readdir(outputDirectory);
-const generated = videos.find((name) => name.endsWith(".webm"));
-if (!generated) throw new Error("Playwright did not generate a WebM asset.");
+const videos = await readdir(outputDirectory);
+const generated = videos.find(
+  (name) => name.endsWith(".webm") && name !== "import-betslip-demo.webm",
+);
+if (!generated)
+  throw new Error("Playwright did not generate a WebM asset from the real import route.");
 const target = resolve(outputDirectory, "import-betslip-demo.webm");
-await (await import("node:fs/promises")).rename(resolve(outputDirectory, generated), target);
+await rename(resolve(outputDirectory, generated), target);
 console.log(`Wrote ${target}`);

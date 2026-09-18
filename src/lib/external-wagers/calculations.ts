@@ -2,6 +2,7 @@ import {
   americanToDecimalString,
   calculatePotential,
   formatUnits,
+  normalizeCurrencyInput,
   parseStakeToMinorUnits,
   validateAmericanOdds,
 } from "../wagers/calculations";
@@ -9,7 +10,7 @@ import {
 export type ExternalResult = "open" | "won" | "lost" | "push" | "void";
 
 export function parseNonNegativeMoneyToMinorUnits(input: string) {
-  const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(input.trim());
+  const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(normalizeCurrencyInput(input));
   if (!match) throw new Error("Money must use at most two decimal places");
   const minor = BigInt(match[1]) * 100n + BigInt((match[2] ?? "").padEnd(2, "0"));
   if (minor > 99_999_999_999_999n) throw new Error("Money exceeds the supported range");

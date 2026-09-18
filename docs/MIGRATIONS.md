@@ -80,6 +80,28 @@ virtual-bankroll isolation remain unchanged. `supabase/tests/release_candidate_f
 verifies the nullable schema, authenticated creation with an unknown sportsbook, persisted display
 fallback, no bankroll mutation, and anonymous execute denial. No prior migration is edited.
 
+Release-candidate fix patch 5 adds the forward-only migration
+`20260927000000_release_candidate_fix_patch_5.sql`. It adds owner-audited Study reassignment for
+open simulated and imported wagers, deterministic imported selection inference, canonical matching
+readiness for straight and parlay legs, and automatic imported settlement retry boundaries. The
+migration preserves immutable submitted terms, Study membership authorization, private storage,
+virtual-bankroll isolation, and least-privilege grants. `supabase/tests/release_candidate_fix_patch_5.sql`
+verifies the Study audit and imported readiness boundaries.
+
+Release-candidate fix patch 6 adds the forward-only migration
+`20260928000000_release_candidate_fix_patch_6.sql`. It adds the server-only Luna usage ledger,
+local-OCR outcome telemetry, the locked monthly budget and administrator audit, and the historical
+canonical matching/readiness corrections used by screenshot import. The migration contains no
+provider polling and does not connect imported records to the virtual bankroll.
+
+Release-candidate fix patch 7 adds the forward-only migration
+`20260929000000_release_candidate_fix_patch_7.sql`. It adds forced-RLS operational diagnostics for
+server-side Luna attempts, strengthens duplicate review with normalized ticket and atomic parlay
+terms, refreshes straight and parlay imported-event matching from retained canonical score/cache
+data, and exposes a bounded authenticated reconciliation RPC. `supabase/tests/release_candidate_fix_patch_7.sql`
+verifies the diagnostics table, RLS, ordinary-role grants, and RPC grants. No provider polling,
+real-money behavior, bankroll mutation, or Phase 9 work is introduced.
+
 ## Source of truth
 
 Ordered SQL files under `supabase/migrations` are the database source of truth. Configuration in a hosted dashboard is not sufficient. Migrations must include tables, constraints, functions, grants, Row Level Security enablement, policies, storage policies, and indexes needed by the corresponding phase.

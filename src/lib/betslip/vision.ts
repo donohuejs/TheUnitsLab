@@ -73,6 +73,7 @@ export type VisionCallResult = {
   outputTokens: number;
   totalTokens: number;
   responseId: string | null;
+  providerStatus: number;
 };
 
 export class VisionMalformedResponseError extends Error {
@@ -190,5 +191,6 @@ export async function extractBetslipWithVision(
     outputTokens,
     totalTokens,
     responseId: typeof body.id === "string" ? body.id : null,
+    providerStatus: response.status,
   };
 }

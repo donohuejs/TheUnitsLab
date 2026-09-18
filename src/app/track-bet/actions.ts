@@ -74,6 +74,7 @@ function databaseMessage(message: string) {
 const importedWagerSchema = z.object({
   confirmed: z.literal("true"),
   importMethod: z.enum(["screenshot", "paste", "entry"]),
+  studyChoice: z.union([z.literal("personal"), z.uuid()]),
   groupId: z.union([z.literal(""), z.uuid()]),
   sportsbookId: z.enum(["", "fanduel", "draftkings", "betmgm", "caesars", "other"]),
   otherSportsbookName: z.string().trim().max(80),
@@ -109,6 +110,7 @@ export async function createImportedWager(formData: FormData) {
   const parsed = importedWagerSchema.safeParse({
     confirmed: value(formData, "confirmed"),
     importMethod: value(formData, "importMethod"),
+    studyChoice: value(formData, "studyChoice"),
     groupId: value(formData, "groupId"),
     sportsbookId: value(formData, "sportsbookId"),
     otherSportsbookName: value(formData, "otherSportsbookName"),
@@ -134,6 +136,12 @@ export async function createImportedWager(formData: FormData) {
     parlayLegs: value(formData, "parlayLegs"),
   });
   if (!parsed.success) finish("Review the required imported betslip fields and try again.");
+  if (
+    (parsed.data.studyChoice === "personal" && parsed.data.groupId) ||
+    (parsed.data.studyChoice !== "personal" && parsed.data.groupId !== parsed.data.studyChoice)
+  ) {
+    finish("Choose exactly one Study or No Study — Personal before saving.");
+  }
   if (parsed.data.sportsbookId === "other" && parsed.data.otherSportsbookName.length < 2) {
     finish("Enter the sportsbook name when choosing Other.");
   }
@@ -233,20 +241,47 @@ export async function createImportedWager(formData: FormData) {
       })),
       p_confirmed: true,
     });
-    if (error || !data) finish(databaseMessage(error?.message ?? ""));
+    if (error || !data) {
+      console.error("Imported parlay persistence failed", {
+        ticketType: "parlay",
+        error: error?.message ?? "missing wager id",
+      });
+      finish(databaseMessage(error?.message ?? ""));
+    }
     const wagerId = String(data);
     if (screenshot instanceof File && screenshot.size > 0 && screenshotExtension) {
       const objectPath = `${authData.user.id}/${wagerId}/${randomUUID()}.${screenshotExtension}`;
       const upload = await supabase.storage
         .from("external-wager-screenshots")
         .upload(objectPath, screenshot, { contentType: screenshot.type, upsert: false });
-      if (upload.error) finish("The import was saved, but the private screenshot upload failed.");
+      if (upload.error) {
+        console.error("Imported parlay screenshot upload failed", {
+          wagerId,
+          error: upload.error.message,
+        });
+        finish("The import was saved, but the private screenshot upload failed.");
+      }
       const attachment = await supabase.rpc("attach_external_wager_screenshot", {
         p_external_wager_id: wagerId,
         p_object_path: objectPath,
       });
-      if (attachment.error)
+      if (attachment.error) {
+        console.error("Imported parlay screenshot attachment failed", {
+          wagerId,
+          error: attachment.error.message,
+        });
         finish("The import was saved, but its screenshot could not be attached.");
+      }
+    }
+    const reconciliation = await supabase.rpc("reconcile_imported_wagers");
+    if (reconciliation.error) {
+      console.error("Imported parlay reconciliation failed", {
+        wagerId,
+        error: reconciliation.error.message,
+      });
+      finish(
+        "The parlay was saved, but canonical matching could not be completed. Refresh My Bets to review it.",
+      );
     }
     finish("Imported parlay saved to My Bets. Your simulated Vial balance was not changed.");
   }
@@ -276,7 +311,13 @@ export async function createImportedWager(formData: FormData) {
     p_provider_event_id: parsed.data.providerEventId || null,
     p_confirmed: true,
   });
-  if (error || !data) finish(databaseMessage(error?.message ?? ""));
+  if (error || !data) {
+    console.error("Imported wager persistence failed", {
+      ticketType: "straight",
+      error: error?.message ?? "missing wager id",
+    });
+    finish(databaseMessage(error?.message ?? ""));
+  }
 
   const wagerId = String(data);
   if (screenshot instanceof File && screenshot.size > 0 && screenshotExtension) {
@@ -284,17 +325,35 @@ export async function createImportedWager(formData: FormData) {
     const upload = await supabase.storage
       .from("external-wager-screenshots")
       .upload(objectPath, screenshot, { contentType: screenshot.type, upsert: false });
-    if (upload.error) finish("The import was saved, but the private screenshot upload failed.");
+    if (upload.error) {
+      console.error("Imported screenshot upload failed", { wagerId, error: upload.error.message });
+      finish("The import was saved, but the private screenshot upload failed.");
+    }
     const attachment = await supabase.rpc("attach_external_wager_screenshot", {
       p_external_wager_id: wagerId,
       p_object_path: objectPath,
     });
-    if (attachment.error) finish("The import was saved, but its screenshot could not be attached.");
+    if (attachment.error) {
+      console.error("Imported screenshot attachment failed", {
+        wagerId,
+        error: attachment.error.message,
+      });
+      finish("The import was saved, but its screenshot could not be attached.");
+    }
   }
-  await supabase.rpc("match_imported_wager", {
+  const matchResult = await supabase.rpc("match_imported_wager", {
     p_external_wager_id: wagerId,
     p_provider_event_id: parsed.data.providerEventId || null,
   });
+  if (matchResult.error) {
+    console.error("Imported wager canonical matching failed", {
+      wagerId,
+      error: matchResult.error.message,
+    });
+    finish(
+      "The import was saved, but canonical matching could not be completed. Refresh My Bets to review it.",
+    );
+  }
   finish("Imported betslip saved to My Bets. Your simulated Vial balance was not changed.");
 }
 

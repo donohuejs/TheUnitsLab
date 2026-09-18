@@ -43,6 +43,19 @@ type VisionOcrAttempt = {
   fallback_requested: boolean;
 };
 
+type VisionDiagnostic = {
+  requested_at: string;
+  model: string;
+  api_key_configured: boolean;
+  internal_budget_available: boolean | null;
+  monthly_budget_usd: number | null;
+  monthly_spend_usd: number | null;
+  provider_status: number | null;
+  provider_error_category: string | null;
+  extraction_result: string;
+  ledger_write_status: string;
+};
+
 type Props = { searchParams: Promise<{ notice?: string }> };
 
 export default async function ApiUsagePage({ searchParams }: Props) {
@@ -76,32 +89,45 @@ export default async function ApiUsagePage({ searchParams }: Props) {
   const monthStart = new Date();
   monthStart.setUTCDate(1);
   const monthKey = monthStart.toISOString().slice(0, 10);
-  const [{ data: visionRows }, { data: ocrRows }, { data: budgetRow }, { data: budgetAudits }] =
-    await Promise.all([
-      admin
-        .from("vision_usage_ledger")
-        .select(
-          "user_id,requested_at,model,purpose,input_tokens,output_tokens,total_tokens,reserved_cost_usd,actual_cost_usd,local_ocr_outcome,vision_status",
-        )
-        .eq("month_start", monthKey)
-        .order("requested_at", { ascending: false }),
-      admin
-        .from("vision_ocr_attempts")
-        .select("local_ocr_outcome,fallback_requested")
-        .eq("month_start", monthKey),
-      admin
-        .from("vision_budget_monthly")
-        .select("approved_limit_usd")
-        .eq("month_start", monthKey)
-        .maybeSingle(),
-      admin
-        .from("vision_budget_audits")
-        .select("changed_at,previous_limit_usd,amount_added_usd,new_limit_usd,reason")
-        .order("changed_at", { ascending: false })
-        .limit(8),
-    ]);
+  const [
+    { data: visionRows },
+    { data: ocrRows },
+    { data: budgetRow },
+    { data: budgetAudits },
+    { data: diagnosticRows },
+  ] = await Promise.all([
+    admin
+      .from("vision_usage_ledger")
+      .select(
+        "user_id,requested_at,model,purpose,input_tokens,output_tokens,total_tokens,reserved_cost_usd,actual_cost_usd,local_ocr_outcome,vision_status",
+      )
+      .eq("month_start", monthKey)
+      .order("requested_at", { ascending: false }),
+    admin
+      .from("vision_ocr_attempts")
+      .select("local_ocr_outcome,fallback_requested")
+      .eq("month_start", monthKey),
+    admin
+      .from("vision_budget_monthly")
+      .select("approved_limit_usd")
+      .eq("month_start", monthKey)
+      .maybeSingle(),
+    admin
+      .from("vision_budget_audits")
+      .select("changed_at,previous_limit_usd,amount_added_usd,new_limit_usd,reason")
+      .order("changed_at", { ascending: false })
+      .limit(8),
+    admin
+      .from("vision_diagnostics")
+      .select(
+        "requested_at,model,api_key_configured,internal_budget_available,monthly_budget_usd,monthly_spend_usd,provider_status,provider_error_category,extraction_result,ledger_write_status",
+      )
+      .order("requested_at", { ascending: false })
+      .limit(50),
+  ]);
   const visionLedger = (visionRows ?? []) as VisionLedger[];
   const ocrAttempts = (ocrRows ?? []) as VisionOcrAttempt[];
+  const diagnostics = (diagnosticRows ?? []) as VisionDiagnostic[];
   const visionUserIds = [...new Set(visionLedger.map((row) => row.user_id))];
   const { data: visionProfiles } = visionUserIds.length
     ? await admin.from("profiles").select("user_id,display_name").in("user_id", visionUserIds)
@@ -110,12 +136,17 @@ export default async function ApiUsagePage({ searchParams }: Props) {
     (visionProfiles ?? []).map((profile) => [profile.user_id, profile.display_name]),
   );
   const visionBudget = Number(budgetRow?.approved_limit_usd ?? VISION_DEFAULT_BUDGET_USD);
+  const apiKeyConfigured = Boolean(process.env.OPENAI_API_KEY?.trim());
   const visionSpend = visionLedger.reduce(
     (sum, row) =>
       sum + Number(row.vision_status === "reserved" ? row.reserved_cost_usd : row.actual_cost_usd),
     0,
   );
   const visionCalls = visionLedger.filter((row) => row.vision_status !== "reserved");
+  const latestDiagnostic = diagnostics[0];
+  const latestSuccessfulDiagnostic = diagnostics.find(
+    (diagnostic) => diagnostic.extraction_result === "succeeded",
+  );
   const localOcrSuccesses = ocrAttempts.filter(
     (attempt) => attempt.local_ocr_outcome === "sufficient",
   ).length;
@@ -286,6 +317,54 @@ export default async function ApiUsagePage({ searchParams }: Props) {
         <p className="muted">
           Warnings: $3.50 · high: $4.25 · critical: $4.75 · limit: $5.00 or the approved override.
         </p>
+        <div className="vision-diagnostics" aria-labelledby="vision-diagnostics-title">
+          <h3 id="vision-diagnostics-title">Vision diagnostics</h3>
+          <dl className="diagnostic-grid">
+            <div>
+              <dt>API key configured</dt>
+              <dd>{apiKeyConfigured ? "Yes" : "No"}</dd>
+            </div>
+            <div>
+              <dt>Configured model</dt>
+              <dd>{latestDiagnostic?.model ?? "—"}</dd>
+            </div>
+            <div>
+              <dt>Internal budget available</dt>
+              <dd>
+                {latestDiagnostic?.internal_budget_available === null
+                  ? "—"
+                  : latestDiagnostic?.internal_budget_available
+                    ? "Yes"
+                    : "No"}
+              </dd>
+            </div>
+            <div>
+              <dt>Last Luna attempt</dt>
+              <dd>{latestDiagnostic?.requested_at ?? "—"}</dd>
+            </div>
+            <div>
+              <dt>Last successful Luna call</dt>
+              <dd>{latestSuccessfulDiagnostic?.requested_at ?? "—"}</dd>
+            </div>
+            <div>
+              <dt>Last provider status</dt>
+              <dd>{latestDiagnostic?.provider_status ?? "—"}</dd>
+            </div>
+            <div>
+              <dt>Last provider error</dt>
+              <dd>{latestDiagnostic?.provider_error_category ?? "—"}</dd>
+            </div>
+            <div>
+              <dt>Last ledger write</dt>
+              <dd>{latestDiagnostic?.ledger_write_status ?? "—"}</dd>
+            </div>
+          </dl>
+          {!diagnostics.length ? (
+            <p className="empty-state">
+              No screenshot vision attempts have been observed this month.
+            </p>
+          ) : null}
+        </div>
         <form action={increaseVisionBudget} className="form-grid">
           <label>
             Increase Vision Budget
