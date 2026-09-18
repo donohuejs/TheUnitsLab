@@ -8,6 +8,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { AppNav } from "@/components/app-nav";
 import { ExternalParlayResultForm } from "@/components/external-parlay-result-form";
 import { ImportBetslipForm } from "@/components/import-betslip-form";
+import { ImportTutorial } from "@/components/import-tutorial";
 import { LocalDateTime } from "@/components/local-date-time";
 import { MarketBadge, SourceBadge, StatusBadge, TicketTypeBadge } from "@/components/status-badge";
 import { SubmitButton } from "@/components/submit-button";
@@ -115,6 +116,38 @@ function canonicalEventsFromCache(rows: { normalized_payload: unknown }[]) {
   );
 }
 
+function canonicalEventsFromScores(
+  rows: {
+    provider_event_id: string;
+    sport: string;
+    competition_key: string;
+    home_team: string;
+    away_team: string;
+    scheduled_start: string;
+  }[],
+) {
+  return rows.map((row): CanonicalEvent => ({
+    providerEventId: row.provider_event_id,
+    sportKey: row.sport,
+    competitionKey: row.competition_key,
+    competitionName: row.competition_key,
+    homeTeam: row.home_team,
+    awayTeam: row.away_team,
+    scheduledStart: row.scheduled_start,
+  }));
+}
+
+function mergeCanonicalEvents(...sources: CanonicalEvent[][]) {
+  const events = new Map<string, CanonicalEvent>();
+  for (const source of sources) {
+    for (const event of source) events.set(event.providerEventId, event);
+  }
+  return [...events.values()].sort(
+    (left, right) =>
+      new Date(left.scheduledStart).getTime() - new Date(right.scheduledStart).getTime(),
+  );
+}
+
 export default async function TrackBetPage({ searchParams }: Props) {
   if (!hasPublicEnvironment(process.env)) redirect("/auth");
   const query = await searchParams;
@@ -139,6 +172,7 @@ export default async function TrackBetPage({ searchParams }: Props) {
     { data: wagers, error: wagerError },
     { data: groups, error: groupError },
     { data: cacheRows, error: cacheError },
+    { data: scoreRows, error: scoreError },
     summaryResult,
   ] = await Promise.all([
     wagerQuery,
@@ -153,6 +187,12 @@ export default async function TrackBetPage({ searchParams }: Props) {
       .order("fetched_at", { ascending: false })
       .limit(32),
     supabase
+      .from("event_scores")
+      .select("provider_event_id,sport,competition_key,home_team,away_team,scheduled_start")
+      .eq("is_synthetic", false)
+      .order("scheduled_start", { ascending: false })
+      .limit(500),
+    supabase
       .from("external_wagers")
       .select("status,stake_units,profit_loss_units")
       .eq("user_id", authData.user.id),
@@ -166,8 +206,18 @@ export default async function TrackBetPage({ searchParams }: Props) {
     })),
   );
   const nowLocal = new Date().toISOString().slice(0, 16);
-  const canonicalEvents = canonicalEventsFromCache(
-    (cacheRows ?? []) as { normalized_payload: unknown }[],
+  const canonicalEvents = mergeCanonicalEvents(
+    canonicalEventsFromCache((cacheRows ?? []) as { normalized_payload: unknown }[]),
+    canonicalEventsFromScores(
+      (scoreRows ?? []) as {
+        provider_event_id: string;
+        sport: string;
+        competition_key: string;
+        home_team: string;
+        away_team: string;
+        scheduled_start: string;
+      }[],
+    ),
   );
 
   return (
@@ -181,12 +231,13 @@ export default async function TrackBetPage({ searchParams }: Props) {
           imported wager affects your simulated Vial balance.
         </p>
       </header>
+      <ImportTutorial />
       {query.notice ? (
         <p className="notice" role="status" aria-live="polite">
           {query.notice}
         </p>
       ) : null}
-      {wagerError || groupError || cacheError || summaryResult.error ? (
+      {wagerError || groupError || cacheError || scoreError || summaryResult.error ? (
         <p className="notice error" role="alert">
           Some imported-wager data is temporarily unavailable. Your imported records were not
           changed.

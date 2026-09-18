@@ -532,8 +532,8 @@ textarea:focus {
 .mobile-nav-brand {
   display: inline-flex;
   align-items: center;
+  flex: 1 1 auto;
   min-width: 0;
-  gap: 0.45rem;
   color: var(--ink-strong);
   font-size: 1rem;
   font-weight: 900;
@@ -542,20 +542,24 @@ textarea:focus {
 }
 
 .mobile-nav-brand .brand-lockup img {
-  width: 2.25rem;
-  height: 2.25rem;
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
-.mobile-nav-brand strong {
-  color: var(--accent);
+.mobile-nav-brand .brand-lockup {
+  display: block;
+  width: min(100%, 17rem);
 }
 
 .menu-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  min-width: 5.4rem;
+  gap: 0;
+  flex: 0 0 2.75rem;
+  width: 2.75rem;
+  min-width: 2.75rem;
   min-height: 2.75rem;
   border: 1px solid var(--border);
   border-radius: 0.6rem;
@@ -632,6 +636,59 @@ textarea:focus {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.import-tutorial summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+}
+
+.import-tutorial summary::-webkit-details-marker {
+  display: none;
+}
+
+.import-tutorial summary span {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.import-tutorial summary small {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.import-tutorial-body {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.import-tutorial video {
+  display: block;
+  width: 100%;
+  max-width: 24rem;
+  aspect-ratio: 16 / 9;
+  border-radius: 0.8rem;
+  background: var(--surface-muted, #eaf3eb);
+}
+
+.import-tutorial-steps {
+  margin: 0;
+  padding-left: 1.3rem;
+}
+
+.study-selection {
+  display: grid;
+  gap: 0.25rem;
+  max-width: 32rem;
+  margin-bottom: 1rem;
+  padding: 0.9rem;
+  border: 1px solid #d6e9d7;
+  border-radius: 0.75rem;
+  background: #f8fcf6;
 }
 
 .import-methods .pill {
@@ -1704,6 +1761,10 @@ thead th {
     min-width: 0;
     border-bottom: 1px solid var(--border);
     padding-bottom: 0.75rem;
+  }
+
+  .mobile-nav-brand .brand-lockup {
+    width: min(72vw, 17rem);
   }
 
   .auth-grid,

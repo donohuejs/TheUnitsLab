@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { parseBetslipText } from "../src/lib/betslip/extraction";
+import {
+  parseBetslipText,
+  shouldUseVisionFallback,
+  visionDraftToBetslipDraft,
+} from "../src/lib/betslip/extraction";
 
 describe("local betslip text extraction", () => {
   it("normalizes common sportsbook receipt labels into a review draft", () => {
@@ -127,5 +131,67 @@ describe("local betslip text extraction", () => {
     expect(result.uncertainFields).not.toEqual(
       expect.arrayContaining(["sportsbook", "event", "odds", "stake", "payout"]),
     );
+  });
+
+  it("does not escalate a complete local draft or escalate only because stake is absent", () => {
+    const complete = parseBetslipText(`
+      FanDuel
+      Rutgers @ Boston College
+      Alternate Spread
+      Boston College -2.5 -170
+      Stake: $8.00
+      Total Return: $12.71
+      Sep 11, 7:30 PM ET
+    `);
+    const noStake = parseBetslipText(`
+      FanDuel
+      Rutgers @ Boston College
+      Alternate Spread
+      Boston College -2.5 -170
+      Total Return: $12.71
+      Sep 11, 7:30 PM ET
+    `);
+
+    expect(shouldUseVisionFallback(complete)).toBe(false);
+    expect(shouldUseVisionFallback(noStake)).toBe(false);
+    expect(noStake.uncertainFields).toContain("stake");
+  });
+
+  it("escalates an ambiguous draft and keeps vision legs atomic", () => {
+    const local = parseBetslipText("FanDuel\nParlay\n-350\n-340");
+    expect(shouldUseVisionFallback(local)).toBe(true);
+
+    const vision = visionDraftToBetslipDraft({
+      ticketType: "parlay",
+      sportsbook: "FanDuel",
+      sportsbookBetId: null,
+      wagerDateText: null,
+      stake: null,
+      totalReturn: null,
+      combinedAmericanOdds: "-113",
+      legs: [
+        {
+          eventText: "Hoffenheim vs Mainz",
+          eventDateText: "Sep 18, 2026 12:30 PM ET",
+          market: "moneyline",
+          selectionText: "Hoffenheim",
+          line: null,
+          americanOdds: "-350",
+        },
+        {
+          eventText: "Crystal Palace vs Juventus",
+          eventDateText: "Sep 18, 2026 3:00 PM ET",
+          market: "moneyline",
+          selectionText: "Crystal Palace",
+          line: null,
+          americanOdds: "-340",
+        },
+      ],
+    });
+    expect(vision.parlayLegs.map((leg) => [leg.selection, leg.americanOdds])).toEqual([
+      ["Hoffenheim", "-350"],
+      ["Crystal Palace", "-340"],
+    ]);
+    expect(vision.fields.americanOdds).toBe("-113");
   });
 });

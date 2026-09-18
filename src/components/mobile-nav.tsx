@@ -67,10 +67,7 @@ export function MobileNav({
   return (
     <div className="mobile-nav">
       <Link className="mobile-nav-brand" href="/" aria-label="The Units Lab home">
-        <BrandLockup compact />
-        <span>
-          The Units <strong>Lab</strong>
-        </span>
+        <BrandLockup />
       </Link>
       <button
         ref={menuButtonRef}
@@ -78,6 +75,7 @@ export function MobileNav({
         type="button"
         aria-expanded={open}
         aria-controls="mobile-primary-menu"
+        aria-label="Menu"
         onClick={() => setOpen((current) => !current)}
       >
         <span className="menu-icon" aria-hidden="true">
@@ -85,7 +83,7 @@ export function MobileNav({
           <span />
           <span />
         </span>
-        <span>{open ? "Close" : "Menu"}</span>
+        <span className="sr-only">{open ? "Close" : "Menu"}</span>
       </button>
       {open ? (
         <div className="mobile-menu-backdrop" onClick={closeMenu}>

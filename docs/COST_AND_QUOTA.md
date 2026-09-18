@@ -114,3 +114,29 @@ one shared request per cache miss under the current provider cost rules.
 - Vercel Hobby cron cannot provide frequent or precise score polling.
 - Supabase free projects pause after inactivity and do not include backups, so recovery expectations are unresolved.
 - Screenshot volume could exhaust the 1 GB storage or egress allowances; retention and size limits need owner policy before Phase 5.
+
+## Release-candidate fix patch 6 vision fallback
+
+Patch 6 introduces the one explicitly approved paid-capable dependency: a server-only OpenAI API
+fallback using the fixed `gpt-5.6-luna` model for low-confidence betslip screenshot understanding.
+Local OCR is attempted first; a successful, sufficiently complete extraction makes no OpenAI
+request. The fallback is disabled without `OPENAI_API_KEY`, is never called by automated tests, and
+does not replace canonical event data or settlement evidence.
+
+The application default is a hard $5.00 monthly budget. The `vision_usage_ledger` reserves $0.05
+before each request under a database row lock, then replaces the reservation with exact token-based
+cost using $0.20 per million input tokens and $1.20 per million output tokens. This is a safety
+ceiling, not a forecast or a purchase authorization. The admin can add a bounded amount only
+through an audited server action; no automatic increase exists. Spend bands are warning at $3.50,
+high at $4.25, critical at $4.75, and limit at the approved ceiling. The dashboard attributes
+requests by user and flags users whose average completed-call cost is at least $0.01.
+
+At the documented Luna rates, a $5.00 ceiling is approximately 25 million input tokens or 4.17
+million output tokens in isolation; actual multimodal requests use both token types and therefore
+reach the ceiling sooner. The primary cost risk is image/token variability and repeated low-quality
+uploads, mitigated by local-first extraction, a single request per reviewed image, the reservation
+lock, and the explicit monthly stop condition. If production usage or provider pricing makes this
+budget unsuitable, disable the key and continue with the manual import path pending owner review.
+This paid-capable path is the sole approved deviation from the prior $0 external-service baseline;
+all odds, scores, storage, analytics, and settlement paths remain within their existing free-tier
+design.

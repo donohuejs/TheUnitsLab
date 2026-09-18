@@ -36,6 +36,25 @@ export type ExtractedBetslip = {
   confidence: "high" | "medium" | "low";
   uncertainFields: string[];
   warnings: string[];
+  source?: "local" | "vision";
+};
+
+export type VisionBetslipDraft = {
+  ticketType: ExtractedTicketType;
+  sportsbook: string | null;
+  sportsbookBetId: string | null;
+  wagerDateText: string | null;
+  stake: string | null;
+  totalReturn: string | null;
+  combinedAmericanOdds: string | null;
+  legs: Array<{
+    eventText: string | null;
+    eventDateText: string | null;
+    market: "moneyline" | "spread" | "total" | null;
+    selectionText: string | null;
+    line: string | null;
+    americanOdds: string | null;
+  }>;
 };
 
 export type OcrProgress = (progress: number, status: string) => void;
@@ -448,6 +467,102 @@ function extractionScore(extraction: ExtractedBetslip) {
   );
 }
 
+/**
+ * Local OCR is intentionally conservative. Stake may be absent without requiring a paid
+ * escalation, but missing ticket-critical fields or ambiguous leg structure should be reviewed by
+ * the server-side vision adapter when it is available.
+ */
+export function shouldUseVisionFallback(extraction: ExtractedBetslip) {
+  const critical = new Set(["event", "event date", "selection", "odds"]);
+  const criticalMissing = extraction.uncertainFields.some((field) => critical.has(field));
+  const invalidParlay =
+    extraction.ticketType === "parlay" &&
+    (extraction.parlayLegs.length < 2 ||
+      extraction.parlayLegs.some(
+        (leg) => !leg.eventDescription || !leg.selection || !leg.americanOdds,
+      ));
+  return extraction.confidence === "low" || criticalMissing || invalidParlay;
+}
+
+function parseVisionDate(value: string | null | undefined) {
+  if (!value) return undefined;
+  const normalized = value.replace(/\bET\b/i, "").trim();
+  const candidates = /\b\d{4}\b/.test(normalized)
+    ? [normalized]
+    : [normalized, `${normalized} ${new Date().getUTCFullYear()}`];
+  for (const candidate of candidates) {
+    const date = new Date(candidate.replace(/-/g, "/"));
+    if (!Number.isNaN(date.getTime())) return date.toISOString();
+  }
+  return undefined;
+}
+
+function visionSportsbookId(value: string | null) {
+  if (!value) return undefined;
+  if (/draft\s*kings/i.test(value)) return "draftkings";
+  if (/fan\s*duel/i.test(value)) return "fanduel";
+  if (/bet\s*mgm/i.test(value)) return "betmgm";
+  if (/caesars/i.test(value)) return "caesars";
+  return undefined;
+}
+
+/** Convert strict vision output into the same editable draft contract as local OCR. */
+export function visionDraftToBetslipDraft(draft: VisionBetslipDraft): ExtractedBetslip {
+  const legs = draft.legs.map((leg) => ({
+    eventDescription: cleanLine(leg.eventText ?? ""),
+    eventDate: parseVisionDate(leg.eventDateText),
+    selection: leg.selectionText ? cleanLine(leg.selectionText) : undefined,
+    selectionKey: detectSelectionKey(
+      leg.selectionText ?? undefined,
+      leg.eventText ?? undefined,
+      leg.market ?? "moneyline",
+    ),
+    marketType: leg.market ?? undefined,
+    line: leg.line ?? undefined,
+    americanOdds: leg.americanOdds ?? undefined,
+  }));
+  const first = legs[0];
+  const missing = Object.entries({
+    event: first?.eventDescription,
+    "event date": first?.eventDate,
+    selection: first?.selection,
+    odds: first?.americanOdds,
+    stake: draft.stake,
+    payout: draft.totalReturn,
+  })
+    .filter(([, value]) => !value)
+    .map(([name]) => name);
+  return {
+    fields: {
+      sportsbookId: visionSportsbookId(draft.sportsbook),
+      otherSportsbookName:
+        draft.sportsbook && !visionSportsbookId(draft.sportsbook) ? draft.sportsbook : undefined,
+      sportsbookBetId: draft.sportsbookBetId ?? undefined,
+      eventDescription: first?.eventDescription || undefined,
+      eventDate: first?.eventDate,
+      wagerDate: parseVisionDate(draft.wagerDateText),
+      selection: first?.selection,
+      selectionKey: first?.selectionKey,
+      marketType: first?.marketType ?? "moneyline",
+      line: first?.line ?? (first?.marketType === "moneyline" ? "" : undefined),
+      americanOdds: draft.combinedAmericanOdds ?? first?.americanOdds,
+      stakeDollars: draft.stake ?? undefined,
+      returnDollars: draft.totalReturn ?? undefined,
+    },
+    rawText: "",
+    ticketType: draft.ticketType,
+    ticketTypeConfidence: "high",
+    parlayLegs: legs,
+    confidence: missing.length ? "medium" : "high",
+    uncertainFields: missing,
+    warnings: [
+      "AI-assisted draft — verify the event, pick, line, odds, stake, payout, and Study before saving.",
+      ...missing.map((field) => `${field} was not confidently extracted; review it.`),
+    ],
+    source: "vision",
+  };
+}
+
 /** Local, free OCR adapter. The image stays in the browser and is never sent to an OCR API. */
 export async function extractBetslip(image: Blob, onProgress?: OcrProgress) {
   if (typeof window === "undefined") {
@@ -481,7 +596,7 @@ export async function extractBetslip(image: Blob, onProgress?: OcrProgress) {
     )[0];
     if (!best) throw new Error("OCR returned no text.");
     onProgress?.(100, "OCR complete");
-    return best;
+    return { ...best, source: "local" as const };
   } finally {
     await worker.terminate();
   }

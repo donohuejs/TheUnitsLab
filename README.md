@@ -4,9 +4,9 @@ The Units Lab is a private, entertainment-focused sports wagering simulator and 
 
 ## Phase status
 
-Phases 0-8 are complete. Release-candidate UX Patch 3 and Fix Patches 1-3 are the current pre-UAT gate; Fix Patch 3 adds approved-asset branding, free browser-local screenshot extraction with review/fallback, cached-event import search, and reusable expiring invites while preserving the Phase 7 wagering engine. Phase 9 has not started.
+Phases 0-8 are complete. Release-candidate UX Patch 3 and Fix Patches 1-6 are the current pre-UAT gate; Fix Patch 6 adds local OCR with a server-only, budgeted GPT-5.6 Luna fallback, historical canonical event matching, imported Study choice, mobile header refinements, and an import tutorial while preserving the Phase 7 wagering engine. Phase 9 has not started.
 
-The interface supports account/group workflows, pregame odds for EPL, UCL, NCAAF, NCAAB, NFL, NHL, La Liga, and Europa League, straight and multi-leg simulated bet slips, a unified My Bets ledger, cached scores, deterministic simulated settlement, reviewed local screenshot/text/manual betslip import, imported straight/parlay tracking, Performance analytics, private-group leaderboards, and a dashboard that keeps simulated and imported records distinct. External records never change the simulated virtual-bankroll ledger. Screenshot extraction remains review-first and browser-local; no provider polling or Phase 9 work was added.
+The interface supports account/group workflows, pregame odds for EPL, UCL, NCAAF, NCAAB, NFL, NHL, La Liga, and Europa League, straight and multi-leg simulated bet slips, a unified My Bets ledger, cached scores, deterministic simulated settlement, reviewed local screenshot/text/manual betslip import, imported straight/parlay tracking, Performance analytics, private-group leaderboards, and a dashboard that keeps simulated and imported records distinct. External records never change the simulated virtual-bankroll ledger. Screenshot extraction remains review-first: OCR runs locally first, and only low-confidence or incomplete images may use the server-only configured vision fallback. No canonical sport, competition, event, or settlement fact is invented by the fallback, and no provider polling or Phase 9 work was added.
 
 Parlays use one bookmaker and distinct provider events; same-event combinations and cross-book tickets are rejected because the current provider model has no verified correlation pricing. Push and void legs are neutral prices; if no active leg remains, all-void is `void` and any push/void mixture is `push` with the stake returned. Settlement waits for every non-void leg to have a durable final result.
 
@@ -36,7 +36,7 @@ Copy-Item .env.example .env.local
 
 Replace placeholder values in `.env.local`; never commit that file. Browser-safe variables use the `NEXT_PUBLIC_` prefix. The Odds API key and Supabase service-role key are server-only and intentionally have no public prefix.
 
-The application build does not require credentials and renders setup behavior when public Supabase configuration is absent. Authentication requires the project URL and public key. Live odds and scores require server-only `SUPABASE_SERVICE_ROLE_KEY` and `THE_ODDS_API_KEY`. Set `CRON_SECRET` to a random server-only value before invoking the bounded settlement job endpoint, and set `APP_ADMIN_USER_IDS` to comma-separated Supabase user UUIDs for the quota dashboard. The browser never receives these credentials.
+The application build does not require credentials and renders setup behavior when public Supabase configuration is absent. Authentication requires the project URL and public key. Live odds and scores require server-only `SUPABASE_SERVICE_ROLE_KEY` and `THE_ODDS_API_KEY`. Screenshot vision fallback is disabled unless server-only `OPENAI_API_KEY` is set; its default monthly application budget is $5.00 and the admin dashboard supports audited increases. Set `CRON_SECRET` to a random server-only value before invoking the bounded settlement job endpoint, and set `APP_ADMIN_USER_IDS` to comma-separated Supabase user UUIDs for the quota dashboard. The browser never receives these credentials.
 
 ## Local database
 
@@ -58,7 +58,7 @@ Run repository checks with:
 npm run validate
 ```
 
-Individual commands are `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run security:scan`, and `npm run build`. With local Supabase running, use `npm run test:db` for direct authorization and integrity tests, `npm run test:db:concurrency` and `npm run test:db:parlay-placement-concurrency` for concurrent overspend, and `npm run test:db:settlement-concurrency` plus `npm run test:db:parlay-settlement-concurrency` for duplicate-payout gates. `npm run validate` includes the secret scan. Tests and builds make no live provider calls and require no paid service.
+Individual commands are `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run security:scan`, and `npm run build`. With local Supabase running, use `npm run test:db` for direct authorization and integrity tests, `npm run test:db:concurrency` and `npm run test:db:parlay-placement-concurrency` for concurrent overspend, and `npm run test:db:settlement-concurrency` plus `npm run test:db:parlay-settlement-concurrency` for duplicate-payout gates. `npm run record:import-demo` regenerates the private-safe 390x844 tutorial video after Playwright browsers are installed. `npm run validate` includes the secret scan. Tests and builds make no live provider calls and require no paid service; the optional vision fallback is never called by automated tests.
 
 ## Documentation
 
@@ -91,6 +91,7 @@ Individual commands are `npm run format:check`, `npm run lint`, `npm run typeche
 - [Release-candidate UX Patch 3 report](RELEASE_CANDIDATE_UX_PATCH_3_REPORT.md)
 - [Release-candidate Fix Patch 1 report](RELEASE_CANDIDATE_FIX_PATCH_1_REPORT.md)
 - [Release-candidate Fix Patch 3 report](RELEASE_CANDIDATE_FIX_PATCH_3_REPORT.md)
+- [Release-candidate Fix Patch 6 report](RELEASE_CANDIDATE_FIX_PATCH_6_REPORT.md)
 - [Rollout Part 1 release-readiness report](ROLLOUT_PART_1_RELEASE_READINESS_REPORT.md)
 - [Release candidate checklist](RELEASE_CANDIDATE_CHECKLIST.md)
 - [Agent guidance](AGENTS.md)

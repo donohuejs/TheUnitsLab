@@ -9,6 +9,7 @@ import {
   extractBetslip,
   inferSelectionKey,
   parseBetslipText,
+  shouldUseVisionFallback,
   type BetslipDraftFields,
   type ExtractedBetslip,
   type ExtractedParlayLeg,
@@ -93,8 +94,8 @@ function isoOrEmpty(value: string) {
 
 function emptyLeg(competition: Competition | undefined, eventDate = ""): ParlayLeg {
   return {
-    sportKey: competition?.sport ?? "soccer",
-    competitionKey: competition?.id ?? "epl",
+    sportKey: competition?.sport ?? "",
+    competitionKey: competition?.id ?? "",
     eventDescription: "",
     eventDate,
     selection: "",
@@ -105,6 +106,32 @@ function emptyLeg(competition: Competition | undefined, eventDate = ""): ParlayL
     providerEventId: "",
     result: "open",
   };
+}
+
+function normalizedEventText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function canonicalEventFor(
+  events: CachedEvent[],
+  description: string | undefined,
+  eventDate: string | undefined,
+) {
+  if (!description) return undefined;
+  const normalized = normalizedEventText(description);
+  const date = eventDate ? new Date(eventDate).getTime() : NaN;
+  const candidates = events.filter((event) => {
+    const teams = [normalizedEventText(event.homeTeam), normalizedEventText(event.awayTeam)];
+    const participants = teams.every((team) => team && normalized.includes(team));
+    const closeInTime = Number.isNaN(date)
+      ? true
+      : Math.abs(new Date(event.scheduledStart).getTime() - date) <= 18 * 60 * 60 * 1000;
+    return participants && closeInTime;
+  });
+  return candidates.length === 1 ? candidates[0] : undefined;
 }
 
 function extractedLeg(
@@ -140,7 +167,6 @@ export function ImportBetslipForm({
   nowLocal: string;
   nowIso: string;
 }) {
-  const firstCompetition = competitions[0];
   const [method, setMethod] = useState<ImportMethod>("entry");
   const [step, setStep] = useState<Step>("event");
   const [reviewing, setReviewing] = useState(false);
@@ -153,13 +179,14 @@ export function ImportBetslipForm({
   const [extractionMessage, setExtractionMessage] = useState("");
   const [extractionWarnings, setExtractionWarnings] = useState<string[]>([]);
   const [stakeMissingFromExtraction, setStakeMissingFromExtraction] = useState(false);
+  const [studyChoice, setStudyChoice] = useState("unset");
   const [stepError, setStepError] = useState("");
   const [autoEconomicField, setAutoEconomicField] = useState<AutoEconomicField | null>(null);
   const [draft, setDraft] = useState<Draft>({
     sportsbookId: "",
     otherSportsbookName: "",
-    sportKey: firstCompetition?.sport ?? "soccer",
-    competitionKey: firstCompetition?.id ?? "epl",
+    sportKey: "",
+    competitionKey: "",
     eventDescription: "",
     eventDate: "",
     wagerDate: nowLocal,
@@ -178,7 +205,7 @@ export function ImportBetslipForm({
     userNotes: "",
     rawText: "",
     ticketType: "straight",
-    parlayLegs: [emptyLeg(firstCompetition), emptyLeg(firstCompetition)],
+    parlayLegs: [emptyLeg(undefined), emptyLeg(undefined)],
   });
 
   const browserNowSnapshot = useMemo(() => getBrowserNow, []);
@@ -248,12 +275,29 @@ export function ImportBetslipForm({
 
   function applyExtractedFields(extraction: ExtractedBetslip) {
     const fields: BetslipDraftFields = extraction.fields;
+    const matchedEvent = canonicalEventFor(
+      canonicalEvents,
+      fields.eventDescription,
+      fields.eventDate,
+    );
+    const matchedLegs = extraction.parlayLegs.map((leg) => {
+      const match = canonicalEventFor(canonicalEvents, leg.eventDescription, leg.eventDate);
+      const parsed = extractedLeg(leg, draft, competitions);
+      return match
+        ? {
+            ...parsed,
+            providerEventId: match.providerEventId,
+            sportKey: match.sportKey,
+            competitionKey: match.competitionKey,
+            eventDescription: `${match.awayTeam} at ${match.homeTeam}`,
+            eventDate: toDateTimeLocalValue(match.scheduledStart),
+          }
+        : parsed;
+    });
     setDraft((current) => ({
       ...current,
       sportsbookId: fields.sportsbookId ?? current.sportsbookId,
       otherSportsbookName: fields.otherSportsbookName ?? current.otherSportsbookName,
-      eventDescription: fields.eventDescription ?? current.eventDescription,
-      eventDate: fields.eventDate ? toDateTimeLocalValue(fields.eventDate) : current.eventDate,
       wagerDate: fields.wagerDate ? toDateTimeLocalValue(fields.wagerDate) : current.wagerDate,
       selection: fields.selection ?? current.selection,
       selectionKey: fields.selectionKey ?? current.selectionKey,
@@ -265,14 +309,49 @@ export function ImportBetslipForm({
       sportsbookBetId: fields.sportsbookBetId ?? current.sportsbookBetId,
       rawText: extraction.rawText,
       ticketType: extraction.ticketType,
-      parlayLegs: extraction.parlayLegs.length
-        ? extraction.parlayLegs.map((leg) => extractedLeg(leg, current, competitions))
-        : current.parlayLegs,
+      providerEventId: matchedEvent?.providerEventId ?? current.providerEventId,
+      sportKey: matchedEvent?.sportKey ?? current.sportKey,
+      competitionKey: matchedEvent?.competitionKey ?? current.competitionKey,
+      eventDescription: matchedEvent
+        ? `${matchedEvent.awayTeam} at ${matchedEvent.homeTeam}`
+        : (fields.eventDescription ?? current.eventDescription),
+      eventDate: matchedEvent
+        ? toDateTimeLocalValue(matchedEvent.scheduledStart)
+        : fields.eventDate
+          ? toDateTimeLocalValue(fields.eventDate)
+          : current.eventDate,
+      parlayLegs: matchedLegs.length ? matchedLegs : current.parlayLegs,
     }));
     setTicketTypeUncertain(extraction.ticketTypeConfidence === "low");
     setStakeMissingFromExtraction(!fields.stakeDollars);
     setAutoEconomicField(null);
     setExtractionWarnings(extraction.warnings);
+  }
+
+  async function requestVisionFallback(file: File, localOcrOutcome: string) {
+    const body = new FormData();
+    body.set("screenshot", file);
+    body.set("localOcrOutcome", localOcrOutcome);
+    const response = await fetch("/api/import-betslip/vision", { method: "POST", body });
+    const payload = (await response.json()) as {
+      status?: string;
+      draft?: ExtractedBetslip;
+      message?: string;
+    };
+    if (payload.draft) return payload.draft;
+    throw new Error(payload.message ?? "Assisted extraction was unavailable.");
+  }
+
+  async function recordLocalOcrOutcome(outcome: string, fallbackRequested: boolean) {
+    try {
+      await fetch("/api/import-betslip/ocr-outcome", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ outcome, fallbackRequested }),
+      });
+    } catch {
+      /* Operational telemetry must never block the reviewed import flow. */
+    }
   }
 
   async function handleScreenshot(file: File | undefined) {
@@ -284,23 +363,65 @@ export function ImportBetslipForm({
     setProcessingProgress(0);
     setStep("event");
     try {
-      const extraction = await extractBetslip(file, (progress, status) => {
-        setProcessingProgress(progress);
-        setExtractionMessage(`${status} locally${progress ? ` · ${progress}%` : "…"}`);
-      });
-      applyExtractedFields(extraction);
-      setExtractionMessage(
-        extraction.warnings.length
-          ? `OCR finished locally. ${extraction.confidence} confidence — review the flagged fields below.`
-          : "OCR finished locally. Review the extracted fields before continuing.",
-      );
-    } catch {
-      setExtractionMessage(
-        "Local OCR could not read this image. Your private screenshot is attached; continue with the short guided draft.",
-      );
-      setExtractionWarnings(["No fields were extracted. Enter the missing values manually."]);
-      setStakeMissingFromExtraction(true);
-      setTicketTypeUncertain(true);
+      let extraction: ExtractedBetslip | null = null;
+      try {
+        extraction = await extractBetslip(file, (progress, status) => {
+          setProcessingProgress(progress);
+          setExtractionMessage(`${status} locally${progress ? ` · ${progress}%` : "…"}`);
+        });
+      } catch {
+        setExtractionMessage("Local OCR could not read this image. Trying assisted extraction…");
+      }
+      if (extraction) {
+        applyExtractedFields(extraction);
+      }
+      const needsVision = !extraction || shouldUseVisionFallback(extraction);
+      const localOutcome = !extraction
+        ? "error"
+        : extraction.ticketType === "parlay" && extraction.parlayLegs.length < 2
+          ? "ambiguous"
+          : extraction.uncertainFields.length
+            ? "incomplete"
+            : needsVision
+              ? "low_confidence"
+              : "sufficient";
+      void recordLocalOcrOutcome(localOutcome, needsVision);
+      if (needsVision) {
+        setExtractionMessage("The local draft needs help. Trying assisted extraction securely…");
+        try {
+          const visionDraft = await requestVisionFallback(
+            file,
+            extraction ? `local_${extraction.confidence}` : "local_error",
+          );
+          applyExtractedFields(visionDraft);
+          setExtractionMessage("Assisted extraction finished. Review every field before saving.");
+        } catch (error) {
+          setExtractionMessage(
+            error instanceof Error
+              ? error.message
+              : "Automatic extraction couldn't finish. We kept your screenshot and filled in what we could.",
+          );
+          if (!extraction) {
+            setExtractionWarnings(["No fields were extracted. Enter the missing values manually."]);
+            setStakeMissingFromExtraction(true);
+            setTicketTypeUncertain(true);
+          }
+        }
+      } else if (extraction) {
+        setExtractionMessage(
+          extraction.warnings.length
+            ? `OCR finished locally. ${extraction.confidence} confidence — review the flagged fields below.`
+            : "OCR finished locally. Review the extracted fields before continuing.",
+        );
+      }
+      /* Keep the original screenshot in the form for the eventual private attachment. */
+      if (!extraction) {
+        setExtractionWarnings((current) =>
+          current.length
+            ? current
+            : ["No fields were extracted. Enter the missing values manually."],
+        );
+      }
     } finally {
       setProcessingScreenshot(false);
     }
@@ -375,7 +496,7 @@ export function ImportBetslipForm({
       ticketType: value,
       parlayLegs:
         value === "parlay" && current.parlayLegs.length < 2
-          ? [current.parlayLegs[0] ?? emptyLeg(firstCompetition), emptyLeg(firstCompetition)]
+          ? [current.parlayLegs[0] ?? emptyLeg(undefined), emptyLeg(undefined)]
           : current.parlayLegs,
     }));
     setTicketTypeUncertain(false);
@@ -413,6 +534,13 @@ export function ImportBetslipForm({
         showFieldError("Choose an event match and kickoff before continuing.", "event-description");
         return;
       }
+      if (draft.ticketType === "straight" && (!draft.sportKey || !draft.competitionKey)) {
+        showFieldError(
+          "Event not yet identified — choose a canonical event or enter its sport and competition.",
+          "event-description",
+        );
+        return;
+      }
       setStep("market");
       return;
     }
@@ -420,6 +548,8 @@ export function ImportBetslipForm({
       if (draft.ticketType === "parlay") {
         const invalidIndex = draft.parlayLegs.findIndex(
           (leg) =>
+            !leg.sportKey ||
+            !leg.competitionKey ||
             !leg.selection.trim() ||
             !leg.americanOdds ||
             (leg.marketType !== "moneyline" && !leg.line),
@@ -462,6 +592,15 @@ export function ImportBetslipForm({
     }
     if (draft.ticketType === "parlay" && draft.parlayLegs.length > 12) {
       setStepError("A parlay can contain no more than 12 legs.");
+      return;
+    }
+    if (studyChoice === "unset") {
+      setStepError("Choose a Study or No Study — Personal before reviewing this import.");
+      window.requestAnimationFrame(() => {
+        const field = document.getElementById("study-choice");
+        field?.focus();
+        field?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
       return;
     }
     if (!economics.value) {
@@ -548,6 +687,7 @@ export function ImportBetslipForm({
       <input type="hidden" name="wagerDateUtc" value={isoOrEmpty(effectiveWagerDate)} />
       <input type="hidden" name="canonicalEventId" value={draft.providerEventId} />
       <input type="hidden" name="parlayLegs" value={serializedLegs} />
+      <input type="hidden" name="groupId" value={draft.groupId} />
 
       <div className="import-methods" aria-label="Import entry path">
         {(
@@ -590,9 +730,8 @@ export function ImportBetslipForm({
         <div className="notice">
           <strong>Private screenshot review</strong>
           <p>
-            Upload screenshot → local preprocessing → OCR → editable review draft → confirm. OCR
-            runs in your browser with free open-source tooling; the image is never sent to a paid
-            OCR or vision API.
+            We try local OCR first. If the draft is insufficient, the screenshot may be processed by
+            the configured vision service. Review is always required before saving.
           </p>
           <label>
             Betslip screenshot
@@ -669,7 +808,6 @@ export function ImportBetslipForm({
           <input type="hidden" name="otherSportsbookName" value={draft.otherSportsbookName} />
           <input type="hidden" name="sportsbookBetId" value={draft.sportsbookBetId} />
           <input type="hidden" name="verificationStatus" value={draft.verificationStatus} />
-          <input type="hidden" name="groupId" value={draft.groupId} />
           <input type="hidden" name="userNotes" value={draft.userNotes} />
         </>
       ) : null}
@@ -688,7 +826,7 @@ export function ImportBetslipForm({
               onAdd={() =>
                 setDraft((current) => ({
                   ...current,
-                  parlayLegs: [...current.parlayLegs, emptyLeg(firstCompetition)],
+                  parlayLegs: [...current.parlayLegs, emptyLeg(undefined)],
                 }))
               }
               onRemove={(index) =>
@@ -736,6 +874,7 @@ export function ImportBetslipForm({
                         }))
                       }
                     >
+                      <option value="">Choose sport</option>
                       <option value="soccer">Soccer</option>
                       <option value="football">Football</option>
                       <option value="basketball">Basketball</option>
@@ -749,6 +888,7 @@ export function ImportBetslipForm({
                       value={draft.competitionKey}
                       onChange={(event) => set("competitionKey", event.target.value)}
                     >
+                      <option value="">Choose competition</option>
                       {competitionOptions.map((competition) => (
                         <option key={competition.id} value={competition.id}>
                           {competition.name}
@@ -817,7 +957,7 @@ export function ImportBetslipForm({
             onAdd={() =>
               setDraft((current) => ({
                 ...current,
-                parlayLegs: [...current.parlayLegs, emptyLeg(firstCompetition)],
+                parlayLegs: [...current.parlayLegs, emptyLeg(undefined)],
               }))
             }
             onRemove={(index) =>
@@ -906,6 +1046,36 @@ export function ImportBetslipForm({
           <p className="muted">
             Stake, American odds, or Total return. The third is calculated exactly.
           </p>
+          <div className="study-selection">
+            <label>
+              Study (required)
+              <select
+                id="study-choice"
+                name="studyChoice"
+                value={studyChoice}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setStudyChoice(value);
+                  setDraft((current) => ({
+                    ...current,
+                    groupId: value === "personal" || value === "unset" ? "" : value,
+                  }));
+                }}
+                required
+              >
+                <option value="unset">Choose a Study</option>
+                <option value="personal">No Study — Personal</option>
+                {groups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <small className="muted">
+              Choose deliberately so this import is private or part of a Study.
+            </small>
+          </div>
           <div className="form-grid">
             <label>
               Stake (source USD)
@@ -1016,21 +1186,6 @@ export function ImportBetslipForm({
                   <option value="user_attested">User attested</option>
                 </select>
               </label>
-              <label>
-                Optional Study
-                <select
-                  name="groupId"
-                  value={draft.groupId}
-                  onChange={(event) => set("groupId", event.target.value)}
-                >
-                  <option value="">Private — only me</option>
-                  {groups.map((group) => (
-                    <option key={group.id} value={group.id}>
-                      {group.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
             </div>
             <label className={inputClass}>
               Notes (optional)
@@ -1071,7 +1226,6 @@ export function ImportBetslipForm({
           <input type="hidden" name="wagerDate" value={effectiveWagerDate} />
           <input type="hidden" name="status" value={draft.status} />
           <input type="hidden" name="verificationStatus" value={draft.verificationStatus} />
-          <input type="hidden" name="groupId" value={draft.groupId} />
           <input type="hidden" name="userNotes" value={draft.userNotes} />
         </>
       )}
@@ -1130,7 +1284,7 @@ export function ImportBetslipForm({
                 onAdd={() =>
                   setDraft((current) => ({
                     ...current,
-                    parlayLegs: [...current.parlayLegs, emptyLeg(firstCompetition)],
+                    parlayLegs: [...current.parlayLegs, emptyLeg(undefined)],
                   }))
                 }
                 onRemove={(index) =>
