@@ -126,3 +126,96 @@ The addendum does not change the server-authoritative wager terms or pricing bou
 The tutorial ships the existing WebM recording plus VTT captions. MP4/H.264 was preferred as an optional fallback, but an H.264 encoder was not available in this environment, so a missing or unverified MP4 was not added. Verify WebM playback and captions in the deployed Chrome/Safari target matrix.
 
 The local Playwright smoke scripts were attempted at the required widths but stopped at `/auth` because this workspace has no `.env.local` Supabase public configuration; account creation is intentionally disabled without it. The remaining checks require a configured/deployed environment: confirm the configured GPT-5.6 Luna model and account budget, verify production Supabase privileges/RLS with direct unauthorized requests, exercise duplicate/recovery flows against the deployed API, and smoke-test sticky navigation/drawer and the mobile Bet Slip tray/sheet on real desktop and mobile viewports.
+
+## Post-Patch-9 Tutorial Blocker Fix
+
+Date: 2026-09-19
+
+### Root cause
+
+The production teaser was visually present but the tutorial contract was not sufficiently production-safe: the activation control did not clearly communicate that it opened the walkthrough, the modal had no explicit media-failure recovery, and the video was WebM-only with `preload="none"`. A browser that could not decode the WebM asset could therefore present an apparently empty or unusable tutorial surface. The public asset itself was present, but the experience did not provide a reliable fallback or complete modal focus behavior.
+
+### Implementation
+
+- `src/components/import-tutorial.tsx` now exposes a clearly labeled `Watch a quick example` button with keyboard/touch activation and an expanded state.
+- The existing viewport overlay remains the single tutorial surface. It now has an accessible title/description, explicit close control, backdrop dismissal, Escape dismissal, document/body scroll locking, focus trapping, and focus return to the CTA.
+- The video uses native controls, `playsInline`, `preload="metadata"`, no autoplay, and the production assets `/help/import-betslip-demo.webm` and `/help/import-betslip-demo.vtt`.
+- A readable fallback walkthrough appears when the video fails to load or decode, covering screenshot upload, Luna extraction, review/correction, canonical event confirmation, Study or No Study — Personal, Confirm Import, and My Bets.
+- `src/app/globals.css` constrains the dialog to `100dvh`, prevents narrow-viewport overflow, and styles the fallback without changing the betting or desktop page layout.
+- The existing `scripts/record-import-demo.mjs` remains the recording path and uses the real `/track-bet` and `/my-bets?filter=imported` routes with the current import flow; no mock HTML or alternate tutorial flow was introduced.
+
+MP4/H.264 was checked as the preferred primary format, but no H.264-capable encoder is available in this workspace and no new media dependency was added. The verified WebM asset remains bundled, while the in-product written fallback keeps the tutorial usable when a target browser cannot play it.
+
+### Tests and responsive validation
+
+- Extended the Patch 9 contract tests to verify the interactive CTA, dialog/close/Escape/backdrop/focus-lock contracts, media controls and metadata preload, fallback content, and the existence and non-zero size of the production WebM/VTT assets.
+- Verified the built Next production server serves `/help/import-betslip-demo.webm` and `/help/import-betslip-demo.vtt` with HTTP 200 and the expected `video/webm` and `text/vtt` content types.
+- The recording contract test verifies that `scripts/record-import-demo.mjs` still drives `/track-bet`, the real Upload Screenshot/Luna review flow, No Study — Personal, Confirm and save to My Bets, and `/my-bets?filter=imported`.
+- Updated the earlier tutorial contract from `preload="none"` to the production-safe `preload="metadata"` requirement.
+- The dialog uses the existing responsive system and `100dvh` sizing; static validation covers narrow widths without horizontal overflow. The remaining deployed-device check is required at approximately 375px, 390px, and 430px, including iPhone Safari fallback/playback behavior.
+
+### Scope and manual production step
+
+No server, wager-placement, pricing, bankroll, database, or security behavior changed. Desktop betting behavior is preserved. This follow-up was not committed or pushed.
+
+After deployment, manually open `/track-bet` while authenticated at desktop and 375px/390px/430px widths: activate the CTA with mouse, keyboard, and touch; confirm `/help/import-betslip-demo.webm` and captions load; verify close, Escape, backdrop, focus return, and no page scroll/overflow regression; then temporarily exercise the browser-failure path or an unsupported mobile browser to confirm the written walkthrough is shown. The local authenticated Playwright recording/smoke path remains unavailable without the deployment's Supabase environment configuration.
+
+### Recommendation
+
+PASS for the scoped implementation: the full validation gate and dependency audit are green, with the deployed responsive/browser smoke test above remaining as the final production check. No remaining code blocker is known for the tutorial path.
+
+## Post-Deployment Mobile Smoke Follow-up
+
+Date: 2026-09-19
+
+### Same-event same-market replacement
+
+- **Production reproduction:** Selecting the opposite side of a spread, total, or moneyline in the same event was incorrectly rejected by the generic unsupported same-game-parlay message, leaving the first pick active.
+- **Root cause:** The mobile and desktop add-leg paths checked same-event restrictions before distinguishing mutually exclusive outcomes in the same market.
+- **Fix:** Added a shared canonical selection comparison. Opposite spread, total, and two-/three-way moneyline outcomes replace the existing leg atomically through the persistent slip store. Same-event different-market selections still use the existing unsupported-SGP behavior.
+- **Regression coverage:** Added spread, total, home/away/draw moneyline, replacement, and different-market tests in `test/wager-slip.test.ts` and `test/mobile-bet-slip-ux.test.ts`.
+
+### Stable parlay-leg removal
+
+- **Production reproduction:** Removing the first leg of a two-leg parlay worked, but removing the remaining second leg could target a stale array position and leave the selection active.
+- **Root cause:** The parlay renderer passed an array index into the removal callback; the straight list also filtered by index.
+- **Fix:** All removal controls now use `slipSelectionKey`, the existing deterministic selection identity, and the persistent key-based removal helpers. Counts, odds, selected states, and persisted state therefore update from the same source of truth.
+- **Regression coverage:** Added first, second, middle, final, and replacement/removal state-transition coverage, including the former “second leg is not removable” case.
+
+### Sticky mobile header
+
+- **Production reproduction:** The fixed hamburger drawer passed, but the header scrolled away on Browse Odds.
+- **Root cause:** The actual hierarchy is `body → main.shell → nav.top-nav`; the global horizontal `hidden` overflow created an unnecessary scrolling mechanism in the header's ancestor chain, making mobile sticky behavior unreliable. No nested application scroll container or transform is used.
+- **Fix:** Changed the global horizontal overflow guard to `clip`, which preserves no-horizontal-overflow behavior without creating a scroll container, kept the shell explicitly overflow-visible, and explicitly set mobile `position: sticky`, `top: 0`, stacking, and alignment on `.top-nav`. Drawer z-index remains above the header. Playwright smoke scripts now compare the real header bounding box before and after browser scrolling at 375/390/430px and retain a desktop assertion.
+- **Regression coverage:** `scripts/check-mobile-smoke.mjs` and `scripts/check-mobile-bet-slip.mjs` now use actual scroll and bounding-box assertions rather than only checking CSS source.
+
+### Straight screenshot American odds
+
+- **Production reproduction:** A Miami–Wake straight screenshot recovered the event, Wake, and `+21.5` spread line but left American odds blank.
+- **Root cause:** The normalized vision-draft mapper accepted any non-empty string as American odds, allowing a line-like value to override the price, and the route returned before the bounded recovery path when the primary usage-completion write failed.
+- **Fix:** American odds are now accepted only as literal signed three-to-seven-digit prices. Spread/total lines remain separate, parlay combined odds remain ticket-level, and missing odds continue through the existing one-call, budget-reserved same-image recovery. The recovery prompt remains non-inventive and returns blank when unreadable.
+- **Regression coverage:** Added fixtures for Wake `+21.5` with separate `-110`, negative and positive lines with negative prices, moneyline without a line, and a multi-leg parlay with per-leg prices. Existing recovery and parlay tests remain green.
+
+### Lab Notes imported settled performance
+
+- **Production reproduction:** Lab Notes counted imported Study wagers but showed a zero record, zero Vials won/lost, and zero ROI.
+- **Root cause:** The canonical imported analytics projection only fell back to the legacy profit field after attempting the raw source-return calculation; older settled imports can lack raw return data even though the authoritative normalized settled return is present.
+- **Fix:** The existing `app_private.analytics_wager_rows()` projection now falls back through source return, `settled_return_units`, and normalized profit without introducing a parallel calculation. A forward-only migration preserves the analytics-only `$1 USD = 1 Vial` mapping and does not write bankroll rows.
+- **Regression coverage:** Added a production-shaped group fixture with three settled imported wins, one open imported wager, and one personal imported wager. The group RPC returns the Study wagers with non-zero record/P&L, excludes the personal wager, and leaves simulated bankroll state unchanged.
+
+### Simulated placement double submission
+
+- **Production reproduction:** A single mobile placement action produced two simulated tickets during retesting.
+- **Root cause:** UI pending state alone did not provide a durable server boundary for a repeated action or retry.
+- **Fix:** Placement forms create one attempt key, submit it with a clear disabled/pending `SubmitButton`, and call new server-only idempotent wrappers for straight, adjusted-spread, batch-straight, and parlay placement. A per-user key/fingerprint is serialized and the original result is replayed; a later intentional wager uses a new key. Existing odds, group, parlay, bankroll, and settlement validation remains delegated to the original RPCs.
+- **Regression coverage:** The database fixture submits one straight placement twice with the same key and asserts exactly one ticket and one simulated debit. The table is force-RLS and not readable by authenticated clients.
+
+### Files, database, and validation
+
+- Added `supabase/migrations/20261002000000_post_deployment_mobile_smoke_fixes.sql` and `supabase/tests/post_deployment_mobile_smoke_fixes.sql`. No applied migration was edited; the migration replays cleanly and no unrelated schema/data migration was added.
+- Updated the mobile slip, shared wager identity, odds extraction/recovery, placement actions, submit state, responsive CSS, Playwright smoke scripts, focused tests, and this report. Existing Patch 9 tutorial changes remain uncommitted and preserved.
+- Focused Vitest coverage: PASS, 45 tests. Full `npm.cmd run validate`: PASS, including format, lint, typecheck, 211 Vitest tests, secret scan, and production build. Database coverage: PASS, 20 files / 507 assertions. DB lint: PASS with the repository's two pre-existing settlement-helper shadow/unused-variable warnings. Placement concurrency and parlay-placement concurrency: PASS. `npm.cmd audit --audit-level=high`: PASS, 0 vulnerabilities. `git diff --check`: PASS.
+
+### Manual production smoke tests remaining
+
+After deployment, verify on real authenticated Browse Odds at 375px, 390px, and 430px: opposite same-market replacement, same-event different-market rejection, removal of both legs including the former second leg, header position after deep scroll, drawer layering/scroll restoration, sheet placement retry behavior, and one rapid double tap producing one My Bets ticket. Verify a Miami–Wake straight import with separate `+21.5` line and American price, and verify Lab Notes shows imported settled record/P&L/ROI while bankroll is unchanged. The local Playwright smoke scripts were attempted at all required widths plus desktop but stopped at disabled `/auth` sign-up because this workspace lacks the deployed Supabase public configuration; they remain the required authenticated production smoke gate. No commit or push was performed.

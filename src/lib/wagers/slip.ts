@@ -144,6 +144,49 @@ export function slipSelectionKey(
   return `${selection.eventId}|${selection.bookmakerId}|${selection.marketType}|${selection.selection}|${selection.line ?? ""}`;
 }
 
+/**
+ * Returns true only for opposite outcomes in the same market. These are
+ * mutually exclusive alternatives, not same-game-parlay legs.
+ */
+export function areMutuallyExclusiveSelections(
+  left: Pick<SlipSelection, "eventId" | "marketType" | "selection">,
+  right: Pick<SlipSelection, "eventId" | "marketType" | "selection">,
+) {
+  if (left.eventId !== right.eventId || left.marketType !== right.marketType) return false;
+  if (left.selection === right.selection) return false;
+  if (left.marketType === "spread") {
+    return (
+      new Set([left.selection, right.selection]).size === 2 &&
+      new Set([left.selection, right.selection]).has("home") &&
+      new Set([left.selection, right.selection]).has("away")
+    );
+  }
+  if (left.marketType === "total") {
+    return (
+      new Set([left.selection, right.selection]).size === 2 &&
+      new Set([left.selection, right.selection]).has("over") &&
+      new Set([left.selection, right.selection]).has("under")
+    );
+  }
+  return (
+    ["home", "away", "draw"].includes(left.selection) &&
+    ["home", "away", "draw"].includes(right.selection)
+  );
+}
+
+export function replaceMutuallyExclusiveSelection(
+  selections: SlipSelection[],
+  candidate: SlipSelection,
+) {
+  const index = selections.findIndex((selection) =>
+    areMutuallyExclusiveSelections(selection, candidate),
+  );
+  if (index < 0) return null;
+  const next = [...selections];
+  next[index] = candidate;
+  return next;
+}
+
 export function removeSlipSelectionKeys(selections: SlipSelection[], keys: string[]) {
   const keySet = new Set(keys);
   return selections.filter((selection) => !keySet.has(slipSelectionKey(selection)));

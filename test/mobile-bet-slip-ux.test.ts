@@ -7,6 +7,7 @@ import {
   getPendingSlipSnapshot,
   getSlipSnapshot,
   removePendingSlipSelectionKeysAndPersist,
+  removeSlipSelectionKeysAndPersist,
   setSlipSelections,
   slipSelectionKey,
   type SlipSelection,
@@ -88,6 +89,39 @@ describe("mobile Bet Slip UX addendum", () => {
     expect(betSlip).toContain("removePendingSlipSelectionKeysAndPersist");
   });
 
+  it("removes the first and second legs by canonical key, including the former second leg", () => {
+    const selections = [leg("Georgia"), leg("Texas")];
+    setSlipSelections(selections);
+    removeSlipSelectionKeysAndPersist([slipSelectionKey(selections[0])]);
+    expect(getSlipSnapshot()).toEqual([selections[1]]);
+    removeSlipSelectionKeysAndPersist([slipSelectionKey(selections[1])]);
+    expect(getSlipSnapshot()).toEqual([]);
+    expect(betSlip).toContain("removeParlayLeg(slipSelectionKey(leg))");
+    expect(betSlip).not.toContain("removeParlayLeg(index)");
+  });
+
+  it("replaces a same-market pick without retaining both mutually exclusive legs", () => {
+    const first = { ...leg("Georgia", "spread"), selection: "home" as const, line: -7.5 };
+    const replacement = {
+      ...first,
+      selection: "away" as const,
+      selectionName: "Arkansas",
+      line: 7.5,
+    };
+    setSlipSelections([first]);
+    setSlipSelections([replacement]);
+    expect(getSlipSnapshot()).toEqual([replacement]);
+  });
+
+  it("removes a middle leg without shifting the identity of the remaining legs", () => {
+    const selections = [leg("Georgia"), leg("Texas"), leg("Alabama")];
+    setSlipSelections(selections);
+    removeSlipSelectionKeysAndPersist([slipSelectionKey(selections[1])]);
+    expect(getSlipSnapshot()).toEqual([selections[0], selections[2]]);
+    removeSlipSelectionKeysAndPersist([slipSelectionKey(selections[2])]);
+    expect(getSlipSnapshot()).toEqual([selections[0]]);
+  });
+
   it("hides the tray when the final selection is removed", () => {
     const selection = leg("Georgia");
     setSlipSelections([selection]);
@@ -146,8 +180,15 @@ describe("mobile Bet Slip UX addendum", () => {
 
   it("passes the mobile sheet state through Browse Odds without changing placement RPCs", () => {
     expect(sportsPage).toContain('initialMobileSheetOpen={query.mobileSheet === "1"}');
-    expect(actions).toContain("place_simulated_straight_bet");
-    expect(actions).toContain("place_simulated_parlay_bet");
+    expect(actions).toContain("place_simulated_straight_bet_idempotent");
+    expect(actions).toContain("place_simulated_parlay_bet_idempotent");
     expect(actions).not.toContain("mobileSheet" + "_rpc");
+  });
+
+  it("uses one pending placement key per UI attempt and disables the submit button while pending", () => {
+    expect(betSlip).toContain("attachPlacementAttemptKey");
+    expect(betSlip).toContain('name="idempotencyKey"');
+    expect(actions).toContain("p_idempotency_key");
+    expect(read("../src/components/submit-button.tsx")).toContain("disabled={pending || disabled}");
   });
 });

@@ -26,6 +26,7 @@ const placementSchema = z.object({
   stake: z.string().trim(),
   groupId: z.union([z.literal(""), z.uuid()]),
   slipKey: z.string().trim().max(4096).optional().default(""),
+  idempotencyKey: z.string().trim().min(16).max(160),
   returnTo: z
     .string()
     .trim()
@@ -58,6 +59,7 @@ const parlayPlacementSchema = z.object({
   stake: z.string().trim(),
   groupId: z.union([z.literal(""), z.uuid()]),
   slipKeys: z.string().trim().max(4096).optional().default(""),
+  idempotencyKey: z.string().trim().min(16).max(160),
   returnTo: z
     .string()
     .trim()
@@ -72,6 +74,7 @@ const straightBatchSchema = z.object({
   stake: z.string().trim(),
   groupId: z.union([z.literal(""), z.uuid()]),
   slipKeys: z.string().trim().max(4096).optional().default(""),
+  idempotencyKey: z.string().trim().min(16).max(160),
 });
 
 function formValue(formData: FormData, field: string) {
@@ -120,6 +123,7 @@ export async function placeStraightBet(formData: FormData) {
     stake: formValue(formData, "stake"),
     groupId: formValue(formData, "groupId"),
     slipKey: formValue(formData, "slipKey"),
+    idempotencyKey: formValue(formData, "idempotencyKey"),
     returnTo: formValue(formData, "returnTo"),
   });
   if (!parsed.success || !getCompetition(parsed.data?.competitionKey ?? "")) {
@@ -142,7 +146,9 @@ export async function placeStraightBet(formData: FormData) {
 
   const adjusted = parsed.data.pricingSource === "simulated_alternate";
   const { data, error } = await supabase.rpc(
-    adjusted ? "place_simulated_adjusted_spread_bet" : "place_simulated_straight_bet",
+    adjusted
+      ? "place_simulated_adjusted_spread_bet_idempotent"
+      : "place_simulated_straight_bet_idempotent",
     adjusted
       ? {
           p_competition_key: parsed.data.competitionKey,
@@ -159,6 +165,7 @@ export async function placeStraightBet(formData: FormData) {
           p_adjusted_line: parsed.data.expectedLine === "" ? null : parsed.data.expectedLine,
           p_expected_american_odds: parsed.data.expectedAmericanOdds,
           p_stake_units: stake,
+          p_idempotency_key: parsed.data.idempotencyKey,
           p_group_id: parsed.data.groupId || null,
         }
       : {
@@ -170,6 +177,7 @@ export async function placeStraightBet(formData: FormData) {
           p_expected_american_odds: parsed.data.expectedAmericanOdds,
           p_expected_line: parsed.data.expectedLine === "" ? null : parsed.data.expectedLine,
           p_stake_units: stake,
+          p_idempotency_key: parsed.data.idempotencyKey,
           p_group_id: parsed.data.groupId || null,
         },
   );
@@ -198,6 +206,7 @@ export async function placeStraightBets(formData: FormData) {
     stake: formValue(formData, "stake"),
     groupId: formValue(formData, "groupId"),
     slipKeys: formValue(formData, "slipKeys"),
+    idempotencyKey: formValue(formData, "idempotencyKey"),
   });
   if (!parsed.success || parsed.data.legs.some((leg) => !getCompetition(leg.competitionKey))) {
     notice("/sports", "The straight-bet list is invalid.");
@@ -220,7 +229,9 @@ export async function placeStraightBets(formData: FormData) {
   for (const [index, leg] of parsed.data.legs.entries()) {
     const adjusted = leg.pricingSource === "simulated_alternate";
     const { data, error } = await supabase.rpc(
-      adjusted ? "place_simulated_adjusted_spread_bet" : "place_simulated_straight_bet",
+      adjusted
+        ? "place_simulated_adjusted_spread_bet_idempotent"
+        : "place_simulated_straight_bet_idempotent",
       adjusted
         ? {
             p_competition_key: leg.competitionKey,
@@ -233,6 +244,7 @@ export async function placeStraightBets(formData: FormData) {
             p_adjusted_line: leg.expectedLine,
             p_expected_american_odds: leg.expectedAmericanOdds,
             p_stake_units: stake,
+            p_idempotency_key: `${parsed.data.idempotencyKey}:${index}`,
             p_group_id: parsed.data.groupId || null,
           }
         : {
@@ -244,6 +256,7 @@ export async function placeStraightBets(formData: FormData) {
             p_expected_american_odds: leg.expectedAmericanOdds,
             p_expected_line: leg.expectedLine,
             p_stake_units: stake,
+            p_idempotency_key: `${parsed.data.idempotencyKey}:${index}`,
             p_group_id: parsed.data.groupId || null,
           },
     );
@@ -278,6 +291,7 @@ export async function placeParlayBet(formData: FormData) {
     stake: formValue(formData, "stake"),
     groupId: formValue(formData, "groupId"),
     slipKeys: formValue(formData, "slipKeys"),
+    idempotencyKey: formValue(formData, "idempotencyKey"),
     returnTo: formValue(formData, "returnTo"),
   });
   if (!parsed.success || parsed.data.legs.some((leg) => !getCompetition(leg.competitionKey))) {
@@ -295,9 +309,10 @@ export async function placeParlayBet(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) notice("/auth", "Please sign in to continue.");
-  const { data, error } = await supabase.rpc("place_simulated_parlay_bet", {
+  const { data, error } = await supabase.rpc("place_simulated_parlay_bet_idempotent", {
     p_legs: parsed.data.legs,
     p_stake_units: stake,
+    p_idempotency_key: parsed.data.idempotencyKey,
     p_group_id: parsed.data.groupId || null,
   });
   if (error || !data) {

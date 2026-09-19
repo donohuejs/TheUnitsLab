@@ -47,7 +47,7 @@ describe("release-candidate fix patch 6 surfaces", () => {
     expect(form).toContain("configured vision service");
     expect(mobile).toContain('aria-label="Menu"');
     expect(mobile).toContain("<BrandLockup />");
-    expect(tutorial).toContain('preload="none"');
+    expect(tutorial).toContain('preload="metadata"');
     expect(tutorial).toContain("import-betslip-demo.vtt");
     expect(read("../scripts/record-import-demo.mjs")).toContain("synthetic-private-safe-demo");
   });

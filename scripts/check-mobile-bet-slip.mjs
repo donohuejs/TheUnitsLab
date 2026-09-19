@@ -35,6 +35,19 @@ try {
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${baseUrl}/sports/ncaaf`, { waitUntil: "networkidle" });
+  const header = page.locator(".top-nav");
+  const headerBeforeScroll = await header.boundingBox();
+  await page.evaluate(() => window.scrollTo(0, Math.max(0, window.innerHeight * 3)));
+  await page.waitForTimeout(100);
+  const headerAfterScroll = await header.boundingBox();
+  if (
+    !headerBeforeScroll ||
+    !headerAfterScroll ||
+    Math.abs(headerAfterScroll.y - headerBeforeScroll.y) > 2 ||
+    headerAfterScroll.y < -1
+  ) {
+    throw new Error("Mobile header did not remain pinned after an actual Browse Odds scroll.");
+  }
   const eventCards = page.locator(".event-card");
   const cardCount = await eventCards.count();
   if (cardCount < 2) {

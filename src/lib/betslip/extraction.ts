@@ -564,6 +564,10 @@ function parseVisionDate(value: string | null | undefined) {
   return parseDate(value ?? undefined);
 }
 
+export function isAmericanOddsLiteral(value: string | null | undefined) {
+  return Boolean(value && /^[+-](?:[1-9][0-9]{2,6})$/.test(value.trim()));
+}
+
 function visionSportsbookId(value: string | null) {
   if (!value) return undefined;
   if (/draft\s*kings/i.test(value)) return "draftkings";
@@ -602,7 +606,7 @@ export function visionDraftToBetslipDraft(draft: VisionBetslipDraft): ExtractedB
       ),
       marketType: leg.market ?? undefined,
       line,
-      americanOdds: leg.americanOdds?.trim() || undefined,
+      americanOdds: isAmericanOddsLiteral(leg.americanOdds) ? leg.americanOdds!.trim() : undefined,
     };
   });
   const first = legs[0];
@@ -629,7 +633,14 @@ export function visionDraftToBetslipDraft(draft: VisionBetslipDraft): ExtractedB
       selectionKey: first?.selectionKey,
       marketType: first?.marketType ?? "moneyline",
       line: first?.line ?? (first?.marketType === "moneyline" ? "" : undefined),
-      americanOdds: draft.combinedAmericanOdds ?? first?.americanOdds,
+      americanOdds:
+        draft.ticketType === "parlay"
+          ? isAmericanOddsLiteral(draft.combinedAmericanOdds)
+            ? draft.combinedAmericanOdds!.trim()
+            : undefined
+          : isAmericanOddsLiteral(draft.combinedAmericanOdds)
+            ? draft.combinedAmericanOdds!.trim()
+            : first?.americanOdds,
       stakeDollars: draft.stake ? cleanMoney(draft.stake) : undefined,
       returnDollars: draft.totalReturn ? cleanMoney(draft.totalReturn) : undefined,
     },

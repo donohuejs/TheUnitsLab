@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
-import { visionDraftToBetslipDraft } from "@/lib/betslip/extraction";
+import { isAmericanOddsLiteral, visionDraftToBetslipDraft } from "@/lib/betslip/extraction";
 import {
   calculateVisionCostUsd,
   VISION_MODEL,
@@ -73,9 +73,7 @@ async function updateLedger(
   }
 }
 
-function americanOddsLiteral(value: string | null | undefined) {
-  return Boolean(value && /^[+-](?:[1-9][0-9]{2,6})$/.test(value.trim()));
-}
+const americanOddsLiteral = isAmericanOddsLiteral;
 
 async function recoverMissingAmericanOdds(
   admin: ReturnType<typeof createSupabaseAdminClient>,
@@ -409,6 +407,14 @@ export async function POST(request: Request) {
   const calculatedCost = result.usageAvailable
     ? calculateVisionCostUsd(result.inputTokens, result.outputTokens)
     : null;
+  const recoveredDraft = await recoverMissingAmericanOdds(
+    admin,
+    image,
+    apiKey,
+    authData.user.id,
+    result.draft,
+  );
+
   if (completion.error) {
     await writeDiagnostic(admin, {
       ...baseDiagnostic,
@@ -434,19 +440,11 @@ export async function POST(request: Request) {
       visionAttempted: true,
       correlationId,
       providerStatus: result.providerStatus,
-      draft: visionDraftToBetslipDraft(result.draft),
+      draft: visionDraftToBetslipDraft(recoveredDraft),
       message:
         "Luna vision extraction finished. Usage recording will be retried separately; review every field before saving.",
     });
   }
-
-  const recoveredDraft = await recoverMissingAmericanOdds(
-    admin,
-    image,
-    apiKey,
-    authData.user.id,
-    result.draft,
-  );
 
   await writeDiagnostic(admin, {
     ...baseDiagnostic,

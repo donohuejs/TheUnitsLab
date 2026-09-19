@@ -42,7 +42,7 @@ describe("release-candidate fix patch 2 surfaces", () => {
       expect(navigation + nav).toContain(label);
     }
     expect(css).toContain(".desktop-nav-brand");
-    expect(css).toContain("overflow-x: hidden");
+    expect(css).toContain("overflow-x: clip");
     expect(importForm).toContain("Processing screenshot…");
     expect(importForm).toContain("Review draft before saving");
   });

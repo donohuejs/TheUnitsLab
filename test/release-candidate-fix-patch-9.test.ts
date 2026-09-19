@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 
 import { describe, expect, it, vi } from "vitest";
 
@@ -54,6 +54,7 @@ describe("release-candidate fix patch 9", () => {
     const route = read("../src/app/api/import-betslip/duplicates/route.ts");
     const visionRoute = read("../src/app/api/import-betslip/vision/route.ts");
     const tutorial = read("../src/components/import-tutorial.tsx");
+    const recorder = read("../scripts/record-import-demo.mjs");
     const mobile = read("../src/components/mobile-nav.tsx");
     const css = read("../src/app/globals.css");
 
@@ -68,13 +69,64 @@ describe("release-candidate fix patch 9", () => {
     expect(visionRoute).toContain("requestCorrelationId");
     expect(visionRoute).toContain("betslip_import_odds_recovery");
     expect(tutorial).toContain('role="dialog"');
+    expect(tutorial).toContain('type="button"');
+    expect(tutorial).toContain('aria-label="Watch a quick example of importing a betslip"');
+    expect(tutorial).toContain('aria-label="Close import tutorial"');
+    expect(tutorial).toContain("onPointerDown");
+    expect(tutorial).toContain('event.key === "Escape"');
+    expect(tutorial).toContain('document.body.style.overflow = "hidden"');
     expect(tutorial).toContain("controls");
+    expect(tutorial).toContain('preload="metadata"');
     expect(tutorial).toContain("playsInline");
+    expect(tutorial).toContain("onError={() => setVideoUnavailable(true)}");
+    expect(tutorial).toContain("Video unavailable in this browser.");
     expect(tutorial).toContain("import-betslip-demo.webm");
     expect(tutorial).toContain("import-betslip-demo.vtt");
     expect(tutorial).not.toContain("autoPlay");
+    expect(existsSync(new URL("../public/help/import-betslip-demo.webm", import.meta.url))).toBe(
+      true,
+    );
+    expect(
+      statSync(new URL("../public/help/import-betslip-demo.webm", import.meta.url)).size,
+    ).toBeGreaterThan(0);
+    expect(existsSync(new URL("../public/help/import-betslip-demo.vtt", import.meta.url))).toBe(
+      true,
+    );
+    expect(recorder).toContain("/track-bet");
+    expect(recorder).toContain('getByRole("button", { name: "Upload Screenshot" })');
+    expect(recorder).toContain("No Study — Personal");
+    expect(recorder).toContain("Confirm and save to My Bets");
+    expect(recorder).toContain("/my-bets?filter=imported");
     expect(mobile).toContain("document.documentElement.style.overflow");
     expect(css).toContain("height: 100dvh");
     expect(css).toContain(".import-tutorial-backdrop");
+  });
+
+  it("runs bounded odds recovery before returning a primary completion-write failure", () => {
+    const visionRoute = readFileSync(
+      new URL("../src/app/api/import-betslip/vision/route.ts", import.meta.url),
+      "utf8",
+    );
+    const recovery = visionRoute.lastIndexOf(
+      "const recoveredDraft = await recoverMissingAmericanOdds",
+    );
+    const completionFailure = visionRoute.lastIndexOf("if (completion.error)");
+    expect(recovery).toBeGreaterThan(-1);
+    expect(recovery).toBeLessThan(completionFailure);
+  });
+
+  it("keeps idempotency server-side and preserves the original placement RPC boundary", () => {
+    const migration = readFileSync(
+      new URL(
+        "../supabase/migrations/20261002000000_post_deployment_mobile_smoke_fixes.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+    expect(migration).toContain("simulated_placement_idempotency");
+    expect(migration).toContain("IDEMPOTENCY_KEY_REUSED");
+    expect(migration).toContain("from public.place_simulated_straight_bet(");
+    expect(migration).toContain("from public.place_simulated_parlay_bet(");
+    expect(migration).toContain("force row level security");
   });
 });

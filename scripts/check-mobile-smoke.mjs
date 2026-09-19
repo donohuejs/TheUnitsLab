@@ -19,6 +19,7 @@ try {
   for (const viewport of [
     { width: 390, height: 844 },
     { width: 375, height: 812 },
+    { width: 430, height: 932 },
   ]) {
     await page.setViewportSize(viewport);
     await page.goto(`${baseUrl}/account`, { waitUntil: "networkidle" });
@@ -38,6 +39,18 @@ try {
     if (!brandBox || brandBox.width < 180) {
       throw new Error(`Full brand lockup is too small at ${viewport.width}px`);
     }
+    const headerBeforeScroll = await page.locator(".top-nav").boundingBox();
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.waitForTimeout(100);
+    const headerAfterScroll = await page.locator(".top-nav").boundingBox();
+    if (
+      !headerBeforeScroll ||
+      !headerAfterScroll ||
+      Math.abs(headerAfterScroll.y - headerBeforeScroll.y) > 2 ||
+      headerAfterScroll.y < -1
+    ) {
+      throw new Error(`Mobile header did not remain pinned at ${viewport.width}px`);
+    }
     await menu.click();
     if (!(await page.locator('[role="dialog"]').isVisible()))
       throw new Error("Mobile drawer did not open");
@@ -46,6 +59,22 @@ try {
       throw new Error("Escape did not close drawer");
     console.log(`PASS: mobile header and drawer at ${viewport.width}x${viewport.height}`);
   }
+
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.goto(`${baseUrl}/account`, { waitUntil: "networkidle" });
+  const desktopHeaderBeforeScroll = await page.locator(".top-nav").boundingBox();
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.waitForTimeout(100);
+  const desktopHeaderAfterScroll = await page.locator(".top-nav").boundingBox();
+  if (
+    !desktopHeaderBeforeScroll ||
+    !desktopHeaderAfterScroll ||
+    Math.abs(desktopHeaderAfterScroll.y - desktopHeaderBeforeScroll.y) > 2 ||
+    desktopHeaderAfterScroll.y < -1
+  ) {
+    throw new Error("Desktop header did not remain pinned after an actual browser scroll.");
+  }
+  console.log("PASS: desktop sticky header after actual browser scroll");
 } finally {
   await context.close();
   await browser.close();

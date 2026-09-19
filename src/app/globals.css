@@ -29,14 +29,15 @@
 body {
   margin: 0;
   min-height: 100vh;
-  overflow-x: hidden;
+  /* clip prevents horizontal spill without creating a scroll container that can break sticky nav. */
+  overflow-x: clip;
   background:
     radial-gradient(circle at top right, rgba(18, 183, 106, 0.1), transparent 32rem), #f4f7f8;
 }
 
 html {
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 a {
@@ -78,6 +79,7 @@ h4 {
   width: min(72rem, calc(100% - 2rem));
   margin: 0 auto;
   padding: 3rem 0 5rem;
+  overflow: visible;
 }
 
 .narrow {
@@ -709,7 +711,8 @@ textarea:focus {
   display: grid;
   gap: 1rem;
   width: min(48rem, 100%);
-  max-height: 100%;
+  min-width: 0;
+  max-height: calc(100dvh - 2rem);
   overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: 1rem;
@@ -721,9 +724,27 @@ textarea:focus {
 .import-tutorial-dialog video {
   display: block;
   width: 100%;
+  min-width: 0;
   max-height: min(70vh, 48rem);
   border-radius: 0.7rem;
   background: #10231b;
+}
+
+.import-tutorial-fallback {
+  border: 1px solid #d6e9d7;
+  border-radius: 0.7rem;
+  padding: 1rem;
+  color: var(--ink);
+  background: #f8fcf6;
+}
+
+.import-tutorial-fallback p {
+  margin: 0.45rem 0 0;
+}
+
+.import-tutorial-fallback ol {
+  margin: 0.65rem 0 0;
+  padding-left: 1.3rem;
 }
 
 .study-selection {
@@ -1861,13 +1882,18 @@ thead th {
   }
 
   .top-nav {
+    position: sticky;
+    top: 0;
+    z-index: 15;
     display: block;
+    align-self: flex-start;
     border-bottom: 0;
     margin-inline: -0.5rem;
     margin-bottom: 1.25rem;
     padding: calc(env(safe-area-inset-top) + 0.1rem) 0.5rem 0.1rem;
     background: rgba(244, 247, 248, 0.96);
     backdrop-filter: blur(12px);
+    isolation: isolate;
   }
 
   .desktop-nav-brand,

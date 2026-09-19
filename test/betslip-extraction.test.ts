@@ -194,4 +194,87 @@ describe("local betslip text extraction", () => {
     ]);
     expect(vision.fields.americanOdds).toBe("-113");
   });
+
+  it.each([
+    ["Wake +21.5 with separate American odds", "+21.5", "-110"],
+    ["negative line with negative odds", "-7.5", "-115"],
+    ["positive line with negative odds", "+21.5", "-105"],
+  ])("keeps %s line and price separate", (_label, line, odds) => {
+    const result = visionDraftToBetslipDraft({
+      ticketType: "straight",
+      sportsbook: "FanDuel",
+      sportsbookBetId: null,
+      wagerDateText: null,
+      stake: "10.00",
+      totalReturn: "19.09",
+      combinedAmericanOdds: line,
+      legs: [
+        {
+          eventText: "Miami vs Wake Forest",
+          eventDateText: "Sep 20, 2026 12:00 PM ET",
+          market: "spread",
+          selectionText: "Wake Forest",
+          line,
+          americanOdds: odds,
+        },
+      ],
+    });
+    expect(result.fields.line).toBe(line);
+    expect(result.fields.americanOdds).toBe(odds);
+    expect(result.parlayLegs[0]?.americanOdds).toBe(odds);
+  });
+
+  it("keeps a moneyline without a market line and preserves parlay leg prices", () => {
+    const moneyline = visionDraftToBetslipDraft({
+      ticketType: "straight",
+      sportsbook: "DraftKings",
+      sportsbookBetId: null,
+      wagerDateText: null,
+      stake: null,
+      totalReturn: null,
+      combinedAmericanOdds: "-125",
+      legs: [
+        {
+          eventText: "Miami vs Wake Forest",
+          eventDateText: null,
+          market: "moneyline",
+          selectionText: "Wake Forest",
+          line: null,
+          americanOdds: "-125",
+        },
+      ],
+    });
+    expect(moneyline.fields.line).toBe("");
+    expect(moneyline.fields.americanOdds).toBe("-125");
+
+    const parlay = visionDraftToBetslipDraft({
+      ticketType: "parlay",
+      sportsbook: "DraftKings",
+      sportsbookBetId: null,
+      wagerDateText: null,
+      stake: null,
+      totalReturn: null,
+      combinedAmericanOdds: "+475",
+      legs: [
+        {
+          eventText: "Miami vs Wake Forest",
+          eventDateText: null,
+          market: "spread",
+          selectionText: "Wake Forest",
+          line: "+21.5",
+          americanOdds: "-110",
+        },
+        {
+          eventText: "Georgia vs Arkansas",
+          eventDateText: null,
+          market: "moneyline",
+          selectionText: "Georgia",
+          line: null,
+          americanOdds: "+105",
+        },
+      ],
+    });
+    expect(parlay.fields.americanOdds).toBe("+475");
+    expect(parlay.parlayLegs.map((leg) => leg.americanOdds)).toEqual(["-110", "+105"]);
+  });
 });

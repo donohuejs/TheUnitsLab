@@ -20,6 +20,9 @@ import {
   getStraightSlipSnapshot,
   getSlipSnapshot,
   removePendingSlipSelectionKeysAndPersist,
+  removeSlipSelectionKeysAndPersist,
+  removeStraightSlipSelectionKeysAndPersist,
+  replaceMutuallyExclusiveSelection,
   setStraightSlipSelections,
   setSlipSelections,
   subscribeToStraightSlip,
@@ -58,6 +61,17 @@ function getServerMobileViewportSnapshot() {
   return false;
 }
 
+function createPlacementAttemptKey() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function attachPlacementAttemptKey(form: HTMLFormElement, keyRef: { current: string | null }) {
+  keyRef.current ??= createPlacementAttemptKey();
+  const input = form.elements.namedItem("idempotencyKey");
+  if (input instanceof HTMLInputElement) input.value = keyRef.current;
+}
+
 export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: Props) {
   const [stake, setStake] = useState("10.00");
   const [parlayStake, setParlayStake] = useState("10.00");
@@ -74,6 +88,9 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
   );
   const trayButtonRef = useRef<HTMLButtonElement>(null);
   const sheetCloseButtonRef = useRef<HTMLButtonElement>(null);
+  const straightPlacementKeyRef = useRef<string | null>(null);
+  const straightBatchPlacementKeyRef = useRef<string | null>(null);
+  const parlayPlacementKeyRef = useRef<string | null>(null);
   const mobileReturnPath = useRef("");
   const [alternateLineState, setAlternateLineState] = useState<{
     selectionKey: string;
@@ -116,6 +133,15 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
     const activeKey = slipSelectionKey(selection);
     const existingIndex = legs.findIndex((leg) => slipSelectionKey(leg) === activeKey);
     if (existingIndex >= 0) return;
+    const replacement = replaceMutuallyExclusiveSelection(legs, selection);
+    if (replacement) {
+      const next = replacement;
+      setSlipSelections(next);
+      const timeout = window.setTimeout(() => {
+        setMobileAcknowledgement(`${selectionLabel(selection)} replaced previous pick`);
+      }, 0);
+      return () => window.clearTimeout(timeout);
+    }
     if (legs.length >= 12) {
       const timeout = window.setTimeout(
         () => setMobileAcknowledgement("The mobile parlay already has 12 picks."),
@@ -261,6 +287,13 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
       setParlayNotice("Select a price first, then add it to the parlay.");
       return;
     }
+    const replacement = replaceMutuallyExclusiveSelection(legs, activeSelection);
+    if (replacement) {
+      const next = replacement;
+      setSlipSelections(next);
+      setParlayNotice("Opposite outcome replaced the previous selection.");
+      return;
+    }
     if (legs.length >= 12) {
       setParlayNotice("A parlay can contain at most 12 legs.");
       return;
@@ -380,10 +413,10 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
       setMobileSheetOpen(false);
     }
   };
-  const removeParlayLeg = (index: number) => {
-    const next = legs.filter((_, candidate) => candidate !== index);
-    setSlipSelections(next);
-    if (!next.length) setMobileSheetOpen(false);
+  const removeParlayLeg = (key: string) => {
+    if (!legs.some((leg) => slipSelectionKey(leg) === key)) return;
+    removeSlipSelectionKeysAndPersist([key]);
+    if (legs.length <= 1 && !straightSelections.length) setMobileSheetOpen(false);
   };
 
   return (
@@ -608,7 +641,14 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
                 >
                   Remove selection
                 </button>
-                <form action={placeStraightBet} className="form-stack">
+                <form
+                  action={placeStraightBet}
+                  className="form-stack"
+                  onSubmitCapture={(event) =>
+                    attachPlacementAttemptKey(event.currentTarget, straightPlacementKeyRef)
+                  }
+                >
+                  <input type="hidden" name="idempotencyKey" defaultValue="" />
                   <input
                     type="hidden"
                     name="competitionKey"
@@ -760,9 +800,7 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
                         className="text-button"
                         type="button"
                         onClick={() =>
-                          setStraightSlipSelections(
-                            straightSelections.filter((_, candidate) => candidate !== index),
-                          )
+                          removeStraightSlipSelectionKeysAndPersist([slipSelectionKey(leg)])
                         }
                       >
                         Remove
@@ -777,7 +815,14 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
                   navigation and refresh.
                 </p>
               )}
-              <form action={placeStraightBets} className="form-stack">
+              <form
+                action={placeStraightBets}
+                className="form-stack"
+                onSubmitCapture={(event) =>
+                  attachPlacementAttemptKey(event.currentTarget, straightBatchPlacementKeyRef)
+                }
+              >
+                <input type="hidden" name="idempotencyKey" defaultValue="" />
                 <input type="hidden" name="legs" value={JSON.stringify(submittedStraightLegs)} />
                 <input
                   type="hidden"
@@ -855,7 +900,7 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
               </p>
               {parlayNotice ? <p className="notice">{parlayNotice}</p> : null}
               <ol className="parlay-leg-list">
-                {legs.map((leg, index) => (
+                {legs.map((leg) => (
                   <li key={slipSelectionKey(leg)}>
                     <div className="parlay-leg-copy">
                       <strong>
@@ -883,7 +928,7 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
                     <button
                       className="text-button"
                       type="button"
-                      onClick={() => removeParlayLeg(index)}
+                      onClick={() => removeParlayLeg(slipSelectionKey(leg))}
                     >
                       Remove
                     </button>
@@ -896,7 +941,14 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
                   Your parlay slip stays available while you switch competitions.
                 </p>
               ) : null}
-              <form action={placeParlayBet} className="form-stack">
+              <form
+                action={placeParlayBet}
+                className="form-stack"
+                onSubmitCapture={(event) =>
+                  attachPlacementAttemptKey(event.currentTarget, parlayPlacementKeyRef)
+                }
+              >
+                <input type="hidden" name="idempotencyKey" defaultValue="" />
                 <input type="hidden" name="legs" value={JSON.stringify(submittedLegs)} />
                 <input type="hidden" name="slipKeys" value={legs.map(slipSelectionKey).join(",")} />
                 <input

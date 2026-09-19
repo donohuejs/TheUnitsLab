@@ -5,6 +5,8 @@ import {
   getStraightSlipSnapshot,
   parseSlipSelections,
   removeSlipSelectionKeys,
+  areMutuallyExclusiveSelections,
+  replaceMutuallyExclusiveSelection,
   setSlipSelections,
   setStraightSlipSelections,
   slipSelectionKey,
@@ -70,5 +72,47 @@ describe("persistent simulated parlay slip", () => {
 
     expect(getSlipSnapshot()).toEqual([selections[0]]);
     expect(getStraightSlipSnapshot()).toEqual(selections);
+  });
+
+  it.each([
+    ["spread", "home", "away"],
+    ["total", "over", "under"],
+    ["moneyline", "home", "away"],
+    ["moneyline", "home", "draw"],
+    ["moneyline", "draw", "away"],
+  ] as const)("recognizes opposite %s outcomes as a replacement", (marketType, left, right) => {
+    expect(
+      areMutuallyExclusiveSelections(
+        { eventId: "same-event", marketType, selection: left },
+        { eventId: "same-event", marketType, selection: right },
+      ),
+    ).toBe(true);
+  });
+
+  it("does not classify a same-event different-market selection as a replacement", () => {
+    expect(
+      areMutuallyExclusiveSelections(
+        { eventId: "same-event", marketType: "spread", selection: "home" },
+        { eventId: "same-event", marketType: "total", selection: "over" },
+      ),
+    ).toBe(false);
+  });
+
+  it("replaces exactly one existing mutually exclusive leg in persistent-order state", () => {
+    const first = { ...leg("ncaaf", "replace-event"), selection: "home" as const };
+    const other = leg("nfl", "other-event");
+    const replacement = { ...first, selection: "away" as const, selectionName: "Away" };
+    expect(replaceMutuallyExclusiveSelection([first, other], replacement)).toEqual([
+      replacement,
+      other,
+    ]);
+    expect(
+      replaceMutuallyExclusiveSelection([first], {
+        ...first,
+        marketType: "total",
+        selection: "over",
+        line: 45.5,
+      }),
+    ).toBeNull();
   });
 });
