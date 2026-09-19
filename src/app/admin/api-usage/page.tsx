@@ -34,6 +34,7 @@ type VisionLedger = {
   output_tokens: number;
   total_tokens: number;
   reserved_cost_usd: number;
+  estimated_cost_usd: number | null;
   actual_cost_usd: number | null;
   usage_available: boolean;
   local_ocr_outcome: string;
@@ -106,7 +107,7 @@ export default async function ApiUsagePage({ searchParams }: Props) {
     admin
       .from("vision_usage_ledger")
       .select(
-        "user_id,requested_at,model,purpose,input_tokens,output_tokens,total_tokens,reserved_cost_usd,actual_cost_usd,usage_available,local_ocr_outcome,vision_status",
+        "user_id,requested_at,model,purpose,input_tokens,output_tokens,total_tokens,reserved_cost_usd,estimated_cost_usd,actual_cost_usd,usage_available,local_ocr_outcome,vision_status",
       )
       .eq("month_start", monthKey)
       .order("requested_at", { ascending: false }),
@@ -148,6 +149,16 @@ export default async function ApiUsagePage({ searchParams }: Props) {
     (sum, row) => sum + Number(row.vision_status === "succeeded" ? (row.actual_cost_usd ?? 0) : 0),
     0,
   );
+  const visionEstimatedSpend = visionLedger.reduce(
+    (sum, row) =>
+      sum +
+      Number(
+        row.vision_status === "reserved"
+          ? row.reserved_cost_usd
+          : (row.estimated_cost_usd ?? row.reserved_cost_usd),
+      ),
+    0,
+  );
   const visionBudgetOccupied = visionLedger.reduce(
     (sum, row) =>
       sum +
@@ -180,14 +191,27 @@ export default async function ApiUsagePage({ searchParams }: Props) {
   ).length;
   const localOcrFallbacks = ocrAttempts.filter((attempt) => attempt.fallback_requested).length;
   const userUsage = Object.entries(
-    visionLedger.reduce<Record<string, { calls: number; spend: number }>>((totals, row) => {
-      const current = totals[row.user_id] ?? { calls: 0, spend: 0 };
-      current.calls += row.vision_status === "succeeded" ? 1 : 0;
-      current.spend += Number(row.vision_status === "succeeded" ? (row.actual_cost_usd ?? 0) : 0);
-      totals[row.user_id] = current;
-      return totals;
-    }, {}),
-  ).sort(([, left], [, right]) => right.spend - left.spend);
+    visionLedger.reduce<Record<string, { calls: number; actual: number; estimated: number }>>(
+      (totals, row) => {
+        const current = totals[row.user_id] ?? { calls: 0, actual: 0, estimated: 0 };
+        current.calls += 1;
+        current.actual += Number(
+          row.vision_status === "succeeded" ? (row.actual_cost_usd ?? 0) : 0,
+        );
+        current.estimated += Number(
+          row.vision_status === "reserved"
+            ? row.reserved_cost_usd
+            : (row.estimated_cost_usd ?? row.reserved_cost_usd),
+        );
+        totals[row.user_id] = current;
+        return totals;
+      },
+      {},
+    ),
+  ).sort(([, left], [, right]) => right.estimated - left.estimated);
+  const totalInputTokens = visionLedger.reduce((sum, row) => sum + row.input_tokens, 0);
+  const totalOutputTokens = visionLedger.reduce((sum, row) => sum + row.output_tokens, 0);
+  const totalTokens = visionLedger.reduce((sum, row) => sum + row.total_tokens, 0);
   const ledger = (rows ?? []) as Ledger[];
   const latest = ledger.find((row) => row.credits_used !== null);
   const used = latest?.credits_used ?? 0;
@@ -294,8 +318,12 @@ export default async function ApiUsagePage({ searchParams }: Props) {
         </div>
         <div className="stats-grid">
           <div>
-            <small>Current month spend</small>
+            <small>Current month spend (actual cost)</small>
             <strong>{formatVisionUsd(visionCostUnavailable ? null : visionSpend)}</strong>
+          </div>
+          <div>
+            <small>Estimated / reserved cost</small>
+            <strong>{formatVisionUsd(visionEstimatedSpend)}</strong>
           </div>
           <div>
             <small>Approved budget</small>
@@ -314,6 +342,18 @@ export default async function ApiUsagePage({ searchParams }: Props) {
           <div>
             <small>Successful calls</small>
             <strong>{visionCalls.length}</strong>
+          </div>
+          <div>
+            <small>Input tokens</small>
+            <strong>{totalInputTokens.toLocaleString()}</strong>
+          </div>
+          <div>
+            <small>Output tokens</small>
+            <strong>{totalOutputTokens.toLocaleString()}</strong>
+          </div>
+          <div>
+            <small>Total tokens</small>
+            <strong>{totalTokens.toLocaleString()}</strong>
           </div>
           <div>
             <small>Failed calls</small>
@@ -422,7 +462,7 @@ export default async function ApiUsagePage({ searchParams }: Props) {
                 <tr>
                   <th>User</th>
                   <th>Luna calls</th>
-                  <th>Estimated spend</th>
+                  <th>Actual · estimated</th>
                   <th>Share</th>
                   <th>Average / call</th>
                 </tr>
@@ -432,11 +472,15 @@ export default async function ApiUsagePage({ searchParams }: Props) {
                   <tr key={userId}>
                     <th scope="row">{displayNames.get(userId) ?? userId}</th>
                     <td>{usage.calls}</td>
-                    <td>{formatVisionUsd(usage.spend)}</td>
-                    <td>{visionSpend ? ((usage.spend / visionSpend) * 100).toFixed(1) : "0.0"}%</td>
                     <td>
-                      {formatVisionUsd(usage.calls ? usage.spend / usage.calls : null)}{" "}
-                      {usage.spend / Math.max(usage.calls, 1) >= VISION_HIGH_USAGE_AVERAGE_USD
+                      {formatVisionUsd(usage.actual)} · {formatVisionUsd(usage.estimated)}
+                    </td>
+                    <td>
+                      {visionSpend ? ((usage.actual / visionSpend) * 100).toFixed(1) : "0.0"}%
+                    </td>
+                    <td>
+                      {formatVisionUsd(usage.calls ? usage.actual / usage.calls : null)}{" "}
+                      {usage.estimated / Math.max(usage.calls, 1) >= VISION_HIGH_USAGE_AVERAGE_USD
                         ? "· High usage"
                         : ""}
                     </td>

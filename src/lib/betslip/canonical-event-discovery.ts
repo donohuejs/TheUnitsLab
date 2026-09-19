@@ -39,13 +39,12 @@ function fromScoreRows(rows: Array<Record<string, unknown>>): CanonicalImportEve
     ) {
       return [];
     }
-    const competition = row.competition_key as CompetitionId;
     return [
       {
         providerEventId: row.provider_event_id,
         sportKey: row.sport,
-        competitionKey: competition,
-        competitionName: competition,
+        competitionKey: row.competition_key,
+        competitionName: row.competition_key,
         homeTeam: row.home_team,
         awayTeam: row.away_team,
         scheduledStart: row.scheduled_start,
@@ -64,19 +63,17 @@ export async function discoverImportedCanonicalEvent(input: ImportedEventDiscove
     input.eventDescription,
     input.competitionKey,
   );
-  const competitionKeys = requestedCompetitions.filter((key): key is CompetitionId => Boolean(key));
-
+  const providerCompetitionKeys = requestedCompetitions.filter((key): key is CompetitionId =>
+    Boolean(key),
+  );
   const [{ data: cacheRows, error: cacheError }, { data: scoreRows, error: scoreError }] =
     await Promise.all([
-      admin
-        .from("odds_cache")
-        .select("normalized_payload")
-        .in("competition", competitionKeys.length ? competitionKeys : ["ncaaf", "ncaab"]),
+      admin.from("odds_cache").select("normalized_payload").limit(2000),
       admin
         .from("event_scores")
         .select("provider_event_id,sport,competition_key,home_team,away_team,scheduled_start")
         .eq("is_synthetic", false)
-        .in("competition_key", competitionKeys.length ? competitionKeys : ["ncaaf", "ncaab"]),
+        .limit(2000),
     ]);
   if (cacheError) throw cacheError;
   if (scoreError) throw scoreError;
@@ -89,7 +86,7 @@ export async function discoverImportedCanonicalEvent(input: ImportedEventDiscove
   if (cachedMatch.state !== "unmatched") return cachedMatch;
 
   const discovered = [] as CanonicalImportEvent[];
-  for (const competitionKey of competitionKeys) {
+  for (const competitionKey of providerCompetitionKeys) {
     try {
       const catalog = await getCompetitionEventCatalog(competitionKey);
       discovered.push(

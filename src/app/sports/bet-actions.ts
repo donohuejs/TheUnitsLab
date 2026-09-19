@@ -25,6 +25,14 @@ const placementSchema = z.object({
   pricingModelVersion: z.string().trim().max(20).default(""),
   stake: z.string().trim(),
   groupId: z.union([z.literal(""), z.uuid()]),
+  slipKey: z.string().trim().max(4096).optional().default(""),
+  returnTo: z
+    .string()
+    .trim()
+    .max(2048)
+    .refine((value) => value === "" || value.startsWith("/sports"))
+    .optional()
+    .default(""),
 });
 
 const parlayLegSchema = z.object({
@@ -50,6 +58,13 @@ const parlayPlacementSchema = z.object({
   stake: z.string().trim(),
   groupId: z.union([z.literal(""), z.uuid()]),
   slipKeys: z.string().trim().max(4096).optional().default(""),
+  returnTo: z
+    .string()
+    .trim()
+    .max(2048)
+    .refine((value) => value === "" || value.startsWith("/sports"))
+    .optional()
+    .default(""),
 });
 
 const straightBatchSchema = z.object({
@@ -104,6 +119,8 @@ export async function placeStraightBet(formData: FormData) {
     pricingModelVersion: formValue(formData, "pricingModelVersion"),
     stake: formValue(formData, "stake"),
     groupId: formValue(formData, "groupId"),
+    slipKey: formValue(formData, "slipKey"),
+    returnTo: formValue(formData, "returnTo"),
   });
   if (!parsed.success || !getCompetition(parsed.data?.competitionKey ?? "")) {
     notice("/sports", "The simulated wager request is invalid.");
@@ -114,7 +131,7 @@ export async function placeStraightBet(formData: FormData) {
     stake = formatUnits(parseStakeToMinorUnits(parsed.data.stake));
   } catch {
     notice(
-      `/sports/${parsed.data.competitionKey}`,
+      parsed.data.returnTo || `/sports/${parsed.data.competitionKey}`,
       "Enter a positive stake using at most two decimals.",
     );
   }
@@ -157,10 +174,16 @@ export async function placeStraightBet(formData: FormData) {
         },
   );
   if (error || !data) {
-    notice(`/sports/${parsed.data.competitionKey}`, placementMessage(error?.message ?? ""));
+    notice(
+      parsed.data.returnTo || `/sports/${parsed.data.competitionKey}`,
+      placementMessage(error?.message ?? ""),
+    );
   }
 
-  notice("/my-bets", "Simulated straight wager placed and stake debited once.");
+  const cleanupQuery = parsed.data.slipKey
+    ? `?slip=${encodeURIComponent(parsed.data.slipKey)}`
+    : "";
+  notice(`/my-bets${cleanupQuery}`, "Simulated straight wager placed and stake debited once.");
 }
 
 export async function placeStraightBets(formData: FormData) {
@@ -255,6 +278,7 @@ export async function placeParlayBet(formData: FormData) {
     stake: formValue(formData, "stake"),
     groupId: formValue(formData, "groupId"),
     slipKeys: formValue(formData, "slipKeys"),
+    returnTo: formValue(formData, "returnTo"),
   });
   if (!parsed.success || parsed.data.legs.some((leg) => !getCompetition(leg.competitionKey))) {
     notice("/sports", "A parlay requires 2–12 supported selections.");
@@ -263,7 +287,10 @@ export async function placeParlayBet(formData: FormData) {
   try {
     stake = formatUnits(parseStakeToMinorUnits(parsed.data.stake));
   } catch {
-    notice("/sports", "Enter a positive parlay stake using at most two decimals.");
+    notice(
+      parsed.data.returnTo || "/sports",
+      "Enter a positive parlay stake using at most two decimals.",
+    );
   }
   const supabase = await createSupabaseServerClient();
   const { data: authData } = await supabase.auth.getUser();
@@ -277,14 +304,17 @@ export async function placeParlayBet(formData: FormData) {
     const message = error?.message ?? "";
     if (message.includes("SAME_EVENT_PARLAY_NOT_SUPPORTED")) {
       notice(
-        "/sports",
+        parsed.data.returnTo || "/sports",
         "Same-game parlay (SGP) pricing is not currently supported; choose a different event.",
       );
     }
     if (message.includes("PARLAY_REQUIRES_ONE_BOOKMAKER")) {
-      notice("/sports", "All simulated parlay legs must use the same bookmaker.");
+      notice(
+        parsed.data.returnTo || "/sports",
+        "All simulated parlay legs must use the same bookmaker.",
+      );
     }
-    notice("/sports", placementMessage(message));
+    notice(parsed.data.returnTo || "/sports", placementMessage(message));
   }
   const cleanupQuery = parsed.data.slipKeys
     ? `?slip=${encodeURIComponent(parsed.data.slipKeys)}`

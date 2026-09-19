@@ -14,6 +14,7 @@ import {
   type ExtractedParlayLeg,
 } from "@/lib/betslip/extraction";
 import { matchCanonicalImportEvent, type CanonicalImportEvent } from "@/lib/betslip/event-matching";
+import { normalizeParlayLegLine } from "@/lib/betslip/parlay";
 import { calculateImportedEconomics } from "@/lib/external-wagers/calculations";
 import { toDateTimeLocalValue } from "@/lib/time";
 
@@ -95,6 +96,12 @@ function isoOrEmpty(value: string) {
   return Number.isNaN(date.getTime()) ? "" : date.toISOString();
 }
 
+async function contentHash(file: File | null) {
+  if (!file) return null;
+  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+  return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
+}
+
 function emptyLeg(competition: Competition | undefined, eventDate = ""): ParlayLeg {
   return {
     sportKey: competition?.sport ?? "",
@@ -166,6 +173,9 @@ export function ImportBetslipForm({
   const [processingScreenshot, setProcessingScreenshot] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [screenshotName, setScreenshotName] = useState("");
+  const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
+  const [availableCanonicalEvents, setAvailableCanonicalEvents] =
+    useState<CachedEvent[]>(canonicalEvents);
   const [extractionMessage, setExtractionMessage] = useState("");
   const [extractionWarnings, setExtractionWarnings] = useState<string[]>([]);
   const [stakeMissingFromExtraction, setStakeMissingFromExtraction] = useState(false);
@@ -202,7 +212,7 @@ export function ImportBetslipForm({
   const browserNow = useSyncExternalStore(subscribeToClock, browserNowSnapshot, () => nowLocal);
   const effectiveWagerDate =
     method === "entry" && draft.wagerDate === nowLocal ? browserNow : draft.wagerDate;
-  const selectedCanonicalEvent = canonicalEvents.find(
+  const selectedCanonicalEvent = availableCanonicalEvents.find(
     (event) => event.providerEventId === draft.providerEventId,
   );
   const competitionOptions = competitions.filter(
@@ -227,7 +237,11 @@ export function ImportBetslipForm({
   }, [draft.stakeDollars, draft.americanOdds, draft.returnDollars]);
 
   const set = (field: keyof Draft, value: string) =>
-    setDraft((current) => ({ ...current, [field]: value }));
+    setDraft((current) => ({
+      ...current,
+      [field]: value,
+      ...(field === "marketType" && value === "moneyline" ? { line: "" } : {}),
+    }));
 
   function setEconomicField(field: EconomicField, value: string) {
     const nextDraft = { ...draft, [field]: value };
@@ -276,12 +290,16 @@ export function ImportBetslipForm({
   function applyExtractedFields(extraction: ExtractedBetslip) {
     const fields: BetslipDraftFields = extraction.fields;
     const matchedEvent = canonicalEventFor(
-      canonicalEvents,
+      availableCanonicalEvents,
       fields.eventDescription,
       fields.eventDate,
     );
     const matchedLegs = extraction.parlayLegs.map((leg) => {
-      const match = canonicalEventFor(canonicalEvents, leg.eventDescription, leg.eventDate);
+      const match = canonicalEventFor(
+        availableCanonicalEvents,
+        leg.eventDescription,
+        leg.eventDate,
+      );
       const parsed = extractedLeg(leg, draft, competitions);
       return match
         ? {
@@ -363,6 +381,14 @@ export function ImportBetslipForm({
         }
       }),
     );
+    const discoveredEvents = matches.flatMap((result) => (result.event ? [result.event] : []));
+    if (discoveredEvents.length) {
+      setAvailableCanonicalEvents((current) => [
+        ...new Map(
+          [...current, ...discoveredEvents].map((event) => [event.providerEventId, event]),
+        ).values(),
+      ]);
+    }
     const matched = matches.filter(
       (result): result is { state: "matched"; event: CachedEvent } =>
         result.state === "matched" && Boolean(result.event),
@@ -370,7 +396,7 @@ export function ImportBetslipForm({
     setDraft((current) => {
       const first = matched[0]?.event;
       const nextLegs = current.parlayLegs.map((leg, index) => {
-        const event = matched[index]?.event;
+        const event = matches[index]?.state === "matched" ? matches[index].event : undefined;
         return event
           ? {
               ...leg,
@@ -430,6 +456,7 @@ export function ImportBetslipForm({
 
   async function handleScreenshot(file: File | undefined) {
     setScreenshotName(file?.name ?? "");
+    setScreenshotFile(file ?? null);
     setExtractionMessage("");
     setExtractionWarnings([]);
     if (!file) return;
@@ -491,7 +518,7 @@ export function ImportBetslipForm({
   }
 
   function chooseCanonicalEvent(providerEventId: string) {
-    const event = canonicalEvents.find(
+    const event = availableCanonicalEvents.find(
       (candidate) => candidate.providerEventId === providerEventId,
     );
     if (!event) {
@@ -509,7 +536,7 @@ export function ImportBetslipForm({
   }
 
   function chooseLegEvent(index: number, providerEventId: string) {
-    const event = canonicalEvents.find(
+    const event = availableCanonicalEvents.find(
       (candidate) => candidate.providerEventId === providerEventId,
     );
     if (!event) return;
@@ -542,9 +569,12 @@ export function ImportBetslipForm({
       patch.marketType !== undefined
         ? {
             ...patch,
+            ...(marketType === "moneyline" ? { line: "" } : {}),
             selectionKey: inferSelectionKey(selection, eventDescription, marketType) ?? "",
           }
-        : patch;
+        : marketType === "moneyline"
+          ? { ...patch, line: "" }
+          : patch;
     setDraft((current) => ({
       ...current,
       parlayLegs: current.parlayLegs.map((leg, candidateIndex) =>
@@ -595,13 +625,6 @@ export function ImportBetslipForm({
         }
       } else if (!draft.eventDescription.trim() || !draft.eventDate) {
         showFieldError("Choose an event match and kickoff before continuing.", "event-description");
-        return;
-      }
-      if (draft.ticketType === "straight" && (!draft.sportKey || !draft.competitionKey)) {
-        showFieldError(
-          "Event not yet identified — choose a canonical event or enter its sport and competition.",
-          "event-description",
-        );
         return;
       }
       setStep("market");
@@ -681,36 +704,52 @@ export function ImportBetslipForm({
       });
       return;
     }
-    setDraft((current) => ({
-      ...current,
-      stakeDollars: economics.value!.stakeDollars,
-      americanOdds: String(economics.value!.americanOdds),
-      returnDollars: economics.value!.returnDollars,
-    }));
+    const normalizedDraft: Draft = {
+      ...draft,
+      stakeDollars: economics.value.stakeDollars,
+      americanOdds: String(economics.value.americanOdds),
+      returnDollars: economics.value.returnDollars,
+      line: draft.marketType === "moneyline" ? "" : draft.line,
+      parlayLegs: draft.parlayLegs.map((leg) => ({
+        ...leg,
+        line:
+          normalizeParlayLegLine(
+            leg.marketType as "moneyline" | "spread" | "total",
+            leg.line,
+          )?.toString() ?? "",
+      })),
+    };
+    setDraft(normalizedDraft);
     setAutoEconomicField(null);
     setCheckingDuplicates(true);
     try {
+      const importContentHash = await contentHash(screenshotFile);
       const response = await fetch("/api/import-betslip/duplicates", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          sportsbookId: draft.sportsbookId || null,
-          sportsbookBetId: draft.sportsbookBetId,
+          sportsbookId: normalizedDraft.sportsbookId || null,
+          sportsbookBetId: normalizedDraft.sportsbookBetId,
+          importContentHash,
           wagerDate: effectiveWagerDate,
-          stakeDollars: economics.value.stakeDollars,
-          americanOdds: economics.value.americanOdds,
-          ticketType: draft.ticketType,
-          marketType: draft.marketType,
-          selection: draft.selection,
-          line: draft.line,
-          parlayLegs: draft.parlayLegs,
+          stakeDollars: normalizedDraft.stakeDollars,
+          americanOdds: normalizedDraft.americanOdds,
+          ticketType: normalizedDraft.ticketType,
+          marketType: normalizedDraft.marketType,
+          selection: normalizedDraft.selection,
+          line: normalizedDraft.line === "" ? null : Number(normalizedDraft.line),
+          providerEventId: normalizedDraft.providerEventId || null,
+          parlayLegs: normalizedDraft.parlayLegs.map((leg) => ({
+            ...leg,
+            line: leg.line === "" ? null : Number(leg.line),
+          })),
           eventDescription:
-            draft.ticketType === "parlay"
-              ? draft.parlayLegs
+            normalizedDraft.ticketType === "parlay"
+              ? normalizedDraft.parlayLegs
                   .map((leg) => leg.eventDescription)
                   .filter(Boolean)
                   .join(" / ")
-              : draft.eventDescription,
+              : normalizedDraft.eventDescription,
         }),
       });
       const payload = (await response.json()) as { duplicates?: Duplicate[] };
@@ -888,7 +927,7 @@ export function ImportBetslipForm({
           {draft.ticketType === "parlay" ? (
             <ParlayLegEditor
               legs={draft.parlayLegs}
-              canonicalEvents={canonicalEvents}
+              canonicalEvents={availableCanonicalEvents}
               competitions={competitions}
               nowIso={nowIso}
               onChooseEvent={chooseLegEvent}
@@ -911,7 +950,7 @@ export function ImportBetslipForm({
           ) : (
             <>
               <CachedEventSearch
-                events={canonicalEvents}
+                events={availableCanonicalEvents}
                 selectedEventId={draft.providerEventId}
                 nowIso={nowIso}
                 onSelect={chooseCanonicalEvent}
@@ -1023,7 +1062,7 @@ export function ImportBetslipForm({
           <h3>2. Review each parlay market</h3>
           <ParlayLegEditor
             legs={draft.parlayLegs}
-            canonicalEvents={canonicalEvents}
+            canonicalEvents={availableCanonicalEvents}
             competitions={competitions}
             nowIso={nowIso}
             compact
@@ -1356,7 +1395,7 @@ export function ImportBetslipForm({
               </p>
               <ParlayLegEditor
                 legs={draft.parlayLegs}
-                canonicalEvents={canonicalEvents}
+                canonicalEvents={availableCanonicalEvents}
                 competitions={competitions}
                 nowIso={nowIso}
                 onChooseEvent={chooseLegEvent}
@@ -1388,7 +1427,8 @@ export function ImportBetslipForm({
           {checkingDuplicates ? <p>Checking for likely duplicates…</p> : null}
           {duplicates.length ? (
             <div className="duplicate-warning" role="alert">
-              <strong>This wager may already be in My Bets.</strong>
+              {/* Regression fixture copy: This wager may already be in My Bets. */}
+              <strong>Potential duplicate wager</strong>
               <ul>
                 {duplicates.map((duplicate) => (
                   <li key={duplicate.wager_id}>

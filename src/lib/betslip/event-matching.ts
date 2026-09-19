@@ -73,8 +73,8 @@ export function matchCanonicalImportEvent(
     state: "unmatched",
     candidates: [],
     reason: input.eventDate
-      ? "No canonical event matched the teams, competition, sport, and time window."
-      : "No unique canonical event matched the teams and supported competition candidates.",
+      ? "No canonical event matched the team identities and time window."
+      : "No unique canonical event matched the team identities in retained provider data.",
   };
 }
 

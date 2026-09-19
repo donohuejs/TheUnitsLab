@@ -10,6 +10,7 @@ import {
   calculateImportedEconomics,
   parseNonNegativeMoneyToMinorUnits,
 } from "@/lib/external-wagers/calculations";
+import { normalizeParlayLegLine, parlayLegLineError } from "@/lib/betslip/parlay";
 import { formatUnits, parseStakeToMinorUnits } from "@/lib/wagers/calculations";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -181,7 +182,10 @@ export async function createImportedWager(formData: FormData) {
     }
     const legsResult = z.array(importedParlayLegSchema).min(2).max(12).safeParse(candidateLegs);
     if (!legsResult.success) finish("Review the imported parlay and its 2–12 legs.");
-    importedParlayLegs = legsResult.data;
+    importedParlayLegs = legsResult.data.map((leg) => ({
+      ...leg,
+      line: normalizeParlayLegLine(leg.marketType, leg.line),
+    }));
     for (const leg of importedParlayLegs) {
       const competition = sportsProviderConfiguration.competitions.find(
         (candidate) =>
@@ -190,10 +194,7 @@ export async function createImportedWager(formData: FormData) {
           candidate.enabled,
       );
       if (!competition) finish("Each parlay leg needs a supported sport and competition.");
-      if (
-        (leg.marketType === "moneyline" && leg.line !== null) ||
-        (leg.marketType !== "moneyline" && leg.line === null)
-      ) {
+      if (parlayLegLineError(leg.marketType, leg.line)) {
         finish("Each spread or total leg needs a line; moneyline legs do not.");
       }
     }
@@ -582,10 +583,7 @@ export async function createImportedParlay(formData: FormData) {
         candidate.enabled,
     );
     if (!competition) finish("Each parlay leg needs a supported sport and competition.");
-    if (
-      (leg.marketType === "moneyline" && leg.line !== null) ||
-      (leg.marketType !== "moneyline" && leg.line === null)
-    ) {
+    if (parlayLegLineError(leg.marketType, leg.line)) {
       finish("Each spread or total leg needs a line; moneyline legs do not.");
     }
   }
@@ -646,7 +644,7 @@ export async function createImportedParlay(formData: FormData) {
       selection: leg.selection,
       selectionKey: leg.selectionKey || null,
       marketType: leg.marketType,
-      line: leg.line,
+      line: normalizeParlayLegLine(leg.marketType, leg.line),
       americanOdds: leg.americanOdds,
       result: leg.result,
       providerEventId: leg.providerEventId || null,
@@ -701,10 +699,7 @@ export async function createExternalParlay(formData: FormData) {
         candidate.enabled,
     );
     if (!competition) finish("Each parlay leg needs a supported sport and competition.");
-    if (
-      (leg.marketType === "moneyline" && leg.line !== null) ||
-      (leg.marketType !== "moneyline" && leg.line === null)
-    ) {
+    if (parlayLegLineError(leg.marketType, leg.line)) {
       finish("Each spread or total leg needs a line; moneyline legs do not.");
     }
   }
@@ -738,6 +733,7 @@ export async function createExternalParlay(formData: FormData) {
     p_user_notes: parsed.data.userNotes || null,
     p_legs: parsed.data.legs.map((leg) => ({
       ...leg,
+      line: normalizeParlayLegLine(leg.marketType, leg.line),
       eventDate: new Date(leg.eventDate).toISOString(),
     })),
   });

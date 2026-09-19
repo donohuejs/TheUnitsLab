@@ -8,7 +8,11 @@ import {
   VISION_MODEL,
   VISION_RESERVATION_USD,
 } from "@/lib/betslip/vision-accounting";
-import { extractBetslipWithVision, VisionMalformedResponseError } from "@/lib/betslip/vision";
+import {
+  extractBetslipWithVision,
+  recoverMissingAmericanOddsWithVision,
+  VisionMalformedResponseError,
+} from "@/lib/betslip/vision";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -41,8 +45,18 @@ async function writeDiagnostic(
     const { error } = await admin
       .from("vision_diagnostics")
       .upsert(input, { onConflict: "request_correlation_id" });
+    if (error) {
+      console.error("Vision diagnostic write failed", {
+        requestCorrelationId: String(input.request_correlation_id ?? "unknown"),
+        error: error.message,
+      });
+    }
     return !error;
-  } catch {
+  } catch (error) {
+    console.error("Vision diagnostic write failed", {
+      requestCorrelationId: String(input.request_correlation_id ?? "unknown"),
+      error: error instanceof Error ? error.message : "unknown error",
+    });
     return false;
   }
 }
@@ -56,6 +70,161 @@ async function updateLedger(
     await admin.from("vision_usage_ledger").update(values).eq("id", ledgerId);
   } catch {
     // The extraction result remains usable even if operational metadata needs a retry.
+  }
+}
+
+function americanOddsLiteral(value: string | null | undefined) {
+  return Boolean(value && /^[+-](?:[1-9][0-9]{2,6})$/.test(value.trim()));
+}
+
+async function recoverMissingAmericanOdds(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  image: Blob,
+  apiKey: string,
+  userId: string,
+  draft: Awaited<ReturnType<typeof extractBetslipWithVision>>["draft"],
+) {
+  const missingLegs = draft.legs.some((leg) => !americanOddsLiteral(leg.americanOdds));
+  if (
+    !missingLegs &&
+    (draft.ticketType !== "parlay" || americanOddsLiteral(draft.combinedAmericanOdds))
+  ) {
+    return draft;
+  }
+
+  const correlationId = randomUUID();
+  const reservationResult = await admin.rpc("reserve_vision_request", {
+    p_user_id: userId,
+    p_purpose: "betslip_import_odds_recovery",
+    p_local_ocr_outcome: "luna_odds_recovery",
+    p_request_correlation_id: correlationId,
+    p_reserved_cost_usd: VISION_RESERVATION_USD,
+  });
+  if (reservationResult.error) {
+    await writeDiagnostic(admin, {
+      user_id: userId,
+      request_correlation_id: correlationId,
+      model: VISION_MODEL,
+      api_key_configured: true,
+      internal_budget_available: null,
+      extraction_result: "fallback",
+      provider_error_category: "ledger_reservation_failed",
+      ledger_write_status: "failed",
+    });
+    return draft;
+  }
+  const reservation = Array.isArray(reservationResult.data)
+    ? reservationResult.data[0]
+    : reservationResult.data;
+  if (!reservation?.allowed || !reservation.ledger_id) {
+    await writeDiagnostic(admin, {
+      user_id: userId,
+      request_correlation_id: correlationId,
+      model: VISION_MODEL,
+      api_key_configured: true,
+      internal_budget_available: false,
+      monthly_budget_usd: reservation?.approved_limit_usd ?? null,
+      monthly_spend_usd: reservation?.reserved_spend_usd ?? null,
+      extraction_result: "budget_exhausted",
+      provider_error_category: "odds_recovery_budget_exhausted",
+      ledger_write_status: "not_attempted",
+    });
+    return draft;
+  }
+
+  const startedAt = Date.now();
+  try {
+    const recovery = await recoverMissingAmericanOddsWithVision(image, { apiKey, userId });
+    const completion = await admin.rpc("complete_vision_request", {
+      p_ledger_id: reservation.ledger_id,
+      p_input_tokens: recovery.inputTokens,
+      p_output_tokens: recovery.outputTokens,
+      p_total_tokens: recovery.totalTokens,
+      p_status: "succeeded",
+      p_local_ocr_outcome: "luna_odds_recovery",
+    });
+    const latencyMs = Date.now() - startedAt;
+    await updateLedger(admin, reservation.ledger_id, {
+      attempted_at: new Date(startedAt).toISOString(),
+      completed_at: new Date().toISOString(),
+      provider_status: recovery.providerStatus,
+      extraction_path: "luna_odds_recovery",
+      fallback_used: false,
+      latency_ms: latencyMs,
+    });
+    await writeDiagnostic(admin, {
+      user_id: userId,
+      request_correlation_id: correlationId,
+      model: VISION_MODEL,
+      api_key_configured: true,
+      internal_budget_available: true,
+      monthly_budget_usd: reservation.approved_limit_usd,
+      monthly_spend_usd: reservation.reserved_spend_usd,
+      provider_status: recovery.providerStatus,
+      extraction_result: "succeeded",
+      provider_error_category: "odds_recovery",
+      attempted_at: new Date(startedAt).toISOString(),
+      input_tokens: recovery.inputTokens,
+      output_tokens: recovery.outputTokens,
+      total_tokens: recovery.totalTokens,
+      usage_available: recovery.usageAvailable,
+      calculated_cost_usd:
+        completion.error || !recovery.usageAvailable
+          ? null
+          : calculateVisionCostUsd(recovery.inputTokens, recovery.outputTokens),
+      latency_ms: latencyMs,
+      fallback_used: false,
+      ledger_write_status: completion.error ? "failed" : "completed",
+    });
+    if (completion.error) return draft;
+
+    return {
+      ...draft,
+      combinedAmericanOdds: americanOddsLiteral(draft.combinedAmericanOdds)
+        ? draft.combinedAmericanOdds
+        : americanOddsLiteral(recovery.combinedAmericanOdds)
+          ? recovery.combinedAmericanOdds
+          : draft.combinedAmericanOdds,
+      legs: draft.legs.map((leg, index) => {
+        if (americanOddsLiteral(leg.americanOdds)) return leg;
+        const recovered = recovery.legs[index]?.americanOdds;
+        return americanOddsLiteral(recovered) ? { ...leg, americanOdds: recovered } : leg;
+      }),
+    };
+  } catch (error) {
+    const completion = await admin.rpc("complete_vision_request", {
+      p_ledger_id: reservation.ledger_id,
+      p_input_tokens: 0,
+      p_output_tokens: 0,
+      p_total_tokens: 0,
+      p_status: error instanceof VisionMalformedResponseError ? "malformed" : "failed",
+      p_local_ocr_outcome: "luna_odds_recovery",
+    });
+    const latencyMs = Date.now() - startedAt;
+    await updateLedger(admin, reservation.ledger_id, {
+      attempted_at: new Date(startedAt).toISOString(),
+      completed_at: new Date().toISOString(),
+      provider_error_category: providerErrorCategory(error),
+      extraction_path: "luna_odds_recovery",
+      fallback_used: true,
+      latency_ms: latencyMs,
+    });
+    await writeDiagnostic(admin, {
+      user_id: userId,
+      request_correlation_id: correlationId,
+      model: VISION_MODEL,
+      api_key_configured: true,
+      internal_budget_available: true,
+      monthly_budget_usd: reservation.approved_limit_usd,
+      monthly_spend_usd: reservation.reserved_spend_usd,
+      extraction_result: "fallback",
+      provider_error_category: providerErrorCategory(error),
+      attempted_at: new Date(startedAt).toISOString(),
+      latency_ms: latencyMs,
+      fallback_used: true,
+      ledger_write_status: completion.error ? "failed" : "completed",
+    });
+    return draft;
   }
 }
 
@@ -271,6 +440,14 @@ export async function POST(request: Request) {
     });
   }
 
+  const recoveredDraft = await recoverMissingAmericanOdds(
+    admin,
+    image,
+    apiKey,
+    authData.user.id,
+    result.draft,
+  );
+
   await writeDiagnostic(admin, {
     ...baseDiagnostic,
     internal_budget_available: true,
@@ -294,7 +471,7 @@ export async function POST(request: Request) {
     visionAttempted: true,
     correlationId,
     providerStatus: result.providerStatus,
-    draft: visionDraftToBetslipDraft(result.draft),
+    draft: visionDraftToBetslipDraft(recoveredDraft),
     message: "Luna vision extraction finished. Review every field before saving.",
   });
 }

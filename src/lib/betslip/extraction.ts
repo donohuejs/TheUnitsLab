@@ -52,6 +52,8 @@ export type VisionBetslipDraft = {
   legs: Array<{
     eventText: string | null;
     eventDateText: string | null;
+    sportText?: string | null;
+    competitionText?: string | null;
     market: "moneyline" | "spread" | "total" | null;
     selectionText: string | null;
     line: string | null;
@@ -573,31 +575,36 @@ function visionSportsbookId(value: string | null) {
 
 /** Convert strict vision output into the same editable draft contract as local OCR. */
 export function visionDraftToBetslipDraft(draft: VisionBetslipDraft): ExtractedBetslip {
-  const legs = draft.legs.map((leg) => ({
-    eventDescription: cleanLine(leg.eventText ?? ""),
-    eventDate: parseVisionDate(leg.eventDateText),
-    selection: leg.selectionText
-      ? cleanSelection(
-          leg.selectionText,
-          leg.line ??
-            detectLine(`${leg.market ?? ""}: ${leg.selectionText}`, leg.market ?? "moneyline"),
-          leg.americanOdds ?? "",
-        )
-      : undefined,
-    selectionKey: detectSelectionKey(
-      leg.selectionText ?? undefined,
-      leg.eventText ?? undefined,
-      leg.market ?? "moneyline",
-    ),
-    marketType: leg.market ?? undefined,
-    line:
-      leg.line ||
-      detectLine(
-        `${leg.market ?? ""}: ${leg.selectionText ?? ""} ${leg.eventText ?? ""}`,
-        leg.market ?? "moneyline",
+  const legs = draft.legs.map((leg) => {
+    const marketType = leg.market ?? "moneyline";
+    const line =
+      marketType === "moneyline"
+        ? ""
+        : leg.line ||
+          detectLine(
+            `${marketType}: ${leg.selectionText ?? ""} ${leg.eventText ?? ""}`,
+            marketType,
+          );
+    return {
+      eventDescription: cleanLine(leg.eventText ?? ""),
+      eventDate: parseVisionDate(leg.eventDateText),
+      selection: leg.selectionText
+        ? cleanSelection(
+            leg.selectionText,
+            leg.line ?? detectLine(`${marketType}: ${leg.selectionText}`, marketType),
+            leg.americanOdds ?? "",
+          )
+        : undefined,
+      selectionKey: detectSelectionKey(
+        leg.selectionText ?? undefined,
+        leg.eventText ?? undefined,
+        marketType,
       ),
-    americanOdds: leg.americanOdds ?? undefined,
-  }));
+      marketType: leg.market ?? undefined,
+      line,
+      americanOdds: leg.americanOdds?.trim() || undefined,
+    };
+  });
   const first = legs[0];
   const missing = Object.entries({
     event: first?.eventDescription,

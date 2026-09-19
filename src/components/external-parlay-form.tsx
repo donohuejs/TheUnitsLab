@@ -4,6 +4,7 @@ import { useMemo, useState, useSyncExternalStore, type FormEvent } from "react";
 
 import { createImportedParlay } from "@/app/track-bet/actions";
 import { SubmitButton } from "@/components/submit-button";
+import { normalizeParlayLegLine } from "@/lib/betslip/parlay";
 import { toDateTimeLocalValue } from "@/lib/time";
 
 type Competition = {
@@ -97,7 +98,7 @@ export function ExternalParlayForm({
         : leg.eventDate,
       selection: leg.selection,
       marketType: leg.marketType,
-      line: leg.line === "" ? null : Number(leg.line),
+      line: normalizeParlayLegLine(leg.marketType, leg.line),
       americanOdds: Number(leg.americanOdds),
       result: leg.result,
       providerEventId: leg.providerEventId,
@@ -115,9 +116,15 @@ export function ExternalParlayForm({
         body: JSON.stringify({
           sportsbookId: formData.get("sportsbookId"),
           sportsbookBetId: formData.get("sportsbookBetId"),
+          importContentHash: null,
           wagerDate: formData.get("wagerDate"),
           stakeDollars: formData.get("rawStakeDollars"),
           americanOdds: formData.get("combinedAmericanOdds"),
+          ticketType: "parlay",
+          marketType: "parlay",
+          selection: legs.map((leg) => leg.selection).join(" / "),
+          line: null,
+          parlayLegs: payload,
           eventDescription: legs
             .map((leg) => leg.eventDescription)
             .filter(Boolean)
@@ -313,6 +320,7 @@ export function ExternalParlayForm({
                   value={leg.line}
                   onChange={(event) => update(index, { line: event.target.value })}
                   placeholder="Spread/total only"
+                  required={leg.marketType !== "moneyline"}
                 />
               </label>
               <label>

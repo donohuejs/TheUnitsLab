@@ -1,13 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
+
+import {
+  getEmptyPendingSlipSnapshot,
+  getPendingSlipSnapshot,
+  slipSelectionKey,
+  subscribeToSlip,
+} from "@/lib/wagers/slip";
+import type { MarketType, SelectionType } from "@/lib/odds/types";
 
 type DisplayOdd = {
+  eventId: string;
   bookmakerId: string;
   bookmakerName: string;
-  marketType: string;
-  selection: string;
+  marketType: MarketType;
+  selection: SelectionType;
   selectionName: string;
   point: number | null;
   americanOdds: number;
@@ -20,11 +29,59 @@ type DisplayOdd = {
 
 const price = (value: number) => (value > 0 ? `+${value}` : String(value));
 
+function subscribeToMobileViewport(listener: () => void) {
+  if (typeof window === "undefined") return () => undefined;
+  const media = window.matchMedia("(max-width: 760px)");
+  media.addEventListener("change", listener);
+  return () => media.removeEventListener("change", listener);
+}
+
+function getMobileViewportSnapshot() {
+  return typeof window !== "undefined" && window.matchMedia("(max-width: 760px)").matches;
+}
+
+function getServerMobileViewportSnapshot() {
+  return false;
+}
+
 export function OddsSelectionGrid({ odds }: { odds: DisplayOdd[] }) {
   const [expanded, setExpanded] = useState<string[]>([]);
+  const isMobileViewport = useSyncExternalStore(
+    subscribeToMobileViewport,
+    getMobileViewportSnapshot,
+    getServerMobileViewportSnapshot,
+  );
+  const pendingSelections = useSyncExternalStore(
+    subscribeToSlip,
+    getPendingSlipSnapshot,
+    getEmptyPendingSlipSnapshot,
+  );
+  const pendingSelectionKeys = useMemo(
+    () => new Set(pendingSelections.map(slipSelectionKey)),
+    [pendingSelections],
+  );
+  const displayOdds = useMemo(
+    () =>
+      odds.map((odd) => ({
+        ...odd,
+        isSelected: (() => {
+          const inSlip = pendingSelectionKeys.has(
+            slipSelectionKey({
+              eventId: odd.eventId,
+              bookmakerId: odd.bookmakerId,
+              marketType: odd.marketType,
+              selection: odd.selection,
+              line: odd.point,
+            }),
+          );
+          return isMobileViewport ? inSlip : odd.isSelected || inSlip;
+        })(),
+      })),
+    [isMobileViewport, odds, pendingSelectionKeys],
+  );
   const groups = useMemo(() => {
     const bySelection = new Map<string, DisplayOdd[]>();
-    for (const odd of odds) {
+    for (const odd of displayOdds) {
       const key = `${odd.selection}|${odd.point ?? ""}`;
       const current = bySelection.get(key) ?? [];
       current.push(odd);
@@ -34,7 +91,12 @@ export function OddsSelectionGrid({ odds }: { odds: DisplayOdd[] }) {
       key,
       prices: [...prices].sort((left, right) => right.americanOdds - left.americanOdds),
     }));
-  }, [odds]);
+  }, [displayOdds]);
+
+  const selectedGroupKeys = useMemo(
+    () => groups.filter(({ prices }) => prices.some((odd) => odd.isSelected)).map(({ key }) => key),
+    [groups],
+  );
 
   function toggle(key: string) {
     setExpanded((current) =>
@@ -45,7 +107,7 @@ export function OddsSelectionGrid({ odds }: { odds: DisplayOdd[] }) {
   return (
     <div className="odds-selection-grid">
       <div className="desktop-odds-items">
-        {odds.map((odd, index) => (
+        {displayOdds.map((odd, index) => (
           <OddChoice odd={odd} key={`${odd.bookmakerId}-${odd.selection}-${odd.point}-${index}`} />
         ))}
       </div>
@@ -53,7 +115,7 @@ export function OddsSelectionGrid({ odds }: { odds: DisplayOdd[] }) {
         {groups.map(({ key, prices }) => {
           const best = prices[0];
           if (!best) return null;
-          const isExpanded = expanded.includes(key);
+          const isExpanded = expanded.includes(key) || selectedGroupKeys.includes(key);
           return (
             <article className="mobile-odds-card" key={key}>
               <div className="mobile-odds-summary">
@@ -107,7 +169,13 @@ function OddChoice({ odd }: { odd: DisplayOdd }) {
       <span>
         {price(odd.americanOdds)} <small>({odd.decimalOdds.toFixed(2)})</small>
       </span>
-      <small>{odd.isSelected ? "Selected for simulated slip" : "Select for simulated slip"}</small>
+      {odd.isSelected ? (
+        <span className="odd-selected-indicator">
+          <span aria-hidden="true">✓</span> Selected for simulated slip
+        </span>
+      ) : (
+        <small>Select for simulated slip</small>
+      )}
     </>
   );
   return odd.eventStarted ? (
@@ -118,6 +186,7 @@ function OddChoice({ odd }: { odd: DisplayOdd }) {
     <Link
       className={odd.isSelected ? "odd selected" : "odd"}
       href={odd.href}
+      scroll={false}
       aria-current={odd.isSelected ? "true" : undefined}
     >
       {content}

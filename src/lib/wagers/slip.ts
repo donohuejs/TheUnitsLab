@@ -239,6 +239,14 @@ export function getPendingSlipState() {
   return readState();
 }
 
+export function getPendingSlipSnapshot() {
+  return readState().selections;
+}
+
+export function getEmptyPendingSlipSnapshot() {
+  return EMPTY_SLIP;
+}
+
 export function getSlipSnapshot() {
   return selectionsForMode(readState(), "parlay");
 }

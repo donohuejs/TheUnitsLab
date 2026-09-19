@@ -31,6 +31,7 @@ type Props = {
     point?: string;
     alternates?: string;
     book?: string;
+    mobileSheet?: string;
   }>;
 };
 const marketGroups = [
@@ -272,6 +273,7 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
                               <OddsSelectionGrid
                                 odds={marketOdds.map((odd) => ({
                                   ...odd,
+                                  eventId: event.id,
                                   href: `/sports/${id}?${new URLSearchParams({
                                     ...(selected === "all" ? {} : { bookmaker: selected }),
                                     event: event.id,
@@ -346,7 +348,11 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
             </p>
           ) : null}
         </div>
-        <BetSlip selection={slipSelection} groups={groups} />
+        <BetSlip
+          selection={slipSelection}
+          groups={groups}
+          initialMobileSheetOpen={query.mobileSheet === "1"}
+        />
       </div>
     </main>
   );

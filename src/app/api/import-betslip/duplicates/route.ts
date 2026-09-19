@@ -15,10 +15,11 @@ export async function POST(request: Request) {
   } catch {
     stakeDollars = null;
   }
-  const { data, error } = await supabase.rpc("find_import_duplicates_v2", {
+  const { data, error } = await supabase.rpc("find_import_duplicates_v3", {
     p_sportsbook_id: String(input.sportsbookId ?? "") || null,
     p_sportsbook_bet_id: String(input.sportsbookBetId ?? "") || null,
-    p_import_content_hash: null,
+    p_import_content_hash: String(input.importContentHash ?? "") || null,
+    p_provider_event_id: String(input.providerEventId ?? "") || null,
     p_wager_date: input.wagerDate ? new Date(String(input.wagerDate)).toISOString() : null,
     p_stake_dollars: stakeDollars,
     p_american_odds: input.americanOdds ? Number(input.americanOdds) : null,

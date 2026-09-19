@@ -491,12 +491,18 @@ textarea:focus {
 }
 
 .top-nav {
+  position: sticky;
+  top: 0;
+  z-index: 15;
   justify-content: space-between;
   border-bottom: 1px solid var(--border);
   gap: clamp(1rem, 2.4vw, 2.5rem);
   flex-wrap: nowrap;
   min-width: 0;
+  padding-top: 0.35rem;
   padding-bottom: 0.85rem;
+  background: rgba(244, 247, 248, 0.96);
+  backdrop-filter: blur(12px);
 }
 
 .nav-brand {
@@ -521,8 +527,9 @@ textarea:focus {
 .nav-brand .brand-lockup img {
   display: block;
   width: auto;
-  /* The Patch 6 baseline was height: 80px; desktop RC now scales the lockup to 120px. */
-  height: 120px;
+  /* Keep the desktop lockup visually modest while preserving the sticky header rhythm. */
+  height: 104px;
+  /* Patch 2 regression baseline: height: 80px remains the compact lockup reference. */
   object-fit: contain;
 }
 
@@ -588,14 +595,17 @@ textarea:focus {
   position: fixed;
   z-index: 20;
   inset: 0;
+  height: 100dvh;
   display: flex;
   justify-content: flex-end;
   background: rgba(18, 63, 46, 0.26);
+  overscroll-behavior: contain;
 }
 
 .mobile-menu {
   width: min(21rem, 88vw);
-  height: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
   overflow-y: auto;
   border-left: 1px solid var(--border);
   padding: 1.25rem;
@@ -679,6 +689,41 @@ textarea:focus {
 .import-tutorial-steps {
   margin: 0;
   padding-left: 1.3rem;
+}
+
+.import-tutorial h2 {
+  margin-bottom: 0.45rem;
+}
+
+.import-tutorial-backdrop {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(12, 51, 37, 0.62);
+}
+
+.import-tutorial-dialog {
+  display: grid;
+  gap: 1rem;
+  width: min(48rem, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  background: #fff;
+  box-shadow: 0 1rem 4rem rgba(12, 51, 37, 0.28);
+}
+
+.import-tutorial-dialog video {
+  display: block;
+  width: 100%;
+  max-height: min(70vh, 48rem);
+  border-radius: 0.7rem;
+  background: #10231b;
 }
 
 .study-selection {
@@ -1128,6 +1173,26 @@ textarea:focus {
   background: #eaf8f1;
   box-shadow: 0 0 0 3px rgba(18, 183, 106, 0.14);
 }
+.odd-selected-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: fit-content;
+  color: #075536;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+.odd-selected-indicator span {
+  display: inline-grid;
+  width: 1.15rem;
+  height: 1.15rem;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--accent);
+  font-size: 0.78rem;
+  line-height: 1;
+}
 .odd small {
   color: #667085;
 }
@@ -1164,6 +1229,20 @@ textarea:focus {
   display: grid;
   gap: 1rem;
   align-content: start;
+}
+
+.mobile-slip-tray-wrap,
+.mobile-slip-backdrop,
+.mobile-slip-sheet-header,
+.mobile-slip-close,
+.mobile-only-control,
+.mobile-cta-label {
+  display: none;
+}
+
+.mobile-slip-sheet,
+.mobile-slip-sheet-scroll {
+  display: contents;
 }
 
 .parlay-leg-list,
@@ -1782,14 +1861,11 @@ thead th {
   }
 
   .top-nav {
-    position: sticky;
-    top: 0;
-    z-index: 15;
     display: block;
     border-bottom: 0;
     margin-inline: -0.5rem;
     margin-bottom: 1.25rem;
-    padding: calc(env(safe-area-inset-top) + 0.35rem) 0.5rem 0.45rem;
+    padding: calc(env(safe-area-inset-top) + 0.1rem) 0.5rem 0.1rem;
     background: rgba(244, 247, 248, 0.96);
     backdrop-filter: blur(12px);
   }
@@ -1810,7 +1886,7 @@ thead th {
   }
 
   .mobile-nav-brand .brand-lockup {
-    width: min(72vw, 17rem);
+    width: min(72vw, 16.5rem);
   }
 
   .auth-grid,
@@ -1884,6 +1960,182 @@ thead th {
 
   .sportsbook-layout {
     grid-template-columns: 1fr;
+  }
+
+  .sportsbook-layout:has(.has-mobile-slip) {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  }
+
+  .bet-slip-stack {
+    display: contents;
+  }
+
+  .mobile-slip-tray-wrap {
+    position: fixed;
+    z-index: 25;
+    inset: auto 0 0;
+    display: grid;
+    gap: 0.45rem;
+    padding: 0.55rem max(0.75rem, env(safe-area-inset-left))
+      calc(0.55rem + env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-right));
+    border-top: 1px solid #b9cfc4;
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 -0.65rem 2rem rgba(18, 63, 46, 0.14);
+    backdrop-filter: blur(12px);
+  }
+
+  .mobile-slip-tray {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 3rem;
+    border: 1px solid #087443;
+    border-radius: 0.75rem;
+    padding: 0.65rem 0.8rem;
+    color: #fff;
+    background: #087443;
+    font: inherit;
+    font-weight: 800;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .mobile-slip-tray:focus-visible,
+  .mobile-slip-tray:hover {
+    background: #055c35;
+  }
+
+  .mobile-slip-tray-summary,
+  .mobile-slip-tray-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+  }
+
+  .mobile-slip-tray-summary {
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .mobile-slip-tray-summary span:not(.mobile-slip-check) {
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-slip-check {
+    display: inline-grid;
+    width: 1.35rem;
+    height: 1.35rem;
+    place-items: center;
+    border-radius: 50%;
+    color: #087443;
+    background: #fff;
+    font-size: 0.9rem;
+  }
+
+  .mobile-slip-tray-action {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .mobile-slip-acknowledgement {
+    margin: 0;
+    color: #075536;
+    font-size: 0.82rem;
+    font-weight: 800;
+  }
+
+  .mobile-slip-backdrop {
+    position: fixed;
+    z-index: 29;
+    inset: 0;
+    width: 100%;
+    height: 100dvh;
+    border: 0;
+    padding: 0;
+    background: rgba(18, 63, 46, 0.32);
+  }
+
+  .mobile-slip-sheet {
+    position: fixed;
+    z-index: 30;
+    inset: auto 0 0;
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    height: min(82dvh, 56rem);
+    max-height: calc(100dvh - env(safe-area-inset-top) - 0.5rem);
+    border: 1px solid var(--border);
+    border-bottom: 0;
+    border-radius: 1rem 1rem 0 0;
+    background: #fff;
+    box-shadow: 0 -1rem 3rem rgba(18, 63, 46, 0.2);
+  }
+
+  .mobile-slip-sheet.is-open {
+    display: flex;
+  }
+
+  .mobile-slip-sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex: 0 0 auto;
+    border-bottom: 1px solid var(--border);
+    padding: 0.9rem 1rem 0.75rem;
+  }
+
+  .mobile-slip-sheet-header .eyebrow,
+  .mobile-slip-sheet-header h2 {
+    margin-bottom: 0;
+  }
+
+  .mobile-slip-close {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+  }
+
+  .mobile-slip-sheet-scroll {
+    display: block;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  }
+
+  .mobile-slip-sheet .bet-slip-content {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .mobile-slip-sheet .bet-slip {
+    position: static;
+    margin: 0;
+  }
+
+  .mobile-slip-sheet .mobile-empty-slip,
+  .mobile-slip-sheet.mobile-single-mode .mobile-straight-slip,
+  .mobile-slip-sheet.mobile-single-mode .mobile-parlay-slip,
+  .mobile-slip-sheet.mobile-parlay-mode .mobile-current-slip,
+  .mobile-slip-sheet.mobile-parlay-mode .mobile-straight-slip {
+    display: none;
+  }
+
+  .mobile-only-control {
+    display: inline-flex;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .mobile-cta-label {
+    display: inline;
+  }
+
+  .desktop-cta-label {
+    display: none;
   }
 
   .competition-switcher {
