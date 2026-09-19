@@ -925,3 +925,24 @@ supersedes that statement only for the bounded, server-only fallback described b
 - The approved paid-capable fallback is the only new external-service deviation from the prior
   $0/month baseline. If the budget or provider behavior becomes unacceptable, disable the key and
   retain manual import while the owner reviews cost and alternatives.
+
+## Approved release-candidate fix patch 8 amendment — 2026-09-18
+
+The owner explicitly authorizes this final focused Phase 8 hardening pass. It does not begin Phase 9,
+change the virtual-only product boundary, weaken RLS, change immutable submitted ticket terms, alter
+bankroll isolation, or change idempotent settlement.
+
+- Patch 7's Luna-first extraction remains authoritative. One structured Luna attempt is followed by
+  deterministic spread-line/timestamp normalization and does not regress to OCR-first behavior.
+- Source ticket time and canonical event kickoff are separate. Unknown source time is persisted as
+  null and explained during review; upload/current time is never substituted.
+- Imported event matching may use canonical aliases, shared cached odds/event data, retained scores,
+  and a cacheable The Odds API event-list request (`/v4/sports/{sport}/events`) when a bounded,
+  unique competition candidate is available. This event-discovery request is not a priced odds
+  refresh; ambiguity remains manual review and server-side authoritative matching remains required.
+- Luna telemetry is one attempt per ledger row, with success/failure, model, provider metadata,
+  usage-derived cost, timestamps, latency, and fallback state. Missing usage is unavailable rather
+  than fabricated zero cost, and telemetry failures do not block the reviewed import.
+- Odds browsing excludes locked/live-only selections and empty games, NCAA logo aliases are retained,
+  and mobile changes are limited to sticky navigation, safe-area spacing, responsive headings,
+  reachable filter rows, and non-overlapping admin metrics.

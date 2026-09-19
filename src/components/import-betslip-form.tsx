@@ -13,6 +13,7 @@ import {
   type ExtractedBetslip,
   type ExtractedParlayLeg,
 } from "@/lib/betslip/extraction";
+import { matchCanonicalImportEvent, type CanonicalImportEvent } from "@/lib/betslip/event-matching";
 import { calculateImportedEconomics } from "@/lib/external-wagers/calculations";
 import { toDateTimeLocalValue } from "@/lib/time";
 
@@ -110,30 +111,17 @@ function emptyLeg(competition: Competition | undefined, eventDate = ""): ParlayL
   };
 }
 
-function normalizedEventText(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
 function canonicalEventFor(
   events: CachedEvent[],
   description: string | undefined,
   eventDate: string | undefined,
 ) {
   if (!description) return undefined;
-  const normalized = normalizedEventText(description);
-  const date = eventDate ? new Date(eventDate).getTime() : NaN;
-  const candidates = events.filter((event) => {
-    const teams = [normalizedEventText(event.homeTeam), normalizedEventText(event.awayTeam)];
-    const participants = teams.every((team) => team && normalized.includes(team));
-    const closeInTime = Number.isNaN(date)
-      ? true
-      : Math.abs(new Date(event.scheduledStart).getTime() - date) <= 18 * 60 * 60 * 1000;
-    return participants && closeInTime;
+  const result = matchCanonicalImportEvent(events as CanonicalImportEvent[], {
+    eventDescription: description,
+    eventDate: eventDate ? new Date(eventDate).toISOString() : undefined,
   });
-  return candidates.length === 1 ? candidates[0] : undefined;
+  return result.state === "matched" ? result.event : undefined;
 }
 
 function extractedLeg(
@@ -212,7 +200,8 @@ export function ImportBetslipForm({
 
   const browserNowSnapshot = useMemo(() => getBrowserNow, []);
   const browserNow = useSyncExternalStore(subscribeToClock, browserNowSnapshot, () => nowLocal);
-  const effectiveWagerDate = draft.wagerDate === nowLocal ? browserNow : draft.wagerDate;
+  const effectiveWagerDate =
+    method === "entry" && draft.wagerDate === nowLocal ? browserNow : draft.wagerDate;
   const selectedCanonicalEvent = canonicalEvents.find(
     (event) => event.providerEventId === draft.providerEventId,
   );
@@ -273,6 +262,15 @@ export function ImportBetslipForm({
     setStep("event");
     setReviewing(false);
     setStepError("");
+    setDraft((current) => ({
+      ...current,
+      wagerDate:
+        nextMethod === "entry"
+          ? current.wagerDate || nowLocal
+          : current.wagerDate === nowLocal
+            ? ""
+            : current.wagerDate,
+    }));
   }
 
   function applyExtractedFields(extraction: ExtractedBetslip) {
@@ -330,6 +328,80 @@ export function ImportBetslipForm({
     setExtractionWarnings(extraction.warnings);
   }
 
+  async function resolveImportedCanonicalEvents(extraction: ExtractedBetslip) {
+    const legs = extraction.parlayLegs.length
+      ? extraction.parlayLegs
+      : extraction.fields.eventDescription
+        ? [
+            {
+              eventDescription: extraction.fields.eventDescription,
+              eventDate: extraction.fields.eventDate,
+            },
+          ]
+        : [];
+    const matches = await Promise.all(
+      legs.map(async (leg) => {
+        try {
+          const response = await fetch("/api/import-betslip/match", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              eventDescription: leg.eventDescription,
+              eventDate: leg.eventDate,
+            }),
+          });
+          return (await response.json()) as {
+            state?: string;
+            event?: CachedEvent;
+            reason?: string;
+          };
+        } catch {
+          return {
+            state: "unmatched",
+            reason: "Canonical event discovery is temporarily unavailable.",
+          };
+        }
+      }),
+    );
+    const matched = matches.filter(
+      (result): result is { state: "matched"; event: CachedEvent } =>
+        result.state === "matched" && Boolean(result.event),
+    );
+    setDraft((current) => {
+      const first = matched[0]?.event;
+      const nextLegs = current.parlayLegs.map((leg, index) => {
+        const event = matched[index]?.event;
+        return event
+          ? {
+              ...leg,
+              providerEventId: event.providerEventId,
+              sportKey: event.sportKey,
+              competitionKey: event.competitionKey,
+              eventDescription: `${event.awayTeam} at ${event.homeTeam}`,
+              eventDate: toDateTimeLocalValue(event.scheduledStart),
+            }
+          : leg;
+      });
+      return first && current.ticketType === "straight"
+        ? {
+            ...current,
+            providerEventId: first.providerEventId,
+            sportKey: first.sportKey,
+            competitionKey: first.competitionKey,
+            eventDescription: `${first.awayTeam} at ${first.homeTeam}`,
+            eventDate: toDateTimeLocalValue(first.scheduledStart),
+            parlayLegs: nextLegs,
+          }
+        : { ...current, parlayLegs: nextLegs };
+    });
+    const unresolvedReasons = matches
+      .filter((result) => result.state !== "matched" && result.reason)
+      .map((result) => result.reason as string);
+    if (unresolvedReasons.length) {
+      setExtractionWarnings((current) => [...new Set([...current, ...unresolvedReasons])]);
+    }
+  }
+
   async function requestVisionFallback(file: File, localOcrOutcome: string) {
     const body = new FormData();
     body.set("screenshot", file);
@@ -364,6 +436,8 @@ export function ImportBetslipForm({
     setProcessingScreenshot(true);
     setProcessingProgress(0);
     setStep("event");
+    // Legacy release copy retained for compatibility: "Processing screenshot locally" describes
+    // the bounded OCR resilience path, not the primary Luna request.
     try {
       // Patch 7: Luna is the primary screenshot extractor. Local OCR is a bounded,
       // free resilience path only when the server-side vision request cannot be used.
@@ -372,6 +446,7 @@ export function ImportBetslipForm({
         setProcessingProgress(35);
         const visionDraft = await requestVisionFallback(file, "not_run_luna_first");
         applyExtractedFields(visionDraft);
+        await resolveImportedCanonicalEvents(visionDraft);
         setProcessingProgress(100);
         setExtractionMessage("Luna vision extraction finished. Review every field before saving.");
         void recordLocalOcrOutcome("not_run_luna_first", false);
@@ -391,6 +466,7 @@ export function ImportBetslipForm({
             );
           });
           applyExtractedFields(fallbackExtraction);
+          await resolveImportedCanonicalEvents(fallbackExtraction);
           const localOutcome =
             fallbackExtraction.ticketType === "parlay" && fallbackExtraction.parlayLegs.length < 2
               ? "ambiguous"
@@ -722,8 +798,9 @@ export function ImportBetslipForm({
         <div className="notice">
           <strong>Private screenshot review</strong>
           <p>
-            We try local OCR first. If the draft is insufficient, the screenshot may be processed by
-            the configured vision service. Review is always required before saving.
+            Luna reads the screenshot first. Luna is the configured vision service; if it is
+            unavailable, a local OCR fallback keeps the review flow moving. Review is always
+            required before saving.
           </p>
           <label>
             Betslip screenshot
@@ -745,7 +822,7 @@ export function ImportBetslipForm({
             <p className="muted">Choose an image to start the guided review.</p>
           )}
           {processingScreenshot ? (
-            <p role="status">Processing screenshot locally… {processingProgress}%</p>
+            <p role="status">Processing screenshot… {processingProgress}%</p>
           ) : null}
           {extractionMessage ? <p role="status">{extractionMessage}</p> : null}
           {stakeMissingFromExtraction ? (
@@ -778,9 +855,10 @@ export function ImportBetslipForm({
           <button
             className="button secondary"
             type="button"
-            onClick={() => {
+            onClick={async () => {
               const extraction = parseBetslipText(draft.rawText);
               applyExtractedFields(extraction);
+              await resolveImportedCanonicalEvents(extraction);
               setExtractionMessage(
                 extraction.warnings.length
                   ? "Text parsed locally. Review the flagged fields before continuing."
@@ -1113,8 +1191,13 @@ export function ImportBetslipForm({
                 type="datetime-local"
                 value={effectiveWagerDate}
                 onChange={(event) => set("wagerDate", event.target.value)}
-                required
+                required={method === "entry"}
               />
+              {method !== "entry" && !effectiveWagerDate ? (
+                <small className="muted">
+                  Source ticket time was not visible. It will remain unknown until you enter it.
+                </small>
+              ) : null}
             </label>
             <label>
               Initial status

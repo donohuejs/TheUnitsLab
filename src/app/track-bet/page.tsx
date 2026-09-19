@@ -43,7 +43,7 @@ type ExternalWager = {
   stake_units: number;
   status: "open" | "won" | "lost" | "push" | "void";
   profit_loss_units: number;
-  wager_date: string;
+  wager_date: string | null;
   screenshot_path: string | null;
   verification_status: "unverified" | "user_attested";
   user_notes: string | null;
@@ -405,7 +405,7 @@ export default async function TrackBetPage({ searchParams }: Props) {
                 <div>
                   <dt>Wager date</dt>
                   <dd>
-                    <LocalDateTime value={wager.wager_date} />
+                    {wager.wager_date ? <LocalDateTime value={wager.wager_date} /> : "Unknown"}
                   </dd>
                 </div>
               </dl>

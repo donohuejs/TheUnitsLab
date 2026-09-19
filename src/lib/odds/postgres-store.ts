@@ -74,7 +74,7 @@ export class PostgresOddsStore implements OddsStore {
 
   async record(
     request: CanonicalOddsRequest,
-    purpose: "page_load" | "manual_refresh",
+    purpose: "page_load" | "manual_refresh" | "event_discovery",
     key: string,
     quota: { used: number | null; remaining: number | null; lastRequestCost: number | null },
     status: number,

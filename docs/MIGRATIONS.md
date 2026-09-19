@@ -102,6 +102,16 @@ data, and exposes a bounded authenticated reconciliation RPC. `supabase/tests/re
 verifies the diagnostics table, RLS, ordinary-role grants, and RPC grants. No provider polling,
 real-money behavior, bankroll mutation, or Phase 9 work is introduced.
 
+Release-candidate fix patch 8 adds the forward-only migration
+`20260930000000_release_candidate_fix_patch_8.sql`. It permits imported source ticket time to remain
+unknown without changing the canonical event kickoff, extends the shared API ledger for cached
+no-odds event discovery, and expands forced-RLS Luna telemetry with attempt/completion timestamps,
+provider metadata, latency, fallback state, and nullable usage-derived costs. The migration keeps
+immutable external-wager terms null-safe, preserves service-only vision functions and existing grants,
+and keeps unknown usage reservations budget-occupied. Application code uses the shared event catalog
+cache and The Odds API event-list endpoint before any priced odds refresh. No prior migration is
+rewritten, and no RLS, bankroll, audit, or settlement boundary is weakened.
+
 ## Source of truth
 
 Ordered SQL files under `supabase/migrations` are the database source of truth. Configuration in a hosted dashboard is not sufficient. Migrations must include tables, constraints, functions, grants, Row Level Security enablement, policies, storage policies, and indexes needed by the corresponding phase.

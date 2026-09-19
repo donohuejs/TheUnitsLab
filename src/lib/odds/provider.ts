@@ -7,15 +7,19 @@ export async function fetchOddsProvider(request: CanonicalOddsRequest, apiKey: s
   const endpoint =
     request.endpoint === "event_odds"
       ? `events/${encodeURIComponent(request.eventId ?? "")}/odds`
-      : "odds";
+      : request.endpoint === "events"
+        ? "events"
+        : "odds";
   const url = new URL(
     `https://api.the-odds-api.com/v4/sports/${encodeURIComponent(request.providerSportKey)}/${endpoint}`,
   );
   url.searchParams.set("apiKey", apiKey);
-  url.searchParams.set("regions", request.regions.join(","));
-  url.searchParams.set("markets", request.markets.join(","));
-  url.searchParams.set("bookmakers", request.bookmakers.join(","));
-  url.searchParams.set("oddsFormat", request.oddsFormat);
+  if (request.endpoint !== "events") {
+    url.searchParams.set("regions", request.regions.join(","));
+    url.searchParams.set("markets", request.markets.join(","));
+    url.searchParams.set("bookmakers", request.bookmakers.join(","));
+    url.searchParams.set("oddsFormat", request.oddsFormat);
+  }
   url.searchParams.set("dateFormat", request.dateFormat);
   const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(10_000) });
   const quota = parseQuotaHeaders(response.headers);

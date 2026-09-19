@@ -1,3 +1,5 @@
+import { teamNamesMatch } from "../teams/logos";
+
 export type ImportMethod = "screenshot" | "paste" | "entry";
 export type ExtractedTicketType = "straight" | "parlay";
 
@@ -78,15 +80,47 @@ function labeledValue(text: string, labels: string, pattern: string) {
 
 function parseDate(value: string | undefined) {
   if (!value) return undefined;
-  const normalized = value
-    .replace(/\s+/g, " ")
-    .replace(/\bET\b/i, "")
-    .trim();
+  const normalized = value.replace(/\s+/g, " ").trim();
+  const eastern = /\bET\b/i.test(normalized);
+  const withoutZone = normalized.replace(/\bET\b/i, "").trim();
   const candidates = [normalized];
-  if (!/\b\d{4}\b/.test(normalized))
-    candidates.push(`${normalized} ${new Date().getUTCFullYear()}`);
+  if (!/\b\d{4}\b/.test(withoutZone))
+    candidates.push(`${withoutZone} ${new Date().getUTCFullYear()}`);
   for (const candidate of candidates) {
-    const date = new Date(candidate.replace(/-/g, "/"));
+    const date = eastern
+      ? new Date(`${candidate.replace(/\bET\b/i, "").trim()} UTC`.replace(/-/g, "/"))
+      : new Date(candidate.replace(/-/g, "/"));
+    if (eastern && !Number.isNaN(date.getTime())) {
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/New_York",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hourCycle: "h23",
+      }).formatToParts(date);
+      const part = (type: Intl.DateTimeFormatPartTypes) =>
+        Number(parts.find((item) => item.type === type)?.value);
+      const wallClockUtc = Date.UTC(
+        part("year"),
+        part("month") - 1,
+        part("day"),
+        part("hour"),
+        part("minute"),
+        part("second"),
+      );
+      const requestedWallClock = Date.UTC(
+        date.getUTCFullYear(),
+        date.getUTCMonth(),
+        date.getUTCDate(),
+        date.getUTCHours(),
+        date.getUTCMinutes(),
+        date.getUTCSeconds(),
+      );
+      return new Date(date.getTime() + (requestedWallClock - wallClockUtc)).toISOString();
+    }
     if (!Number.isNaN(date.getTime())) return date.toISOString();
   }
   return undefined;
@@ -138,9 +172,21 @@ function detectMarket(
 
 function detectLine(text: string, marketType: "moneyline" | "spread" | "total") {
   if (marketType === "moneyline") return "";
-  const labeled = /(?:spread|handicap|line|total)\s*[:#-]?\s*([+-]?\d+(?:\.\d+)?)/i.exec(text)?.[1];
+  const labeled =
+    marketType === "spread"
+      ? /(?:point\s+spread|spread|handicap)\s*[:#-]?[^\n]*?([+-]?\d+(?:\.\d+)?)/i.exec(text)?.[1]
+      : /(?:total|over|under)\s*[:#-]?[^\n]*?([+-]?\d+(?:\.\d+)?)/i.exec(text)?.[1];
   if (labeled) return labeled;
   return /(?<!\d)([+-]?\d+\.\d+)(?!\d)/.exec(text)?.[1] ?? "";
+}
+
+function cleanSelection(value: string, line = "", odds = "") {
+  return cleanLine(value)
+    .replace(/^(?:point\s+spread|spread|handicap|selection|pick)\s*[:#-]?\s*/i, "")
+    .replace(line, "")
+    .replace(odds, "")
+    .replace(/^[+#:-]+|[+#:-]+$/g, "")
+    .trim();
 }
 
 function detectSelection(
@@ -156,11 +202,19 @@ function detectSelection(
     );
   });
   if (candidates[0] && odds) {
-    return cleanLine(candidates[0].replace(odds, "").replace(line, ""))
-      .replace(/^[:#-]+|[:#-]+$/g, "")
-      .trim();
+    return cleanSelection(candidates[0], line, odds);
   }
-  if (eventDescription) return eventDescription.split(" at ")[0];
+  if (line) {
+    const lineCandidate = lines.find(
+      (candidate) =>
+        candidate.includes(line) &&
+        !/^(?:odds|price|american|stake|wager|payout|return|total return|potential)\b/i.test(
+          candidate,
+        ),
+    );
+    if (lineCandidate) return cleanSelection(lineCandidate, line, odds);
+  }
+  if (eventDescription) return cleanSelection(eventDescription.split(" at ")[0]);
   return undefined;
 }
 
@@ -175,6 +229,14 @@ function detectSelectionKey(
     if (/\bunder\b/.test(value)) return "under";
   }
   if (/\bdraw\b|\btie\b/.test(value)) return "draw";
+  if (marketType === "moneyline") return "";
+  const event = eventDescription ? parseEventLine(eventDescription) : undefined;
+  if (selection && event) {
+    if (teamNamesMatch(selection, event.left)) return "away";
+    if (teamNamesMatch(selection, event.eventDescription.split(" at ").slice(1).join(" at "))) {
+      return "home";
+    }
+  }
   return "";
 }
 
@@ -195,9 +257,12 @@ function detectEventDate(lines: string[], eventDescription: string | undefined) 
   const preferred = lines.filter(
     (line, index) =>
       index >= Math.max(0, eventIndex) &&
-      !/\b(?:placed|wagered|submitted|bet\s+date)\b/i.test(line),
+      !/\b(?:placed|wagered|submitted|bet\s+date|wager\s+date|ticket\s+timestamp)\b/i.test(line),
   );
   for (const line of [...preferred, ...lines]) {
+    if (/\b(?:placed|wagered|submitted|bet\s+date|wager\s+date|ticket\s+timestamp)\b/i.test(line)) {
+      continue;
+    }
     const value =
       new RegExp(NUMERIC_DATE, "i").exec(line)?.[1] ?? new RegExp(MONTH_DATE, "i").exec(line)?.[1];
     const parsed = parseDate(value);
@@ -333,7 +398,7 @@ export function parseBetslipText(rawText: string): ExtractedBetslip {
     lines,
     eventDescription,
     americanOdds,
-    detectLine(oddsLine, initialMarket),
+    detectLine(text, initialMarket),
   );
   const marketType = detectMarket(text, selection);
   const resolvedLine = detectLine(oddsLine, marketType) || detectLine(text, marketType);
@@ -344,13 +409,21 @@ export function parseBetslipText(rawText: string): ExtractedBetslip {
       labeledValue(text, "(?:kickoff|game|event|start)(?:\\s+date|\\s+time)?", NUMERIC_DATE) ??
         labeledValue(text, "(?:kickoff|game|event|start)(?:\\s+date|\\s+time)?", MONTH_DATE),
     ) ?? detectEventDate(lines, eventDescription);
-  const wagerDate = parseDate(
-    labeledValue(
-      text,
-      "(?:placed|wager|bet)(?:\\s+date|\\s+time)?",
-      `${NUMERIC_DATE.slice(1, -1)}|${MONTH_DATE.slice(1, -1)}`,
-    ),
-  );
+  const wagerDate =
+    parseDate(
+      labeledValue(
+        text,
+        "(?:placed|wager|bet|ticket)(?:\\s+(?:date|time|timestamp))?",
+        `${NUMERIC_DATE.slice(1, -1)}|${MONTH_DATE.slice(1, -1)}`,
+      ),
+    ) ??
+    parseDate(
+      (() => {
+        const line = lines.find((candidate) => /^(?:placed|wager|bet|ticket)\b/i.test(candidate));
+        const match = line?.match(new RegExp(`${NUMERIC_DATE}|${MONTH_DATE}`, "i"));
+        return match?.[1] ?? match?.[2];
+      })(),
+    );
   const fields: BetslipDraftFields = {
     ...sportsbook,
     sportsbookBetId,
@@ -374,6 +447,7 @@ export function parseBetslipText(rawText: string): ExtractedBetslip {
     odds: fields.americanOdds,
     stake: fields.stakeDollars,
     payout: fields.returnDollars,
+    "wager date": fields.wagerDate,
   })
     .filter(([, value]) => !value)
     .map(([name]) => name);
@@ -485,16 +559,7 @@ export function shouldUseVisionFallback(extraction: ExtractedBetslip) {
 }
 
 function parseVisionDate(value: string | null | undefined) {
-  if (!value) return undefined;
-  const normalized = value.replace(/\bET\b/i, "").trim();
-  const candidates = /\b\d{4}\b/.test(normalized)
-    ? [normalized]
-    : [normalized, `${normalized} ${new Date().getUTCFullYear()}`];
-  for (const candidate of candidates) {
-    const date = new Date(candidate.replace(/-/g, "/"));
-    if (!Number.isNaN(date.getTime())) return date.toISOString();
-  }
-  return undefined;
+  return parseDate(value ?? undefined);
 }
 
 function visionSportsbookId(value: string | null) {
@@ -511,14 +576,26 @@ export function visionDraftToBetslipDraft(draft: VisionBetslipDraft): ExtractedB
   const legs = draft.legs.map((leg) => ({
     eventDescription: cleanLine(leg.eventText ?? ""),
     eventDate: parseVisionDate(leg.eventDateText),
-    selection: leg.selectionText ? cleanLine(leg.selectionText) : undefined,
+    selection: leg.selectionText
+      ? cleanSelection(
+          leg.selectionText,
+          leg.line ??
+            detectLine(`${leg.market ?? ""}: ${leg.selectionText}`, leg.market ?? "moneyline"),
+          leg.americanOdds ?? "",
+        )
+      : undefined,
     selectionKey: detectSelectionKey(
       leg.selectionText ?? undefined,
       leg.eventText ?? undefined,
       leg.market ?? "moneyline",
     ),
     marketType: leg.market ?? undefined,
-    line: leg.line ?? undefined,
+    line:
+      leg.line ||
+      detectLine(
+        `${leg.market ?? ""}: ${leg.selectionText ?? ""} ${leg.eventText ?? ""}`,
+        leg.market ?? "moneyline",
+      ),
     americanOdds: leg.americanOdds ?? undefined,
   }));
   const first = legs[0];

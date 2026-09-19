@@ -93,6 +93,9 @@ const logoIds: Record<string, LogoRecord> = {
   syracuse: { sport: "ncaa", id: "183" },
   texas: { sport: "ncaa", id: "251" },
   miami: { sport: "ncaa", id: "2390" },
+  "wake forest": { sport: "ncaa", id: "154" },
+  houston: { sport: "ncaa", id: "248" },
+  "texas tech": { sport: "ncaa", id: "2641" },
 };
 
 const teamAliases: Record<string, string> = {
@@ -125,6 +128,12 @@ const teamAliases: Record<string, string> = {
   "miami fl": "miami",
   "miami florida": "miami",
   "miami university florida": "miami",
+  "wake forest demon deacons": "wake forest",
+  "wake forest university": "wake forest",
+  "houston cougars": "houston",
+  "university of houston": "houston",
+  "texas tech red raiders": "texas tech",
+  "texas tech university": "texas tech",
 };
 
 export function normalizeTeamName(name: string) {
@@ -139,6 +148,20 @@ export function normalizeTeamName(name: string) {
     .trim();
 }
 
+/** Resolve provider names and common broadcast aliases to one presentation/matching key. */
+export function canonicalTeamKey(name: string) {
+  const normalizedName = normalizeTeamName(name).replace(/^\d+\s+/, "");
+  const key = teamAliases[normalizedName] ?? normalizedName;
+  return logoIds[key] ? key : null;
+}
+
+export function teamNamesMatch(left: string, right: string) {
+  const leftKey = canonicalTeamKey(left);
+  const rightKey = canonicalTeamKey(right);
+  if (leftKey && rightKey) return leftKey === rightKey;
+  return normalizeTeamName(left).replace(/^\d+\s+/, "") === normalizeTeamName(right);
+}
+
 export function teamInitials(name: string) {
   const words = normalizeTeamName(name)
     .replace(/[^a-z0-9 ]/g, "")
@@ -151,7 +174,7 @@ export function teamInitials(name: string) {
 
 export function resolveTeamLogo(teamName: string, sport: TeamSport) {
   const normalizedName = normalizeTeamName(teamName);
-  const match = logoIds[teamAliases[normalizedName] ?? normalizedName];
+  const match = logoIds[canonicalTeamKey(teamName) ?? normalizedName];
   if (!match) return null;
   const sportPath =
     match.sport === "nfl"

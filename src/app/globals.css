@@ -1778,13 +1778,20 @@ thead th {
 @media (max-width: 760px) {
   .shell {
     width: min(calc(100% - 1rem), 72rem);
-    padding-top: 2rem;
+    padding-top: 1rem;
   }
 
   .top-nav {
+    position: sticky;
+    top: 0;
+    z-index: 15;
     display: block;
     border-bottom: 0;
-    padding-bottom: 0;
+    margin-inline: -0.5rem;
+    margin-bottom: 1.25rem;
+    padding: calc(env(safe-area-inset-top) + 0.35rem) 0.5rem 0.45rem;
+    background: rgba(244, 247, 248, 0.96);
+    backdrop-filter: blur(12px);
   }
 
   .desktop-nav-brand,
@@ -1799,7 +1806,7 @@ thead th {
     gap: 0.6rem;
     min-width: 0;
     border-bottom: 1px solid var(--border);
-    padding-bottom: 0.75rem;
+    padding-bottom: 0.45rem;
   }
 
   .mobile-nav-brand .brand-lockup {
@@ -1817,6 +1824,43 @@ thead th {
 
   .diagnostic-grid {
     grid-template-columns: 1fr;
+  }
+
+  .page-header h1,
+  .account-header h1 {
+    font-size: clamp(1.7rem, 8vw, 2.35rem);
+    line-height: 1.08;
+  }
+
+  .book-filter,
+  .market-filter {
+    margin-inline: -0.25rem;
+    padding-inline: 0.25rem;
+    scroll-padding-inline: 0.25rem;
+    overscroll-behavior-x: contain;
+  }
+
+  .admin-vision-card > .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+
+  .admin-vision-card > .stats-grid > div {
+    min-width: 0;
+    display: grid;
+    align-content: start;
+    gap: 0.35rem;
+    padding: 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 0.7rem;
+    background: #fbfefb;
+  }
+
+  .admin-vision-card > .stats-grid strong {
+    min-width: 0;
+    font-size: clamp(1.05rem, 5vw, 1.45rem);
+    line-height: 1.1;
+    overflow-wrap: anywhere;
   }
 
   .account-header,
@@ -2019,6 +2063,28 @@ thead th {
   }
 }
 
+.admin-vision-card > .stats-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admin-vision-card > .stats-grid > div {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 0.35rem;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: #fbfefb;
+}
+
+.admin-vision-card > .stats-grid strong {
+  min-width: 0;
+  font-size: clamp(1.1rem, 2vw, 1.65rem);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
 @media (min-width: 761px) and (max-width: 900px) {
   .top-nav {
     gap: 0.55rem;
@@ -2035,6 +2101,16 @@ thead th {
 
   .nav-links {
     gap: 0.3rem;
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-vision-card > .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-vision-card > .stats-grid strong {
+    font-size: clamp(1.05rem, 5vw, 1.45rem);
   }
 }
 

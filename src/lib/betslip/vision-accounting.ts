@@ -2,6 +2,8 @@ export const VISION_MODEL = "gpt-5.6-luna";
 export const VISION_DEFAULT_BUDGET_USD = 5;
 export const VISION_RESERVATION_USD = 0.05;
 export const VISION_HIGH_USAGE_AVERAGE_USD = 0.01;
+export const VISION_INPUT_USD_PER_MILLION = 0.2;
+export const VISION_OUTPUT_USD_PER_MILLION = 1.2;
 
 export type VisionThreshold = "normal" | "warning" | "high" | "critical" | "limit";
 
@@ -11,7 +13,13 @@ export function calculateVisionCostUsd(inputTokens: number, outputTokens: number
     throw new Error("Invalid input token count");
   if (!Number.isInteger(outputTokens) || outputTokens < 0)
     throw new Error("Invalid output token count");
-  return Math.round(((inputTokens * 0.2 + outputTokens * 1.2) / 1_000_000) * 1_000_000) / 1_000_000;
+  return (
+    Math.round(
+      ((inputTokens * VISION_INPUT_USD_PER_MILLION + outputTokens * VISION_OUTPUT_USD_PER_MILLION) /
+        1_000_000) *
+        1_000_000,
+    ) / 1_000_000
+  );
 }
 
 export function visionThreshold(

@@ -6,10 +6,17 @@ import { formatLocalDateTime } from "@/lib/time";
 
 const subscribeToTimezone = () => () => {};
 
-export function LocalDateTime({ value }: { value: string }) {
-  const clientSnapshot = useMemo(() => () => formatLocalDateTime(value), [value]);
-  const serverSnapshot = useMemo(() => () => formatLocalDateTime(value, "UTC"), [value]);
+export function LocalDateTime({ value }: { value: string | null }) {
+  const safeValue = value ?? "";
+  const clientSnapshot = useMemo(
+    () => () => (safeValue ? formatLocalDateTime(safeValue) : "Unknown"),
+    [safeValue],
+  );
+  const serverSnapshot = useMemo(
+    () => () => (safeValue ? formatLocalDateTime(safeValue, "UTC") : "Unknown"),
+    [safeValue],
+  );
   const label = useSyncExternalStore(subscribeToTimezone, clientSnapshot, serverSnapshot);
 
-  return <time dateTime={value}>{label}</time>;
+  return value ? <time dateTime={value}>{label}</time> : <span>{label}</span>;
 }

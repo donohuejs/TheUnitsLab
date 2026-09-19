@@ -9,6 +9,7 @@ import Link from "next/link";
 
 import { increaseVisionBudget } from "./actions";
 import {
+  VISION_MODEL,
   VISION_DEFAULT_BUDGET_USD,
   VISION_HIGH_USAGE_AVERAGE_USD,
   visionRemainingUsd,
@@ -33,7 +34,8 @@ type VisionLedger = {
   output_tokens: number;
   total_tokens: number;
   reserved_cost_usd: number;
-  actual_cost_usd: number;
+  actual_cost_usd: number | null;
+  usage_available: boolean;
   local_ocr_outcome: string;
   vision_status: string;
 };
@@ -45,6 +47,7 @@ type VisionOcrAttempt = {
 
 type VisionDiagnostic = {
   requested_at: string;
+  attempted_at: string;
   model: string;
   api_key_configured: boolean;
   internal_budget_available: boolean | null;
@@ -55,6 +58,10 @@ type VisionDiagnostic = {
   extraction_result: string;
   ledger_write_status: string;
 };
+
+function formatVisionUsd(value: number | null) {
+  return value === null ? "unavailable" : `$${value.toFixed(6)}`;
+}
 
 type Props = { searchParams: Promise<{ notice?: string }> };
 
@@ -99,7 +106,7 @@ export default async function ApiUsagePage({ searchParams }: Props) {
     admin
       .from("vision_usage_ledger")
       .select(
-        "user_id,requested_at,model,purpose,input_tokens,output_tokens,total_tokens,reserved_cost_usd,actual_cost_usd,local_ocr_outcome,vision_status",
+        "user_id,requested_at,model,purpose,input_tokens,output_tokens,total_tokens,reserved_cost_usd,actual_cost_usd,usage_available,local_ocr_outcome,vision_status",
       )
       .eq("month_start", monthKey)
       .order("requested_at", { ascending: false }),
@@ -120,7 +127,7 @@ export default async function ApiUsagePage({ searchParams }: Props) {
     admin
       .from("vision_diagnostics")
       .select(
-        "requested_at,model,api_key_configured,internal_budget_available,monthly_budget_usd,monthly_spend_usd,provider_status,provider_error_category,extraction_result,ledger_write_status",
+        "requested_at,attempted_at,model,api_key_configured,internal_budget_available,monthly_budget_usd,monthly_spend_usd,provider_status,provider_error_category,extraction_result,ledger_write_status",
       )
       .order("requested_at", { ascending: false })
       .limit(50),
@@ -138,11 +145,32 @@ export default async function ApiUsagePage({ searchParams }: Props) {
   const visionBudget = Number(budgetRow?.approved_limit_usd ?? VISION_DEFAULT_BUDGET_USD);
   const apiKeyConfigured = Boolean(process.env.OPENAI_API_KEY?.trim());
   const visionSpend = visionLedger.reduce(
-    (sum, row) =>
-      sum + Number(row.vision_status === "reserved" ? row.reserved_cost_usd : row.actual_cost_usd),
+    (sum, row) => sum + Number(row.vision_status === "succeeded" ? (row.actual_cost_usd ?? 0) : 0),
     0,
   );
-  const visionCalls = visionLedger.filter((row) => row.vision_status !== "reserved");
+  const visionBudgetOccupied = visionLedger.reduce(
+    (sum, row) =>
+      sum +
+      Number(
+        row.vision_status === "reserved"
+          ? row.reserved_cost_usd
+          : (row.actual_cost_usd ?? row.reserved_cost_usd),
+      ),
+    0,
+  );
+  const visionCostUnavailable = visionLedger.some(
+    (row) => row.vision_status === "succeeded" && !row.usage_available,
+  );
+  const visionAttempts = visionLedger.length;
+  const visionCalls = visionLedger.filter((row) => row.vision_status === "succeeded");
+  const visionFailures = visionLedger.filter((row) =>
+    ["failed", "malformed", "unavailable"].includes(row.vision_status),
+  );
+  const costedCalls = visionLedger.filter(
+    (row) =>
+      row.vision_status === "succeeded" && row.usage_available && row.actual_cost_usd !== null,
+  );
+  const averageVisionCost = costedCalls.length ? visionSpend / costedCalls.length : null;
   const latestDiagnostic = diagnostics[0];
   const latestSuccessfulDiagnostic = diagnostics.find(
     (diagnostic) => diagnostic.extraction_result === "succeeded",
@@ -154,10 +182,8 @@ export default async function ApiUsagePage({ searchParams }: Props) {
   const userUsage = Object.entries(
     visionLedger.reduce<Record<string, { calls: number; spend: number }>>((totals, row) => {
       const current = totals[row.user_id] ?? { calls: 0, spend: 0 };
-      current.calls += row.vision_status === "reserved" ? 0 : 1;
-      current.spend += Number(
-        row.vision_status === "reserved" ? row.reserved_cost_usd : row.actual_cost_usd,
-      );
+      current.calls += row.vision_status === "succeeded" ? 1 : 0;
+      current.spend += Number(row.vision_status === "succeeded" ? (row.actual_cost_usd ?? 0) : 0);
       totals[row.user_id] = current;
       return totals;
     }, {}),
@@ -261,15 +287,15 @@ export default async function ApiUsagePage({ searchParams }: Props) {
       <section className="card admin-vision-card" aria-labelledby="vision-budget-title">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">GPT-5.6 Luna fallback</p>
+            <p className="eyebrow">GPT-5.6 Luna extraction</p>
             <h2 id="vision-budget-title">Vision budget</h2>
           </div>
-          <strong>{visionThreshold(visionSpend, visionBudget).toUpperCase()}</strong>
+          <strong>{visionThreshold(visionBudgetOccupied, visionBudget).toUpperCase()}</strong>
         </div>
         <div className="stats-grid">
           <div>
             <small>Current month spend</small>
-            <strong>${visionSpend.toFixed(6)}</strong>
+            <strong>{formatVisionUsd(visionCostUnavailable ? null : visionSpend)}</strong>
           </div>
           <div>
             <small>Approved budget</small>
@@ -277,17 +303,25 @@ export default async function ApiUsagePage({ searchParams }: Props) {
           </div>
           <div>
             <small>Remaining</small>
-            <strong>${visionRemainingUsd(visionSpend, visionBudget).toFixed(6)}</strong>
+            <strong>
+              {formatVisionUsd(visionRemainingUsd(visionBudgetOccupied, visionBudget))}
+            </strong>
           </div>
           <div>
-            <small>Luna calls</small>
+            <small>Luna attempts</small>
+            <strong>{visionAttempts}</strong>
+          </div>
+          <div>
+            <small>Successful calls</small>
             <strong>{visionCalls.length}</strong>
           </div>
           <div>
-            <small>Average cost / call</small>
-            <strong>
-              ${(visionCalls.length ? visionSpend / visionCalls.length : 0).toFixed(6)}
-            </strong>
+            <small>Failed calls</small>
+            <strong>{visionFailures.length}</strong>
+          </div>
+          <div>
+            <small>Average cost / successful call</small>
+            <strong>{formatVisionUsd(averageVisionCost)}</strong>
           </div>
           <div>
             <small>Local OCR fallbacks</small>
@@ -326,21 +360,15 @@ export default async function ApiUsagePage({ searchParams }: Props) {
             </div>
             <div>
               <dt>Configured model</dt>
-              <dd>{latestDiagnostic?.model ?? "—"}</dd>
+              <dd>{latestDiagnostic?.model ?? VISION_MODEL}</dd>
             </div>
             <div>
-              <dt>Internal budget available</dt>
-              <dd>
-                {latestDiagnostic?.internal_budget_available === null
-                  ? "—"
-                  : latestDiagnostic?.internal_budget_available
-                    ? "Yes"
-                    : "No"}
-              </dd>
+              <dt>Internal budget available now</dt>
+              <dd>{visionRemainingUsd(visionBudgetOccupied, visionBudget) > 0 ? "Yes" : "No"}</dd>
             </div>
             <div>
               <dt>Last Luna attempt</dt>
-              <dd>{latestDiagnostic?.requested_at ?? "—"}</dd>
+              <dd>{latestDiagnostic?.attempted_at ?? latestDiagnostic?.requested_at ?? "—"}</dd>
             </div>
             <div>
               <dt>Last successful Luna call</dt>
@@ -404,10 +432,10 @@ export default async function ApiUsagePage({ searchParams }: Props) {
                   <tr key={userId}>
                     <th scope="row">{displayNames.get(userId) ?? userId}</th>
                     <td>{usage.calls}</td>
-                    <td>${usage.spend.toFixed(6)}</td>
+                    <td>{formatVisionUsd(usage.spend)}</td>
                     <td>{visionSpend ? ((usage.spend / visionSpend) * 100).toFixed(1) : "0.0"}%</td>
                     <td>
-                      ${(usage.calls ? usage.spend / usage.calls : 0).toFixed(6)}{" "}
+                      {formatVisionUsd(usage.calls ? usage.spend / usage.calls : null)}{" "}
                       {usage.spend / Math.max(usage.calls, 1) >= VISION_HIGH_USAGE_AVERAGE_USD
                         ? "· High usage"
                         : ""}

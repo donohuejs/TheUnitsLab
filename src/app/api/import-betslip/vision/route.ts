@@ -3,7 +3,11 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import { visionDraftToBetslipDraft } from "@/lib/betslip/extraction";
-import { VISION_MODEL, VISION_RESERVATION_USD } from "@/lib/betslip/vision-accounting";
+import {
+  calculateVisionCostUsd,
+  VISION_MODEL,
+  VISION_RESERVATION_USD,
+} from "@/lib/betslip/vision-accounting";
 import { extractBetslipWithVision, VisionMalformedResponseError } from "@/lib/betslip/vision";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -34,10 +38,24 @@ async function writeDiagnostic(
   input: Record<string, unknown>,
 ) {
   try {
-    const { error } = await admin.from("vision_diagnostics").insert(input);
+    const { error } = await admin
+      .from("vision_diagnostics")
+      .upsert(input, { onConflict: "request_correlation_id" });
     return !error;
   } catch {
     return false;
+  }
+}
+
+async function updateLedger(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  ledgerId: string,
+  values: Record<string, unknown>,
+) {
+  try {
+    await admin.from("vision_usage_ledger").update(values).eq("id", ledgerId);
+  } catch {
+    // The extraction result remains usable even if operational metadata needs a retry.
   }
 }
 
@@ -154,6 +172,7 @@ export async function POST(request: Request) {
     ledger_write_status: "reserved",
   });
 
+  const startedAt = Date.now();
   let result;
   try {
     result = await extractBetslipWithVision(image, {
@@ -169,6 +188,15 @@ export async function POST(request: Request) {
       p_status: error instanceof VisionMalformedResponseError ? "malformed" : "failed",
       p_local_ocr_outcome: localOcrOutcome,
     });
+    const latencyMs = Date.now() - startedAt;
+    await updateLedger(admin, reservation.ledger_id, {
+      attempted_at: new Date(startedAt).toISOString(),
+      completed_at: new Date().toISOString(),
+      provider_error_category: providerErrorCategory(error),
+      extraction_path: "luna",
+      fallback_used: true,
+      latency_ms: latencyMs,
+    });
     await writeDiagnostic(admin, {
       ...baseDiagnostic,
       internal_budget_available: true,
@@ -176,6 +204,9 @@ export async function POST(request: Request) {
       monthly_spend_usd: reservation.reserved_spend_usd,
       extraction_result: "fallback",
       provider_error_category: providerErrorCategory(error),
+      attempted_at: new Date(startedAt).toISOString(),
+      latency_ms: latencyMs,
+      fallback_used: true,
       ledger_write_status: completion.error
         ? "failed"
         : reservedDiagnostic
@@ -197,6 +228,18 @@ export async function POST(request: Request) {
     p_status: "succeeded",
     p_local_ocr_outcome: localOcrOutcome,
   });
+  const latencyMs = Date.now() - startedAt;
+  await updateLedger(admin, reservation.ledger_id, {
+    attempted_at: new Date(startedAt).toISOString(),
+    completed_at: new Date().toISOString(),
+    provider_status: result.providerStatus,
+    extraction_path: "luna",
+    fallback_used: false,
+    latency_ms: latencyMs,
+  });
+  const calculatedCost = result.usageAvailable
+    ? calculateVisionCostUsd(result.inputTokens, result.outputTokens)
+    : null;
   if (completion.error) {
     await writeDiagnostic(admin, {
       ...baseDiagnostic,
@@ -204,15 +247,28 @@ export async function POST(request: Request) {
       monthly_budget_usd: reservation.approved_limit_usd,
       monthly_spend_usd: reservation.reserved_spend_usd,
       provider_status: result.providerStatus,
-      extraction_result: "failed",
+      extraction_result: "succeeded",
       provider_error_category: "ledger_completion_failed",
+      attempted_at: new Date(startedAt).toISOString(),
+      input_tokens: result.inputTokens,
+      output_tokens: result.outputTokens,
+      total_tokens: result.totalTokens,
+      usage_available: result.usageAvailable,
+      calculated_cost_usd: calculatedCost,
+      latency_ms: latencyMs,
+      fallback_used: false,
       ledger_write_status: "failed",
     });
-    return fallback(
-      "Assisted extraction could not be recorded. We kept your screenshot; please review it manually.",
-      200,
-      { correlationId },
-    );
+    return NextResponse.json({
+      status: "succeeded",
+      model: VISION_MODEL,
+      visionAttempted: true,
+      correlationId,
+      providerStatus: result.providerStatus,
+      draft: visionDraftToBetslipDraft(result.draft),
+      message:
+        "Luna vision extraction finished. Usage recording will be retried separately; review every field before saving.",
+    });
   }
 
   await writeDiagnostic(admin, {
@@ -222,6 +278,14 @@ export async function POST(request: Request) {
     monthly_spend_usd: reservation.reserved_spend_usd,
     provider_status: result.providerStatus,
     extraction_result: "succeeded",
+    attempted_at: new Date(startedAt).toISOString(),
+    input_tokens: result.inputTokens,
+    output_tokens: result.outputTokens,
+    total_tokens: result.totalTokens,
+    usage_available: result.usageAvailable,
+    calculated_cost_usd: calculatedCost,
+    latency_ms: latencyMs,
+    fallback_used: false,
     ledger_write_status: "completed",
   });
   return NextResponse.json({

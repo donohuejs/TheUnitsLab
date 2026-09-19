@@ -72,7 +72,7 @@ type ImportedWager = {
   leg_count: number;
   event_description: string;
   event_date: string;
-  wager_date: string;
+  wager_date: string | null;
   selection: string;
   market_type: "moneyline" | "spread" | "total";
   line: number | null;
@@ -435,7 +435,7 @@ export default async function MyBetsPage({ searchParams }: Props) {
                 </h2>
                 <p className="ticket-time-meta">
                   Kickoff <LocalDateTime value={wager.event_date} /> · Placed{" "}
-                  <LocalDateTime value={wager.wager_date} />
+                  {wager.wager_date ? <LocalDateTime value={wager.wager_date} /> : "Unknown"}
                 </p>
               </div>
               <StatusBadge status={wager.status} />

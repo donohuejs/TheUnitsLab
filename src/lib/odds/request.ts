@@ -6,7 +6,7 @@ import type { CompetitionId } from "./types";
 
 export type CanonicalOddsRequest = {
   provider: "the_odds_api_v4";
-  endpoint: "odds" | "event_odds";
+  endpoint: "odds" | "event_odds" | "events";
   competitionId: CompetitionId;
   providerSportKey: string;
   markets: string[];
@@ -60,6 +60,22 @@ export function createAlternateOddsRequest(
     markets: [...competition.alternateMarkets].sort(),
     bookmakers: bookmakers.map((bookmaker) => bookmaker.providerKey).sort(),
     regions: [...new Set(bookmakers.map((bookmaker) => bookmaker.region))].sort(),
+    oddsFormat: "american",
+    dateFormat: "iso",
+  };
+}
+
+export function createEventCatalogRequest(competitionId: CompetitionId): CanonicalOddsRequest {
+  const competition = getCompetition(competitionId);
+  if (!competition) throw new Error("Unsupported competition");
+  return {
+    provider: "the_odds_api_v4",
+    endpoint: "events",
+    competitionId,
+    providerSportKey: competition.providerSportKey,
+    markets: [],
+    bookmakers: [],
+    regions: [],
     oddsFormat: "american",
     dateFormat: "iso",
   };

@@ -22,7 +22,7 @@ export type AnalyticsWager = {
   stakeUnits: string | number;
   profitLossUnits: string | number;
   decimalOdds: string | number;
-  wageredAt: string;
+  wageredAt: string | null;
   sportKey: string;
   competitionKey: string;
   competitionName: string;
@@ -179,8 +179,12 @@ export function filterAnalyticsWagers(records: AnalyticsWager[], filters: Analyt
   const now = filters.now ?? new Date();
   const start = getAnalyticsPeriodStart(filters.period ?? "all", filters.timeZone ?? "UTC", now);
   return records.filter((record) => {
-    const wagerTime = new Date(record.wageredAt);
-    if (!(wagerTime < now) || (start && wagerTime < start)) return false;
+    if (record.wageredAt) {
+      const wagerTime = new Date(record.wageredAt);
+      if (!(wagerTime < now) || (start && wagerTime < start)) return false;
+    } else if (filters.period && filters.period !== "all") {
+      return false;
+    }
     if (filters.source === "simulated" && record.source !== "simulated") return false;
     if (filters.source === "irl" && record.source !== "external") return false;
     if (filters.sportKey && record.sportKey !== filters.sportKey) return false;
@@ -232,7 +236,8 @@ export function summarizeAnalytics(records: AnalyticsWager[]): AnalyticsSummary 
     .filter((record) => record.status === "won" || record.status === "lost")
     .sort(
       (left, right) =>
-        new Date(left.wageredAt).getTime() - new Date(right.wageredAt).getTime() ||
+        (left.wageredAt ? new Date(left.wageredAt).getTime() : Number.POSITIVE_INFINITY) -
+          (right.wageredAt ? new Date(right.wageredAt).getTime() : Number.POSITIVE_INFINITY) ||
         left.source.localeCompare(right.source) ||
         left.wagerId.localeCompare(right.wagerId),
     );

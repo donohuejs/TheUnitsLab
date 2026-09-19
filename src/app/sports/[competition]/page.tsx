@@ -13,6 +13,7 @@ import { sportsProviderConfiguration } from "@/config/sports";
 import { hasPublicEnvironment } from "@/config/env.public";
 import { getCompetition } from "@/lib/odds/request";
 import { getCompetitionOdds, getEventAlternateOdds } from "@/lib/odds/server";
+import { hasSelectableOdds } from "@/lib/odds/display";
 import type { CompetitionId } from "@/lib/odds/types";
 import { findStraightSelection } from "@/lib/wagers/selection";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -223,112 +224,119 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
       </p>
       <div className="sportsbook-layout">
         <div className="event-list">
-          {dataset?.events.map((event) => {
-            const eventStarted = event.status === "live";
-            const odds = event.odds.filter(
-              (odd) =>
-                (selected === "all" || odd.bookmakerId === selected) &&
-                (marketFilter === "all" || odd.marketType === marketFilter),
-            );
-            const visibleGroups = marketGroups.filter(
-              ([marketType]) => marketFilter === "all" || marketType === marketFilter,
-            );
-            return (
-              <article className="card event-card" key={event.id}>
-                <div className="event-heading">
-                  <div className="event-heading-main">
-                    <h2 className="event-teams">
-                      <span>
-                        <TeamMark teamName={event.awayTeam} sport={event.sport} />
-                        {event.awayTeam}
-                      </span>
-                      <span className="event-at">at</span>
-                      <span>
-                        <TeamMark teamName={event.homeTeam} sport={event.sport} />
-                        {event.homeTeam}
-                      </span>
-                    </h2>
-                    <div className="event-kickoff">
-                      <span className="sr-only">Kickoff </span>
-                      <KickoffTime value={event.scheduledStart} />
+          {dataset?.events
+            .filter((event) => hasSelectableOdds(event, selected ?? "all", marketFilter))
+            .map((event) => {
+              const eventStarted = event.status === "live";
+              const odds = event.odds.filter(
+                (odd) =>
+                  (selected === "all" || odd.bookmakerId === selected) &&
+                  (marketFilter === "all" || odd.marketType === marketFilter),
+              );
+              const visibleGroups = marketGroups.filter(
+                ([marketType]) => marketFilter === "all" || marketType === marketFilter,
+              );
+              return (
+                <article className="card event-card" key={event.id}>
+                  <div className="event-heading">
+                    <div className="event-heading-main">
+                      <h2 className="event-teams">
+                        <span>
+                          <TeamMark teamName={event.awayTeam} sport={event.sport} />
+                          {event.awayTeam}
+                        </span>
+                        <span className="event-at">at</span>
+                        <span>
+                          <TeamMark teamName={event.homeTeam} sport={event.sport} />
+                          {event.homeTeam}
+                        </span>
+                      </h2>
+                      <div className="event-kickoff">
+                        <span className="sr-only">Kickoff </span>
+                        <KickoffTime value={event.scheduledStart} />
+                      </div>
                     </div>
+                    <StatusBadge status={event.status} />
                   </div>
-                  <StatusBadge status={event.status} />
-                </div>
-                {odds.length || marketFilter === "other" ? (
-                  <div className="market-groups">
-                    {visibleGroups.map(([marketType, label]) => {
-                      const marketOdds =
-                        marketType === "other"
-                          ? []
-                          : odds.filter((odd) => odd.marketType === marketType);
-                      return (
-                        <section className="market-group" key={marketType}>
-                          <h3>{label}</h3>
-                          {marketOdds.length ? (
-                            <OddsSelectionGrid
-                              odds={marketOdds.map((odd) => ({
-                                ...odd,
-                                href: `/sports/${id}?${new URLSearchParams({
-                                  ...(selected === "all" ? {} : { bookmaker: selected }),
-                                  event: event.id,
-                                  book: odd.bookmakerId,
-                                  market: odd.marketType,
-                                  selection: odd.selection,
-                                  ...(odd.point === null ? {} : { point: String(odd.point) }),
-                                  ...(marketFilter === "all" ? {} : { marketFilter }),
-                                }).toString()}`,
-                                isSelected:
-                                  chosen?.event.id === event.id &&
-                                  chosen.odds.bookmakerId === odd.bookmakerId &&
-                                  chosen.odds.marketType === odd.marketType &&
-                                  chosen.odds.selection === odd.selection &&
-                                  chosen.odds.point === odd.point,
-                                eventStarted,
-                              }))}
-                            />
-                          ) : marketType === "other" ? (
-                            <p className="muted">
-                              No props or other markets are returned by the configured provider
-                              feed.
-                            </p>
-                          ) : null}
-                        </section>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="empty-state">No supported odds from the selected bookmaker.</p>
-                )}
-                {competition.alternateMarkets.length ? (
-                  <p className="alternate-lines-link">
-                    <Link
-                      href={`/sports/${id}?${new URLSearchParams({
-                        ...(selected === "all" ? {} : { bookmaker: selected }),
-                        event: event.id,
-                        alternates: "1",
-                        ...(marketFilter === "all" ? {} : { marketFilter }),
-                      }).toString()}`}
-                    >
-                      {loadAlternates && baseEvent?.id === event.id
-                        ? alternateResult?.dataset.events.some((candidate) => candidate.odds.length)
-                          ? "Provider-priced alternate lines loaded"
-                          : "No alternate lines returned by the provider"
-                        : "Load provider-priced alternate lines"}
-                    </Link>
-                    <small>
-                      {loadAlternates && baseEvent?.id === event.id && !alternateResult
-                        ? "Alternate pricing is unavailable right now."
-                        : "Separate on-demand provider pricing; no line interpolation."}
-                    </small>
-                  </p>
-                ) : null}
-              </article>
-            );
-          })}
-          {dataset && dataset.events.length === 0 ? (
+                  {odds.length || marketFilter === "other" ? (
+                    <div className="market-groups">
+                      {visibleGroups.map(([marketType, label]) => {
+                        const marketOdds =
+                          marketType === "other"
+                            ? []
+                            : odds.filter((odd) => odd.marketType === marketType);
+                        return (
+                          <section className="market-group" key={marketType}>
+                            <h3>{label}</h3>
+                            {marketOdds.length ? (
+                              <OddsSelectionGrid
+                                odds={marketOdds.map((odd) => ({
+                                  ...odd,
+                                  href: `/sports/${id}?${new URLSearchParams({
+                                    ...(selected === "all" ? {} : { bookmaker: selected }),
+                                    event: event.id,
+                                    book: odd.bookmakerId,
+                                    market: odd.marketType,
+                                    selection: odd.selection,
+                                    ...(odd.point === null ? {} : { point: String(odd.point) }),
+                                    ...(marketFilter === "all" ? {} : { marketFilter }),
+                                  }).toString()}`,
+                                  isSelected:
+                                    chosen?.event.id === event.id &&
+                                    chosen.odds.bookmakerId === odd.bookmakerId &&
+                                    chosen.odds.marketType === odd.marketType &&
+                                    chosen.odds.selection === odd.selection &&
+                                    chosen.odds.point === odd.point,
+                                  eventStarted,
+                                }))}
+                              />
+                            ) : marketType === "other" ? (
+                              <p className="muted">
+                                No props or other markets are returned by the configured provider
+                                feed.
+                              </p>
+                            ) : null}
+                          </section>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="empty-state">No supported odds from the selected bookmaker.</p>
+                  )}
+                  {competition.alternateMarkets.length ? (
+                    <p className="alternate-lines-link">
+                      <Link
+                        href={`/sports/${id}?${new URLSearchParams({
+                          ...(selected === "all" ? {} : { bookmaker: selected }),
+                          event: event.id,
+                          alternates: "1",
+                          ...(marketFilter === "all" ? {} : { marketFilter }),
+                        }).toString()}`}
+                      >
+                        {loadAlternates && baseEvent?.id === event.id
+                          ? alternateResult?.dataset.events.some(
+                              (candidate) => candidate.odds.length,
+                            )
+                            ? "Provider-priced alternate lines loaded"
+                            : "No alternate lines returned by the provider"
+                          : "Load provider-priced alternate lines"}
+                      </Link>
+                      <small>
+                        {loadAlternates && baseEvent?.id === event.id && !alternateResult
+                          ? "Alternate pricing is unavailable right now."
+                          : "Separate on-demand provider pricing; no line interpolation."}
+                      </small>
+                    </p>
+                  ) : null}
+                </article>
+              );
+            })}
+          {dataset &&
+          dataset.events.filter((event) =>
+            hasSelectableOdds(event, selected ?? "all", marketFilter),
+          ).length === 0 ? (
             <p className="empty-state">
-              <strong>No scheduled events are currently available</strong>
+              <strong>No bets available right now.</strong>
               Check back later; odds refreshes are shared and quota-protected.
             </p>
           ) : null}

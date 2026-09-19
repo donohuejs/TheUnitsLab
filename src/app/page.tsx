@@ -22,7 +22,7 @@ type DashboardRpcWager = {
   stake_units: string | number;
   profit_loss_units: string | number;
   decimal_odds: string | number;
-  wagered_at: string;
+  wagered_at: string | null;
   sport_key: string;
   competition_key: string;
   competition_name: string;

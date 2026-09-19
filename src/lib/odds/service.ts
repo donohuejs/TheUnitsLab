@@ -18,7 +18,7 @@ export interface OddsStore {
   latestUsed(): Promise<number | null>;
   record(
     request: CanonicalOddsRequest,
-    purpose: "page_load" | "manual_refresh",
+    purpose: "page_load" | "manual_refresh" | "event_discovery",
     key: string,
     quota: QuotaMetadata,
     status: number,
@@ -36,7 +36,12 @@ const delay = (milliseconds: number) => new Promise((resolve) => setTimeout(reso
 export async function getOdds(
   dependencies: { store: OddsStore; provider: ProviderFetch; now?: () => Date; allowance?: number },
   competitionId: CompetitionId,
-  options: { manual?: boolean } = {},
+  options: {
+    manual?: boolean;
+    cacheTtlSeconds?: number;
+    purpose?: "page_load" | "manual_refresh" | "event_discovery";
+    quotaExempt?: boolean;
+  } = {},
 ): Promise<OddsResult> {
   return getOddsForRequest(dependencies, createOddsRequest(competitionId), competitionId, options);
 }
@@ -45,7 +50,12 @@ export async function getOddsForRequest(
   dependencies: { store: OddsStore; provider: ProviderFetch; now?: () => Date; allowance?: number },
   request: CanonicalOddsRequest,
   competitionId: CompetitionId,
-  options: { manual?: boolean } = {},
+  options: {
+    manual?: boolean;
+    cacheTtlSeconds?: number;
+    purpose?: "page_load" | "manual_refresh" | "event_discovery";
+    quotaExempt?: boolean;
+  } = {},
 ): Promise<OddsResult> {
   const now = dependencies.now?.() ?? new Date();
   const key = canonicalRequestKey(request);
@@ -53,6 +63,7 @@ export async function getOddsForRequest(
   const used = await dependencies.store.latestUsed();
   const state = quotaState(used, dependencies.allowance ?? 500);
   const manual = options.manual === true;
+  const quotaExempt = options.quotaExempt === true || request.endpoint === "events";
   const fresh = cached && new Date(cached.expiresAt) > now;
   const cooldown = cached && new Date(cached.refreshNotBefore) > now;
   if (fresh || (manual && cooldown)) {
@@ -63,7 +74,7 @@ export async function getOddsForRequest(
       quotaState: state,
     };
   }
-  if (!mayRefresh(state, manual)) {
+  if (!quotaExempt && !mayRefresh(state, manual)) {
     if (cached)
       return {
         dataset: cached.dataset,
@@ -111,7 +122,7 @@ export async function getOddsForRequest(
     }
     const upstream = await dependencies.provider(request);
     const fetchedAt = (dependencies.now?.() ?? new Date()).toISOString();
-    const baseTtl = 900;
+    const baseTtl = options.cacheTtlSeconds ?? 900;
     const ttl = effectiveTtlSeconds(baseTtl, state);
     const dataset: OddsDataset = { competitionId, events: upstream.events, fetchedAt };
     const row: CacheRow = {
@@ -124,7 +135,7 @@ export async function getOddsForRequest(
     await dependencies.store.write(row, request);
     await dependencies.store.record(
       request,
-      manual ? "manual_refresh" : "page_load",
+      options.purpose ?? (manual ? "manual_refresh" : "page_load"),
       key,
       upstream.quota,
       upstream.status,

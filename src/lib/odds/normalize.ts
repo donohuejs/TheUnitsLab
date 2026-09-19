@@ -28,7 +28,7 @@ const eventSchema = z.object({
   commence_time: z.string().datetime(),
   home_team: z.string(),
   away_team: z.string(),
-  bookmakers: z.array(bookmakerSchema),
+  bookmakers: z.array(bookmakerSchema).default([]),
 });
 
 function selection(name: string, home: string, away: string): SelectionType | null {

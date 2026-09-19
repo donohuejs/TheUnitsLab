@@ -575,3 +575,31 @@ desktop navigation spacing and compact mobile layout were adjusted for the appro
 widths. These changes preserve Study-required import review, immutable ticket terms, forced RLS,
 private screenshot storage, imported/virtual-bankroll separation, deterministic settlement, and all
 non-real-money boundaries.
+
+## Release-candidate fix patch 8 architecture
+
+Patch 8 is the final current release-blocking hardening pass within Phase 8. It preserves Patch 7's
+Luna-first screenshot path: one server-side structured Luna extraction is followed by deterministic
+normalization, including signed spread-line recovery and source-ticket timestamp parsing. A missing
+ticket timestamp remains null and is explained in the review form; it is never replaced with upload
+time or current time. Event kickoff is a separate canonical value.
+
+Imported event discovery first searches the shared normalized `odds_cache` and retained non-synthetic
+`event_scores` catalog. It uses canonical team aliases and bounded team/date/competition matching.
+For a safe inferred NCAA candidate such as Miami (FL) at Wake Forest, it may use the The Odds API
+`/v4/sports/{sport}/events` event catalog endpoint. Event discovery is shared, lease-coalesced, and
+longer-lived than priced odds; it is recorded with `event_discovery` purpose and does not consume the
+odds-refresh budget. Ambiguous or unsupported candidates remain unmatched/manual, and database-side
+matching remains authoritative before automatic settlement.
+
+The vision usage ledger now represents one row per attempt, distinguishes success from failure,
+stores provider status/category, latency, path, fallback state, token usage, and nullable usage-based
+cost. Missing provider usage is shown as unavailable while its reservation remains budget-occupied;
+telemetry write failures do not discard an otherwise valid reviewed draft. The admin page derives
+model, attempt/success/failure counts, cost, remaining budget, average cost, and last timestamps from
+the ledger/diagnostic evidence rather than stale fallback labels or fabricated zeroes.
+
+Odds browsing removes live/locked events and empty market cards from the selection surface. NCAA logo
+resolution uses canonical aliases before the existing ESPN asset lookup and retains initials only for
+unknown/unusable assets. Mobile changes are limited to release UX: a safe-area-aware sticky header,
+responsive heading scale, reachable horizontal filter rows, and stacked adaptive vision metric cards.

@@ -74,6 +74,7 @@ export type VisionCallResult = {
   totalTokens: number;
   responseId: string | null;
   providerStatus: number;
+  usageAvailable: boolean;
 };
 
 export class VisionMalformedResponseError extends Error {
@@ -172,19 +173,25 @@ export async function extractBetslipWithVision(
     throw new VisionMalformedResponseError();
   }
   const usage = body.usage && typeof body.usage === "object" ? body.usage : {};
-  const inputTokens = Number((usage as { input_tokens?: unknown }).input_tokens ?? 0);
-  const outputTokens = Number((usage as { output_tokens?: unknown }).output_tokens ?? 0);
-  const totalTokens = Number(
-    (usage as { total_tokens?: unknown }).total_tokens ?? inputTokens + outputTokens,
-  );
-  if (
-    !Number.isInteger(inputTokens) ||
-    !Number.isInteger(outputTokens) ||
-    !Number.isInteger(totalTokens)
-  ) {
-    throw new VisionMalformedResponseError();
-  }
-  calculateVisionCostUsd(inputTokens, outputTokens);
+  const rawInput = (usage as { input_tokens?: unknown }).input_tokens;
+  const rawOutput = (usage as { output_tokens?: unknown }).output_tokens;
+  const rawTotal = (usage as { total_tokens?: unknown }).total_tokens;
+  const inputTokens =
+    Number.isInteger(Number(rawInput)) && Number(rawInput) >= 0 ? Number(rawInput) : 0;
+  const outputTokens =
+    Number.isInteger(Number(rawOutput)) && Number(rawOutput) >= 0 ? Number(rawOutput) : 0;
+  const totalTokens =
+    Number.isInteger(Number(rawTotal)) && Number(rawTotal) >= 0
+      ? Number(rawTotal)
+      : inputTokens + outputTokens;
+  const usageAvailable =
+    rawInput !== undefined &&
+    rawInput !== null &&
+    rawOutput !== undefined &&
+    rawOutput !== null &&
+    Number.isInteger(Number(rawInput)) &&
+    Number.isInteger(Number(rawOutput));
+  if (usageAvailable) calculateVisionCostUsd(inputTokens, outputTokens);
   return {
     draft,
     inputTokens,
@@ -192,5 +199,6 @@ export async function extractBetslipWithVision(
     totalTokens,
     responseId: typeof body.id === "string" ? body.id : null,
     providerStatus: response.status,
+    usageAvailable,
   };
 }

@@ -47,6 +47,12 @@ function value(formData: FormData, name: string) {
   return typeof candidate === "string" ? candidate : "";
 }
 
+function optionalIso(valueToParse: string) {
+  if (!valueToParse.trim()) return null;
+  const date = new Date(valueToParse);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 function finish(message: string): never {
   redirect(`/import-betslip?notice=${encodeURIComponent(message)}`);
 }
@@ -84,7 +90,10 @@ const importedWagerSchema = z.object({
   eventDescription: z.string().trim().min(2).max(200),
   eventDate: z.string().refine((candidate) => !Number.isNaN(Date.parse(candidate))),
   providerEventId: z.string().trim().max(160),
-  wagerDate: z.string().refine((candidate) => !Number.isNaN(Date.parse(candidate))),
+  wagerDate: z.union([
+    z.literal(""),
+    z.string().refine((candidate) => !Number.isNaN(Date.parse(candidate))),
+  ]),
   selection: z.string().trim().min(1).max(120),
   selectionKey: z.enum(["", "home", "away", "draw", "over", "under"]),
   marketType: z.enum(["moneyline", "spread", "total"]),
@@ -216,9 +225,7 @@ export async function createImportedWager(formData: FormData) {
       p_combined_american_odds: economics.americanOdds,
       p_raw_stake_dollars: economics.stakeDollars,
       p_raw_return_dollars: economics.returnDollars,
-      p_wager_date: new Date(
-        value(formData, "wagerDateUtc") || parsed.data.wagerDate,
-      ).toISOString(),
+      p_wager_date: optionalIso(value(formData, "wagerDateUtc") || parsed.data.wagerDate),
       p_status: "open",
       p_verification_status: parsed.data.verificationStatus,
       p_user_notes: parsed.data.userNotes || null,
@@ -301,7 +308,7 @@ export async function createImportedWager(formData: FormData) {
     p_american_odds: economics.americanOdds,
     p_raw_stake_dollars: economics.stakeDollars,
     p_raw_return_dollars: economics.returnDollars,
-    p_wager_date: new Date(value(formData, "wagerDateUtc") || parsed.data.wagerDate).toISOString(),
+    p_wager_date: optionalIso(value(formData, "wagerDateUtc") || parsed.data.wagerDate),
     p_status: parsed.data.status,
     p_verification_status: parsed.data.verificationStatus,
     p_user_notes: parsed.data.userNotes || null,

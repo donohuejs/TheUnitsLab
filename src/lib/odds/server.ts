@@ -7,7 +7,7 @@ import { normalizeOddsResponse } from "./normalize";
 import { PostgresOddsStore } from "./postgres-store";
 import { fetchOddsProvider } from "./provider";
 import { getOdds, getOddsForRequest } from "./service";
-import { createAlternateOddsRequest } from "./request";
+import { createAlternateOddsRequest, createEventCatalogRequest, getCompetition } from "./request";
 import type { CompetitionId } from "./types";
 
 function markStartedEvents<T extends { scheduledStart: string; status: "scheduled" | "live" }>(
@@ -69,5 +69,33 @@ export async function getEventAlternateOdds(competitionId: CompetitionId, provid
     },
     createAlternateOddsRequest(competitionId, providerEventId),
     competitionId,
+  );
+}
+
+export async function getCompetitionEventCatalog(competitionId: CompetitionId) {
+  const environment = readServerEnvironment(process.env);
+  const competition = getCompetition(competitionId);
+  if (!competition) throw new Error("Unsupported competition");
+  const store = new PostgresOddsStore(createSupabaseAdminClient());
+  return getOddsForRequest(
+    {
+      store,
+      allowance: environment.ODDS_API_MONTHLY_ALLOWANCE,
+      provider: async (request) => {
+        const response = await fetchOddsProvider(request, environment.THE_ODDS_API_KEY);
+        return {
+          events: normalizeOddsResponse(response.body, competitionId, new Date().toISOString()),
+          quota: response.quota,
+          status: response.status,
+        };
+      },
+    },
+    createEventCatalogRequest(competitionId),
+    competitionId,
+    {
+      purpose: "event_discovery",
+      quotaExempt: true,
+      cacheTtlSeconds: competition.cache.scheduleSeconds,
+    },
   );
 }
