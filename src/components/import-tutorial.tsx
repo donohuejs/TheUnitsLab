@@ -4,12 +4,31 @@ import { useEffect, useRef, useState } from "react";
 
 import { acquireBodyScrollLock } from "@/lib/ui/scroll-lock";
 
+const TUTORIAL_CAPTIONS = [
+  [0, 3, "Open Import Betslip and upload a synthetic sportsbook screenshot."],
+  [3, 6, "Luna processes the screenshot. Review the extracted draft."],
+  [6, 9, "Correct the event, kickoff, market, selection, line, and odds when needed."],
+  [9, 12, "Choose Continue to review the market and selection."],
+  [12, 15, "Confirm the canonical event and details when available."],
+  [15, 18, "Choose Continue, then select a Study or No Study — Personal."],
+  [18, 21, "Confirm stake, American odds, and total return, then choose Review draft."],
+  [21, 24.5, "Check the final editable summary and choose Confirm and save the import."],
+  [24.5, 27.4, "Open My Bets and verify the successful imported wager."],
+] as const;
+
+function captionAtTime(currentTime: number) {
+  const cue = TUTORIAL_CAPTIONS.find(([start, end]) => currentTime >= start && currentTime < end);
+  return cue?.[2] ?? "";
+}
+
 export function ImportTutorial() {
   const [open, setOpen] = useState(false);
   const [videoUnavailable, setVideoUnavailable] = useState(false);
+  const [captionText, setCaptionText] = useState<string>(TUTORIAL_CAPTIONS[0][2]);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -55,9 +74,28 @@ export function ImportTutorial() {
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open || videoUnavailable) return;
+    const video = videoRef.current;
+    if (!video) return;
+
+    const hideNativeCaptionOverlay = () => {
+      const track = Array.from(video.textTracks).find((candidate) => candidate.kind === "captions");
+      if (track) track.mode = "hidden";
+    };
+    hideNativeCaptionOverlay();
+    video.addEventListener("loadedmetadata", hideNativeCaptionOverlay);
+    return () => video.removeEventListener("loadedmetadata", hideNativeCaptionOverlay);
+  }, [open, videoUnavailable]);
+
   const openTutorial = () => {
     setVideoUnavailable(false);
+    setCaptionText(TUTORIAL_CAPTIONS[0][2]);
     setOpen(true);
+  };
+
+  const updateCaption = () => {
+    setCaptionText(captionAtTime(videoRef.current?.currentTime ?? 0));
   };
 
   return (
@@ -136,23 +174,40 @@ export function ImportTutorial() {
                 </ol>
               </div>
             ) : (
-              <video
-                controls
-                preload="metadata"
-                playsInline
-                aria-label="Import Betslip walkthrough"
-                onError={() => setVideoUnavailable(true)}
-              >
-                <source src="/help/import-betslip-demo-v0.11.1.webm" type="video/webm" />
-                <track
-                  kind="captions"
-                  src="/help/import-betslip-demo-v0.11.1.vtt"
-                  srcLang="en"
-                  label="English captions"
-                  default
-                />
-                Your browser does not support the tutorial video. Follow the written steps below.
-              </video>
+              <div className="import-tutorial-media">
+                <video
+                  ref={videoRef}
+                  controls
+                  preload="metadata"
+                  playsInline
+                  aria-label="Import Betslip walkthrough"
+                  aria-describedby="import-tutorial-caption"
+                  onLoadedMetadata={updateCaption}
+                  onSeeked={updateCaption}
+                  onTimeUpdate={updateCaption}
+                  onError={() => setVideoUnavailable(true)}
+                >
+                  <source src="/help/import-betslip-demo-v0.11.2.webm" type="video/webm" />
+                  <track
+                    kind="captions"
+                    src="/help/import-betslip-demo-v0.11.2.vtt"
+                    srcLang="en"
+                    label="English captions"
+                    default
+                  />
+                  Your browser does not support the tutorial video. Follow the written steps below.
+                </video>
+                <div
+                  id="import-tutorial-caption"
+                  className="import-tutorial-caption"
+                  role="region"
+                  aria-label="Tutorial captions"
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
+                  {captionText || "Captions appear here while the video plays."}
+                </div>
+              </div>
             )}
             <ol className="import-tutorial-steps">
               <li>Open Import Betslip and upload a sportsbook screenshot.</li>

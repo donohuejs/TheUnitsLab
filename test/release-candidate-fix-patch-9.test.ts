@@ -92,18 +92,22 @@ describe("release-candidate fix patch 9", () => {
     expect(tutorial).toContain("playsInline");
     expect(tutorial).toContain("onError={() => setVideoUnavailable(true)}");
     expect(tutorial).toContain("Video unavailable in this browser.");
-    expect(tutorial).toContain("import-betslip-demo-v0.11.1.webm");
-    expect(tutorial).toContain("import-betslip-demo-v0.11.1.vtt");
+    expect(tutorial).toContain("import-betslip-demo-v0.11.2.webm");
+    expect(tutorial).toContain("import-betslip-demo-v0.11.2.vtt");
+    expect(tutorial).toContain('kind="captions"');
+    expect(tutorial).toContain('aria-describedby="import-tutorial-caption"');
+    expect(tutorial).toContain('aria-live="polite"');
     expect(tutorial).not.toContain("autoPlay");
     expect(
-      existsSync(new URL("../public/help/import-betslip-demo-v0.11.1.webm", import.meta.url)),
+      existsSync(new URL("../public/help/import-betslip-demo-v0.11.2.webm", import.meta.url)),
     ).toBe(true);
     expect(
-      statSync(new URL("../public/help/import-betslip-demo-v0.11.1.webm", import.meta.url)).size,
+      statSync(new URL("../public/help/import-betslip-demo-v0.11.2.webm", import.meta.url)).size,
     ).toBeGreaterThan(0);
     expect(
-      existsSync(new URL("../public/help/import-betslip-demo-v0.11.1.vtt", import.meta.url)),
+      existsSync(new URL("../public/help/import-betslip-demo-v0.11.2.vtt", import.meta.url)),
     ).toBe(true);
+    expect(tutorial).not.toContain("import-betslip-demo-v0.11.1.vtt");
     expect(recorder).toContain("/track-bet");
     expect(recorder).toContain('getByRole("button", { name: "Upload Screenshot" })');
     expect(recorder).toContain("No Study — Personal");
@@ -112,6 +116,7 @@ describe("release-candidate fix patch 9", () => {
     expect(mobile).toContain("acquireBodyScrollLock");
     expect(css).toContain("height: 100dvh");
     expect(css).toContain(".import-tutorial-backdrop");
+    expect(css).toContain(".import-tutorial-caption");
   });
 
   it("runs bounded odds recovery before returning a primary completion-write failure", () => {

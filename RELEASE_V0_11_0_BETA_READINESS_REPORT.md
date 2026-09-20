@@ -247,3 +247,62 @@ walkthrough and versioned VTT captions describe the same sequence.
 - The existing v0.11.0 validation surfaces remain covered; no commit or push was performed.
 
 V0.11.1 TUTORIAL HOTFIX GATE: PASS
+
+## v0.11.2 Tutorial Caption Layout Hotfix
+
+Date: 2026-09-20
+Application version: **v0.11.2**
+Scope: tutorial caption presentation only
+
+### Root cause and implementation
+
+Production smoke testing confirmed that the v0.11.1 video and workflow were correct, but browser-
+native WebVTT captions were drawn over active content and controls, especially on mobile. The
+caption overlay could cover Continue buttons, review fields, canonical-event confirmation, Study /
+Personal selection, final confirmation, and success content.
+
+The hotfix keeps the existing recording unchanged and adds a dedicated caption-safe band directly
+below the video. The `kind="captions"` VTT track remains loaded for browser caption semantics and
+the video is linked to the safe-band region with `aria-describedby`. The component synchronizes the
+current cue into an `aria-live="polite"` region with readable responsive text, then sets the native
+track to hidden so Safari and other browsers cannot reintroduce an overlapping visual overlay.
+Native video controls remain on the video itself, while the custom caption region is outside the
+control surface and never obscures the recording.
+
+The underlying 27-second recording was not re-recorded. Its bytes were preserved at the new
+versioned media path:
+
+- Old media path: `public/help/import-betslip-demo-v0.11.1.webm`
+- New media path: `public/help/import-betslip-demo-v0.11.2.webm`
+- Old caption path: `public/help/import-betslip-demo-v0.11.1.vtt` (removed from the served assets)
+- New caption path: `public/help/import-betslip-demo-v0.11.2.vtt`
+
+The corrected multi-stage Import Betslip walkthrough and written steps remain unchanged.
+
+### Responsive and accessibility validation
+
+- Browser validation confirmed the new media and caption assets load successfully.
+- At 375px, 390px, and 430px, the caption band stayed inside the modal, wrapped without clipping,
+  remained readable, and did not cover video controls or recorded UI. No horizontal overflow was
+  observed.
+- At 1280px desktop, the caption band remained within the dialog and below the video without
+  obscuring content.
+- Native controls, `playsInline`, metadata preload, no autoplay, keyboard close, and mobile close
+  behavior remained available.
+- The VTT track remains present and browser-loadable; the synchronized safe-band text is exposed
+  through an accessible labelled live region for consistent mobile Safari behavior.
+
+### Version and validation results
+
+- `package.json` and `package-lock.json` are synchronized at 0.11.2; the UI still derives the
+  displayed version from the canonical package source.
+- `src/config/version-history.ts` now lists v0.11.2 first and preserves v0.11.1, v0.11.0, and
+  v0.10.1.
+- Focused tutorial/version tests: **PASS**.
+- `npm.cmd run validate`: **PASS** — format, lint, typecheck, unit tests, secret scan, and build.
+- `npm.cmd audit --audit-level=high`: **PASS** — 0 high-severity vulnerabilities.
+- `git diff --check`: **PASS**.
+- No database, RLS, feedback, betting, provider, analytics, navigation, backup, or reset changes
+  were made. No commit or push was performed.
+
+V0.11.2 TUTORIAL CAPTION HOTFIX GATE: PASS

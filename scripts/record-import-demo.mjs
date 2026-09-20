@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { chromium, expect } from "@playwright/test";
 
 const outputDirectory = resolve("public/help");
-const outputFilename = "import-betslip-demo-v0.11.1.webm";
+const outputFilename = "import-betslip-demo-v0.11.2.webm";
 const baseUrl = process.env.IMPORT_DEMO_BASE_URL ?? "http://127.0.0.1:3000";
 const storageState = process.env.IMPORT_DEMO_STORAGE_STATE
   ? resolve(process.env.IMPORT_DEMO_STORAGE_STATE)

@@ -745,6 +745,28 @@ textarea:focus {
   background: #10231b;
 }
 
+.import-tutorial-media {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 0.55rem;
+}
+
+.import-tutorial-caption {
+  display: grid;
+  min-height: 3.25rem;
+  place-items: center;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #345c4a;
+  border-radius: 0.7rem;
+  color: #fff;
+  background: #10231b;
+  font-size: clamp(0.9rem, 1.6vw, 1rem);
+  line-height: 1.35;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
 .import-tutorial-fallback {
   border: 1px solid #d6e9d7;
   border-radius: 0.7rem;

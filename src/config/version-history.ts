@@ -6,6 +6,15 @@ export type VersionHistoryEntry = {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = [
   {
+    version: "0.11.2",
+    title: "Tutorial Caption Layout Hotfix",
+    changes: [
+      "Repositioned tutorial captions to avoid covering important UI",
+      "Preserved full accessibility caption support",
+      "Kept the corrected multi-stage Import Betslip walkthrough unchanged",
+    ],
+  },
+  {
     version: "0.11.1",
     title: "Tutorial Video Hotfix",
     changes: [
