@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { acquireBodyScrollLock } from "@/lib/ui/scroll-lock";
+
 export function ImportTutorial() {
   const [open, setOpen] = useState(false);
   const [videoUnavailable, setVideoUnavailable] = useState(false);
@@ -42,17 +44,13 @@ export function ImportTutorial() {
         first.focus();
       }
     };
-    const previousHtmlOverflow = document.documentElement.style.overflow;
-    const previousOverflow = document.body.style.overflow;
     const trigger = triggerRef.current;
-    document.documentElement.style.overflow = "hidden";
-    document.body.style.overflow = "hidden";
+    const releaseScrollLock = acquireBodyScrollLock();
     closeRef.current?.focus();
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
-      document.documentElement.style.overflow = previousHtmlOverflow;
-      document.body.style.overflow = previousOverflow;
+      releaseScrollLock();
       trigger?.focus();
     };
   }, [open]);

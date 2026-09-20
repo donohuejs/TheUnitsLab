@@ -20,6 +20,7 @@ const sportsPage = read("../src/app/sports/[competition]/page.tsx");
 const actions = read("../src/app/sports/bet-actions.ts");
 const cleanup = read("../src/components/slip-placement-cleanup.tsx");
 const css = read("../src/app/globals.css");
+const scrollLock = read("../src/lib/ui/scroll-lock.ts");
 
 const leg = (
   eventId: string,
@@ -76,9 +77,9 @@ describe("mobile Bet Slip UX addendum", () => {
   });
 
   it("locks and restores the exact Browse Odds scroll position", () => {
-    expect(betSlip).toContain('body.style.position = "fixed"');
-    expect(betSlip).toContain("body.style.top = `-${scrollY}px`");
-    expect(betSlip).toContain("window.scrollTo(0, scrollY)");
+    expect(betSlip).toContain("acquireBodyScrollLock");
+    expect(scrollLock).toContain('html.style.overflow = "hidden"');
+    expect(scrollLock).toContain("window.scrollTo(0, restoreY)");
     expect(oddsGrid).toContain("scroll={false}");
   });
 

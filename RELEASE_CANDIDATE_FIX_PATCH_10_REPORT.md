@@ -4,15 +4,14 @@ Date: 2026-09-20
 
 ## Scope and recommendation
 
-Patch 10 hardens the release UX around the shared header/navigation, mobile drawer, approved logo
-asset usage, and final Bet Slip removal. No betting logic, imported-wager logic, analytics, vision
-accounting, canonical matching, provider behavior, quota behavior, database schema, or migration was
-changed.
+Patch 10 and its production hotfix harden the release UX around the shared header/navigation,
+mobile drawer, approved logo asset usage, and final Bet Slip removal. No betting logic,
+imported-wager logic, analytics, vision accounting, canonical matching, provider behavior, quota
+behavior, database schema, or migration was changed.
 
-The implementation is complete and the repository validation gate is green. Authenticated browser
-smoke remains a required deployed/local-environment follow-up because this workspace has no
-`.env.local` Supabase public configuration, so sign-up was correctly disabled during the attempted
-Playwright run.
+The deterministic hotfix browser harness is green. Authenticated production-route browser smoke
+remains a separate follow-up because this workspace has no `.env.local` Supabase public
+configuration, so the existing Browse Odds smoke correctly stops at disabled sign-up.
 
 ## Files changed
 
@@ -21,6 +20,8 @@ Application and styling:
 - `src/lib/navigation.ts`
 - `src/components/mobile-nav.tsx`
 - `src/components/bet-slip.tsx`
+- `src/lib/ui/scroll-lock.ts`
+- `src/components/patch-10-hotfix-harness.tsx`
 - `src/app/globals.css`
 - `package.json`
 
@@ -31,6 +32,7 @@ Tests and browser coverage:
 - `test/release-candidate-fix-patch-2.test.ts`
 - `test/ui-polish.test.ts`
 - `scripts/check-patch-10-release-ux.mjs`
+- `scripts/check-patch-10-hotfix.mjs`
 
 Documentation:
 
@@ -70,36 +72,95 @@ shared navigation source while active-page semantics remain on the remaining lin
 
 ### Mobile header dead space and drawer disappearance
 
-The mobile layout had unnecessary shell top padding and a larger-than-needed full-lockup wrapper.
-The open drawer backdrop also used a higher stacking layer than the header while living inside the
-header’s isolated sticky stacking context, so opening it could paint over the header and make the
-bar appear to disappear. Conditional drawer rendering added avoidable mount/unmount churn during
-repeated open/close cycles.
-
-The mobile shell/header padding and wrapper width are now compact and safe-area aware. The drawer
-backdrop remains mounted, toggles through `hidden` and an open class, and is layered below the
-visible mobile header while remaining above page content. The existing body scroll lock, exact
-scroll restoration, focus management, Escape handling, close-button handling, backdrop close, and
-navigation close behavior remain in place.
+The mobile shell/header padding and wrapper width are compact and safe-area aware. The production
+disappearance failure and its corrective fix are documented in the hotfix section below. The final
+hotfix trims only safe surrounding mobile spacing (`padding-bottom: 0.15rem` and `margin-bottom:
+0.75rem`); the visible logo width remains `min(58vw, 12rem)`.
 
 ### Final Bet Slip item removal
 
-The vulnerable path was inconsistent identity resolution: list removal passed an identity derived
-with a list index, while the mobile current-selection path called the identity helper without first
-resolving the item in the current canonical collection. Separate straight/parlay callbacks also
-made it easier for the final item to remain in a derived view or for a stale identity to be used.
-
-All visible removal controls now use one helper. It resolves the candidate against the current
-collection, obtains its current stable `clientSelectionId` with the current index, and applies the
-appropriate persisted view removal. The same action handles 3→2, 2→1, and 1→0. Non-final mobile
-removals keep the sheet open; the final removal closes it, removes the tray, and leaves valid empty
-persisted state.
+The production root cause and corrective fix are documented in the hotfix section below. The
+earlier identity hardening remains in place, and the new browser harness traces the complete remove
+event through canonical state, persistence, derived count, and sheet behavior.
 
 ### Touch reliability
 
 Bet Slip Remove controls remain native semantic buttons and now have inline-flex layout, minimum
 44×44px dimensions, touch-action manipulation, visible hover/pressed treatment, and the existing
 focus ring. One tap maps to one canonical removal call.
+
+## Production Hotfix — Header Drawer + Final Slip Removal
+
+### Header drawer disappearance
+
+Exact root cause: the drawer was rendered inside the sticky `.top-nav`, whose `backdrop-filter` and
+isolated stacking context could become the containing/painting context for the drawer’s fixed
+descendant. After a deep scroll, the drawer and header no longer behaved as independent viewport
+surfaces: the close control could be outside the viewport or have pointer events intercepted by the
+header. The header/body lifecycle also had separate scroll-lock snapshots in the header and Bet
+Slip, so overlapping open/close cleanup could restore stale styles. This was a positioning and
+scroll-lock interaction, not a logo or isolated CSS-height issue.
+
+The browser harness reproduced the pre-fix state with a real touch tap: scroll, open, then the
+drawer close control resolved outside the viewport. The fix portals the drawer backdrop and panel
+to `document.body`, keeps the header mounted in its own tree, gives the backdrop a layer below the
+header and the panel its own layer above the header, and removes the drawer portal completely on
+close. `acquireBodyScrollLock` now owns one reference-counted HTML overflow lock for the drawer,
+Bet Slip, and import tutorial. It restores the captured scroll position only after the final lock
+releases, so one surface cannot undo another surface’s lock.
+
+Why prior tests missed it: the previous smoke path stopped at authentication before reaching the
+real header, and the earlier source contracts did not scroll a real page, perform touch hit testing,
+or exercise repeated open/close cleanup. The new harness uses the production `AppNav` and
+`MobileNav`, not a mock drawer.
+
+Files changed: `src/components/mobile-nav.tsx`, `src/lib/ui/scroll-lock.ts`,
+`src/app/globals.css`, `src/components/patch-10-hotfix-harness.tsx`,
+`scripts/check-patch-10-hotfix.mjs`, and the related release-candidate tests.
+
+Regression test: `npm.cmd run check:release:ux:hotfix` runs ten open/close cycles at 375px, 390px,
+and 430px; checks header and hamburger bounding boxes while open and after close; checks hamburger
+and Remove hit targets with `elementFromPoint`; covers Close, backdrop, Escape, and navigation-item
+close; verifies the backdrop is removed, page controls remain clickable, body/html lock state is
+restored, scroll is blocked while open and restored after close, and normal page scrolling resumes.
+
+### Final slip removal
+
+Exact root cause: the Remove handler was invoked with the correct stable ID, the canonical store
+mutation ran, and `writeState` already persisted an empty `selections: []` state. The removed item
+was then immediately re-added by the mobile auto-add effect because the server/page selection was
+still present in the URL. The effect saw that selection missing from the updated slip and treated it
+as a new pick. This was a state/route synchronization rehydration bug, not a persistence refusal,
+hydration fallback, form submission, propagation, or stale-ID bug. The derived straight/parlay
+views reflected the rehydrated canonical state, which made both straight collections and parlays
+appear impossible to remove.
+
+The fix adds a suppression guard for the just-removed URL selection, clears the selection query
+after the canonical mutation, and uses one `removeSelection(clientSelectionId, mode)` action. The
+mutation occurs first; only then can the URL and sheet state change. The same path supports 3→2,
+2→1, and 1→0. Every Remove control is explicitly `type="button"`; the browser test verifies no
+Remove control is inside a submitting form and that its center is not intercepted by another layer.
+The existing slip persistence was audited and intentionally left unchanged because it already
+writes the canonical empty state rather than skipping empty arrays.
+
+Why prior tests missed it: prior tests asserted store-level removal and source contracts, but did
+not render the real selection URL, tap the real mobile Remove controls, or refresh after the final
+removal. They therefore never observed the auto-add effect rehydrating the selection.
+
+Files changed: `src/components/bet-slip.tsx`, `src/components/patch-10-hotfix-harness.tsx`,
+`scripts/check-patch-10-hotfix.mjs`, and the related Bet Slip/release-candidate tests. No database
+file or Odds API file changed.
+
+Regression test: the same real-component browser run covers one selection → Remove → zero →
+refresh → zero; two selections removing item #2 and item #1; three selections removing #3 → #2 →
+#1 → zero; final current straight removal; final parlay-list removal; unique row hit targets; and
+form isolation. Unit coverage also checks canonical parlay and straight removal through the empty
+state.
+
+Validation output for this hotfix: `npm.cmd run check:release:ux:hotfix` passed all three viewport
+stress runs and the final straight/parlay removal, empty persistence, hit-testing, and form-isolation
+checks. `npm.cmd run validate`, `npm.cmd audit --audit-level=high`, and `git diff --check` are run
+below for the final gate.
 
 ## Responsive dimensions covered
 
@@ -118,12 +179,14 @@ and removal of the Home link.
 
 - Added `test/release-candidate-fix-patch-10.test.ts` for logo/home-link contracts, 3→0 removal,
   final parlay/straight removal, drawer mounting/layering, responsive sizing, and touch controls.
-- Updated existing mobile Bet Slip contracts for the canonical `(leg, index)` removal callback.
+- Updated existing mobile Bet Slip contracts for the canonical `clientSelectionId` removal action
+  and shared scroll-lock utility.
 - Updated older navigation/style contracts to reflect the explicit Patch 10 removal of Home and new
   responsive sizing.
-- Added `npm run check:release:ux`, a Playwright smoke command using real locators and touch taps.
+- Added `npm run check:release:ux:hotfix`, a real-component Playwright smoke command using touch
+  taps and the development-only hotfix harness.
 
-Focused result: 3 test files, 43 tests passed.
+Focused result: 3 test files, 33 tests passed; hotfix browser run passed all required reproductions.
 
 ## Validation
 
@@ -133,6 +196,7 @@ Focused result: 3 test files, 43 tests passed.
 | `npm.cmd audit --audit-level=high`                   | PASS — 0 vulnerabilities; sandbox request required approved network retry                                                               |
 | `git diff --check`                                   | PASS                                                                                                                                    |
 | `node --check scripts/check-patch-10-release-ux.mjs` | PASS                                                                                                                                    |
+| `npm.cmd run check:release:ux:hotfix`                | PASS — real production header/drawer/slip harness; 375/390/430px drawer stress and removal regressions                                  |
 | `npm.cmd run check:release:ux`                       | BLOCKED at authenticated sign-up because `.env.local`/Supabase public configuration is absent; no browser assertion was falsely claimed |
 
 The attempted browser run reached `/auth`; the Sign up button was disabled by the application’s
@@ -165,4 +229,4 @@ With configured authentication and representative odds data, verify on real desk
    replacement, mixed-book straight picks, and compatible parlay behavior.
 6. Verify no real-device safe-area, browser zoom, or Safari fixed-position regression.
 
-PATCH 10 GATE RECOMMENDATION: PASS
+PATCH 10 HOTFIX GATE RECOMMENDATION: PASS

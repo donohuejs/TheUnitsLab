@@ -596,7 +596,7 @@ textarea:focus {
 
 .mobile-menu-backdrop {
   position: fixed;
-  z-index: 1;
+  z-index: 14;
   inset: 0;
   height: 100dvh;
   display: none;
@@ -609,6 +609,15 @@ textarea:focus {
   display: flex;
 }
 
+.mobile-menu-layer {
+  position: fixed;
+  z-index: 16;
+  inset: 0;
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
 .mobile-menu {
   width: min(21rem, 88vw);
   height: 100dvh;
@@ -618,6 +627,7 @@ textarea:focus {
   padding: 1.25rem;
   background: #fff;
   box-shadow: -1rem 0 3rem rgba(18, 63, 46, 0.16);
+  pointer-events: auto;
 }
 
 .mobile-menu-heading {
@@ -1926,8 +1936,8 @@ thead th {
     display: block;
     border-bottom: 0;
     margin-inline: -0.5rem;
-    margin-bottom: 1rem;
-    padding: env(safe-area-inset-top) 0.5rem 0.25rem;
+    margin-bottom: 0.75rem;
+    padding: env(safe-area-inset-top) 0.5rem 0.15rem;
     background: rgba(244, 247, 248, 0.96);
     backdrop-filter: blur(12px);
     isolation: isolate;

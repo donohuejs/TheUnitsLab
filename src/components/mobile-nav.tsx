@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { BrandLockup } from "@/components/brand";
+import { acquireBodyScrollLock } from "@/lib/ui/scroll-lock";
 
 type NavigationItem = { href: string; key: string; label: string };
 
@@ -15,12 +17,17 @@ export function MobileNav({
   active: string;
 }) {
   const [open, setOpen] = useState(false);
+  const portalReady = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const firstLinkRef = useRef<HTMLAnchorElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !portalReady) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setOpen(false);
@@ -46,29 +53,11 @@ export function MobileNav({
       document.removeEventListener("keydown", handleKeyDown);
       window.cancelAnimationFrame(frame);
     };
-  }, [open]);
+  }, [open, portalReady]);
 
   useEffect(() => {
     if (!open) return;
-    const scrollY = window.scrollY;
-    const previousHtmlOverflow = document.documentElement.style.overflow;
-    const previousOverflow = document.body.style.overflow;
-    const previousPosition = document.body.style.position;
-    const previousTop = document.body.style.top;
-    const previousWidth = document.body.style.width;
-    document.documentElement.style.overflow = "hidden";
-    document.body.style.overflow = "hidden";
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = "100%";
-    return () => {
-      document.documentElement.style.overflow = previousHtmlOverflow;
-      document.body.style.overflow = previousOverflow;
-      document.body.style.position = previousPosition;
-      document.body.style.top = previousTop;
-      document.body.style.width = previousWidth;
-      window.scrollTo(0, scrollY);
-    };
+    return acquireBodyScrollLock();
   }, [open]);
 
   const closeMenu = () => {
@@ -78,33 +67,10 @@ export function MobileNav({
 
   const closeAfterNavigation = () => setOpen(false);
 
-  return (
-    <div className="mobile-nav">
-      <Link className="mobile-nav-brand" href="/" aria-label="The Units Lab home">
-        <BrandLockup />
-      </Link>
-      <button
-        ref={menuButtonRef}
-        className="menu-button"
-        type="button"
-        aria-expanded={open}
-        aria-controls="mobile-primary-menu"
-        aria-label="Menu"
-        onClick={() => setOpen((current) => !current)}
-      >
-        <span className="menu-icon" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </span>
-        <span className="sr-only">{open ? "Close" : "Menu"}</span>
-      </button>
-      <div
-        className={`mobile-menu-backdrop${open ? " is-open" : ""}`}
-        aria-hidden={!open}
-        hidden={!open}
-        onClick={closeMenu}
-      >
+  const drawer = open ? (
+    <>
+      <div className="mobile-menu-backdrop is-open" aria-hidden={!open} onClick={closeMenu} />
+      <div className="mobile-menu-layer">
         <div
           id="mobile-primary-menu"
           ref={menuRef}
@@ -136,6 +102,33 @@ export function MobileNav({
           </div>
         </div>
       </div>
-    </div>
+    </>
+  ) : null;
+
+  return (
+    <>
+      <div className="mobile-nav">
+        <Link className="mobile-nav-brand" href="/" aria-label="The Units Lab home">
+          <BrandLockup />
+        </Link>
+        <button
+          ref={menuButtonRef}
+          className="menu-button"
+          type="button"
+          aria-expanded={open}
+          aria-controls="mobile-primary-menu"
+          aria-label="Menu"
+          onClick={() => setOpen((current) => !current)}
+        >
+          <span className="menu-icon" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </span>
+          <span className="sr-only">{open ? "Close" : "Menu"}</span>
+        </button>
+      </div>
+      {portalReady ? createPortal(drawer, document.body) : null}
+    </>
   );
 }

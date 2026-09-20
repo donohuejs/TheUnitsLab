@@ -64,6 +64,7 @@ describe("release-candidate fix patch 9", () => {
     const tutorial = read("../src/components/import-tutorial.tsx");
     const recorder = read("../scripts/record-import-demo.mjs");
     const mobile = read("../src/components/mobile-nav.tsx");
+    const scrollLock = read("../src/lib/ui/scroll-lock.ts");
     const css = read("../src/app/globals.css");
 
     expect(migration).toContain("grant select on table public.vision_budget_monthly");
@@ -84,7 +85,8 @@ describe("release-candidate fix patch 9", () => {
     expect(tutorial).toContain('aria-label="Close import tutorial"');
     expect(tutorial).toContain("onPointerDown");
     expect(tutorial).toContain('event.key === "Escape"');
-    expect(tutorial).toContain('document.body.style.overflow = "hidden"');
+    expect(tutorial).toContain("acquireBodyScrollLock");
+    expect(scrollLock).toContain('html.style.overflow = "hidden"');
     expect(tutorial).toContain("controls");
     expect(tutorial).toContain('preload="metadata"');
     expect(tutorial).toContain("playsInline");
@@ -107,7 +109,7 @@ describe("release-candidate fix patch 9", () => {
     expect(recorder).toContain("No Study — Personal");
     expect(recorder).toContain("Confirm and save to My Bets");
     expect(recorder).toContain("/my-bets?filter=imported");
-    expect(mobile).toContain("document.documentElement.style.overflow");
+    expect(mobile).toContain("acquireBodyScrollLock");
     expect(css).toContain("height: 100dvh");
     expect(css).toContain(".import-tutorial-backdrop");
   });

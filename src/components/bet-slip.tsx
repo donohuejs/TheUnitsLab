@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 
 import { placeParlayBet, placeStraightBet, placeStraightBets } from "@/app/sports/bet-actions";
 import { KickoffTime } from "@/components/kickoff-time";
@@ -36,6 +37,7 @@ import {
   type SlipSelection,
 } from "@/lib/wagers/slip";
 import { calculatePotential } from "@/lib/wagers/calculations";
+import { acquireBodyScrollLock } from "@/lib/ui/scroll-lock";
 
 type Props = {
   selection: SlipSelection | null;
@@ -78,6 +80,7 @@ function attachPlacementAttemptKey(form: HTMLFormElement, keyRef: { current: str
 }
 
 export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: Props) {
+  const router = useRouter();
   const [stake, setStake] = useState("10.00");
   const [parlayStake, setParlayStake] = useState("10.00");
   const [straightStake, setStraightStake] = useState("10.00");
@@ -97,6 +100,7 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
   const straightBatchPlacementKeyRef = useRef<string | null>(null);
   const parlayPlacementKeyRef = useRef<string | null>(null);
   const mobileReturnPath = useRef("");
+  const suppressedMobileSelectionKey = useRef<string | null>(null);
   const [alternateLineState, setAlternateLineState] = useState<{
     selectionKey: string;
     line: number;
@@ -129,8 +133,13 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
   }, [selection]);
 
   useEffect(() => {
-    if (!selection || !isMobileViewport) return;
+    if (!selection || !isMobileViewport) {
+      if (!selection) suppressedMobileSelectionKey.current = null;
+      return;
+    }
     const activeKey = slipSelectionKey(selection);
+    if (suppressedMobileSelectionKey.current === activeKey) return;
+    if (suppressedMobileSelectionKey.current) suppressedMobileSelectionKey.current = null;
     const existingIndex = mobileSelections.findIndex((leg) => slipSelectionKey(leg) === activeKey);
     if (existingIndex >= 0) return;
     const replacement = replaceMutuallyExclusiveSelection(mobileSelections, selection);
@@ -157,21 +166,6 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
 
   useEffect(() => {
     if (!mobileModalOpen) return;
-    const scrollY = window.scrollY;
-    const html = document.documentElement;
-    const body = document.body;
-    const previous = {
-      htmlOverflow: html.style.overflow,
-      bodyOverflow: body.style.overflow,
-      bodyPosition: body.style.position,
-      bodyTop: body.style.top,
-      bodyWidth: body.style.width,
-    };
-    html.style.overflow = "hidden";
-    body.style.overflow = "hidden";
-    body.style.position = "fixed";
-    body.style.top = `-${scrollY}px`;
-    body.style.width = "100%";
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setMobileSheetOpen(false);
     };
@@ -180,14 +174,13 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
     const trayButton = trayButtonRef.current;
     return () => {
       document.removeEventListener("keydown", closeOnEscape);
-      html.style.overflow = previous.htmlOverflow;
-      body.style.overflow = previous.bodyOverflow;
-      body.style.position = previous.bodyPosition;
-      body.style.top = previous.bodyTop;
-      body.style.width = previous.bodyWidth;
-      window.scrollTo(0, scrollY);
       window.requestAnimationFrame(() => trayButton?.focus());
     };
+  }, [mobileModalOpen]);
+
+  useEffect(() => {
+    if (!mobileModalOpen) return;
+    return acquireBodyScrollLock();
   }, [mobileModalOpen]);
 
   const selectionIsInMobileSlip = Boolean(
@@ -392,16 +385,32 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
   const openMobileSheet = () => {
     if (mobileSelectionCount) setMobileSheetOpen(true);
   };
-  const removeSelection = (
-    candidate: SlipSelection | null,
-    index: number,
-    mode: "mobile" | "parlay" | "straight",
-  ) => {
+  const clearSelectionFromUrl = () => {
+    const next = new URL(window.location.href);
+    ["event", "book", "market", "selection", "point", "alternates", "mobileSheet"].forEach((key) =>
+      next.searchParams.delete(key),
+    );
+    router.replace(`${next.pathname}${next.search}${next.hash}`, { scroll: false });
+  };
+
+  const removeSelection = (clientSelectionId: string, mode: "mobile" | "parlay" | "straight") => {
+    const candidates =
+      mode === "mobile" ? mobileSelections : mode === "parlay" ? legs : straightSelections;
+    const index = candidates.findIndex(
+      (candidate, candidateIndex) =>
+        getClientSelectionId(candidate, candidateIndex) === clientSelectionId,
+    );
+    const candidate = candidates[index];
     if (!candidate) return;
-    const clientSelectionId = getClientSelectionId(candidate, index);
+    const isCurrentMobileSelection =
+      mode === "mobile" && selection && slipSelectionKey(candidate) === slipSelectionKey(selection);
+    if (isCurrentMobileSelection) {
+      suppressedMobileSelectionKey.current = slipSelectionKey(candidate);
+    }
     if (mode === "mobile") removePendingSlipSelectionIdsAndPersist([clientSelectionId]);
     else if (mode === "parlay") removeSlipSelectionIdsAndPersist([clientSelectionId]);
     else removeStraightSlipSelectionIdsAndPersist([clientSelectionId]);
+    if (isCurrentMobileSelection) clearSelectionFromUrl();
     if (mode === "mobile" && mobileSelectionCount <= 1) setMobileSheetOpen(false);
   };
   const removeCurrentMobileSelection = () => {
@@ -409,11 +418,13 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
     const index = mobileSelections.findIndex(
       (candidate) => slipSelectionKey(candidate) === slipSelectionKey(currentSelection),
     );
-    if (index >= 0) removeSelection(mobileSelections[index] ?? null, index, "mobile");
+    if (index >= 0) {
+      removeSelection(getClientSelectionId(mobileSelections[index]!, index), "mobile");
+    }
   };
   const removeParlayLeg = (leg: SlipSelection, index: number) => {
     if (!legs.some((candidate) => slipSelectionKey(candidate) === slipSelectionKey(leg))) return;
-    removeSelection(leg, index, isMobileViewport ? "mobile" : "parlay");
+    removeSelection(getClientSelectionId(leg, index), isMobileViewport ? "mobile" : "parlay");
   };
 
   return (
@@ -802,7 +813,10 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
                         className="text-button"
                         type="button"
                         onClick={() =>
-                          removeSelection(leg, index, isMobileViewport ? "mobile" : "straight")
+                          removeSelection(
+                            getClientSelectionId(leg, index),
+                            isMobileViewport ? "mobile" : "straight",
+                          )
                         }
                       >
                         Remove

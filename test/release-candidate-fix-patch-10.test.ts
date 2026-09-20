@@ -79,15 +79,15 @@ describe("release-candidate fix patch 10", () => {
     expect(getStraightSlipSnapshot()).toEqual([]);
   });
 
-  it("keeps the mobile drawer mounted and layered below the visible header", () => {
+  it("keeps drawer visibility independent from the mounted header", () => {
     const mobileNav = read("../src/components/mobile-nav.tsx");
     const css = read("../src/app/globals.css");
 
-    expect(mobileNav).toContain("hidden={!open}");
-    expect(mobileNav).toContain('className={`mobile-menu-backdrop${open ? " is-open" : ""}`}');
+    expect(mobileNav).toContain("createPortal");
+    expect(mobileNav).toContain('className="mobile-menu-layer"');
     expect(css).toContain(".mobile-menu-backdrop.is-open");
-    expect(css).toContain(".mobile-menu-backdrop {\n  position: fixed;\n  z-index: 1;");
-    expect(css).toContain(".mobile-nav {\n    position: relative;\n    z-index: 2;");
+    expect(css).toContain(".mobile-menu-backdrop {\n  position: fixed;\n  z-index: 14;");
+    expect(css).toContain(".mobile-menu-layer {\n  position: fixed;\n  z-index: 16;");
   });
 
   it("keeps header sizing responsive and remove controls touch-sized", () => {
@@ -99,9 +99,8 @@ describe("release-candidate fix patch 10", () => {
     expect(css).toContain("width: min(58vw, 12rem)");
     expect(css).toContain("min-width: 2.75rem");
     expect(css).toContain("touch-action: manipulation");
-    expect(betSlip).toContain(
-      'removeSelection(leg, index, isMobileViewport ? "mobile" : "straight")',
-    );
+    expect(betSlip).toContain("const removeSelection = (");
+    expect(betSlip).toContain("clientSelectionId: string");
     expect(betSlip).toContain("removeParlayLeg(leg, index)");
     expect(betSlip).toContain('mode === "mobile" && mobileSelectionCount <= 1');
   });
