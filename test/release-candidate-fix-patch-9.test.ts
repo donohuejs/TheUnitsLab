@@ -92,18 +92,18 @@ describe("release-candidate fix patch 9", () => {
     expect(tutorial).toContain("playsInline");
     expect(tutorial).toContain("onError={() => setVideoUnavailable(true)}");
     expect(tutorial).toContain("Video unavailable in this browser.");
-    expect(tutorial).toContain("import-betslip-demo.webm");
-    expect(tutorial).toContain("import-betslip-demo.vtt");
+    expect(tutorial).toContain("import-betslip-demo-v0.11.1.webm");
+    expect(tutorial).toContain("import-betslip-demo-v0.11.1.vtt");
     expect(tutorial).not.toContain("autoPlay");
-    expect(existsSync(new URL("../public/help/import-betslip-demo.webm", import.meta.url))).toBe(
-      true,
-    );
     expect(
-      statSync(new URL("../public/help/import-betslip-demo.webm", import.meta.url)).size,
+      existsSync(new URL("../public/help/import-betslip-demo-v0.11.1.webm", import.meta.url)),
+    ).toBe(true);
+    expect(
+      statSync(new URL("../public/help/import-betslip-demo-v0.11.1.webm", import.meta.url)).size,
     ).toBeGreaterThan(0);
-    expect(existsSync(new URL("../public/help/import-betslip-demo.vtt", import.meta.url))).toBe(
-      true,
-    );
+    expect(
+      existsSync(new URL("../public/help/import-betslip-demo-v0.11.1.vtt", import.meta.url)),
+    ).toBe(true);
     expect(recorder).toContain("/track-bet");
     expect(recorder).toContain('getByRole("button", { name: "Upload Screenshot" })');
     expect(recorder).toContain("No Study — Personal");

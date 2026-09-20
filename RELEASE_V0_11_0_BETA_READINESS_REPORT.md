@@ -104,9 +104,9 @@ Playwright recorder now explicitly follows the current multi-stage route and use
 synthetic data. The player retains controls, captions, `playsInline`, no autoplay, and keyboard/
 mobile close behavior.
 
-The current checked-in asset is WebM because the existing Playwright recording pipeline emits WebM;
-no paid media dependency was added. MP4/H.264 conversion remains an optional follow-up if the beta
-device matrix requires it.
+At the time of v0.11.0, the checked-in asset was WebM because the existing Playwright recording
+pipeline emits WebM; no paid media dependency was added. The v0.11.1 hotfix below supersedes that
+asset and keeps MP4/H.264 conversion as an optional follow-up if the beta device matrix requires it.
 
 ## Backlog and operational documentation
 
@@ -186,3 +186,64 @@ mobile-friendly, and MP4/H.264 conversion is documented as a follow-up if requir
 The implementation, migration, RLS tests, application validation, documentation, and release
 surfaces are complete. The gate assumes the six manual pre-beta tasks above are completed and
 verified before any invitation is sent.
+
+## v0.11.1 Tutorial Video Hotfix
+
+Date: 2026-09-20
+Application version: **v0.11.1**
+Scope: tutorial media and release metadata only
+
+### Root cause and asset correction
+
+The v0.11.0 player served the generic `public/help/import-betslip-demo.webm` file. That checked-in
+recording was stale relative to the current Import Betslip implementation, and the companion
+caption file used the same non-versioned path. The recorder also did not pause between review
+stages, so a quick replacement could be technically valid while being too short to teach the
+workflow. The stale files were removed and are no longer reachable from the UI.
+
+The player and tests now use these versioned assets:
+
+- `public/help/import-betslip-demo-v0.11.1.webm`
+- `public/help/import-betslip-demo-v0.11.1.vtt`
+
+The WebM is the primary format because Playwright's existing local recording pipeline emits WebM
+and no paid media dependency or conversion tool was added. The new recording is 27.40 seconds,
+with controls, `playsInline`, metadata preload, captions, and no autoplay.
+
+### Recording and workflow verification
+
+The repaired `scripts/record-import-demo.mjs` records the real authenticated `/track-bet` route,
+which is the current Import Betslip UI. It uses a fresh local Supabase test account, a deterministic
+synthetic PNG, and browser-level synthetic responses for the Luna extraction and canonical-match
+boundaries. This keeps the recording private-safe and free of paid Luna/provider calls while still
+exercising the production components and review actions.
+
+The captured workflow is: open Import Betslip; upload the screenshot; complete the Luna extraction
+state; review the extracted fields; correct the American odds; continue through event/canonical,
+market, and economics review; choose `No Study — Personal`; confirm stake, odds, and return; review
+the final editable draft; confirm/save; and verify the imported wager in My Bets. The written
+walkthrough and versioned VTT captions describe the same sequence.
+
+### Browser and release validation
+
+- Playwright browser validation loaded the production-served WebM and measured a finite 27.40-second
+  duration.
+- The player retained native controls, `preload="metadata"`, `playsInline`, no autoplay, captions,
+  and a working close button.
+- No horizontal overflow was observed at 375px, 390px, 430px, or 1280px viewports; the dialog
+  remained inside the viewport at each size.
+- `package.json` and `package-lock.json` are synchronized at 0.11.1, while the UI continues to
+  derive its displayed version from the package manifest through `src/config/version.ts`.
+- `src/config/version-history.ts` now lists v0.11.1 first and preserves v0.11.0 and v0.10.1.
+- No database migration, RLS policy, feedback surface, betting logic, provider call, analytics,
+  reset tooling, backup tooling, or navigation behavior changed.
+
+### Hotfix test results
+
+- Focused tutorial/version tests: **PASS**.
+- `npm.cmd run validate`: **PASS** — format, lint, typecheck, unit tests, secret scan, and build.
+- `npm.cmd audit --audit-level=high`: **PASS** — 0 high-severity vulnerabilities.
+- `git diff --check`: **PASS**.
+- The existing v0.11.0 validation surfaces remain covered; no commit or push was performed.
+
+V0.11.1 TUTORIAL HOTFIX GATE: PASS

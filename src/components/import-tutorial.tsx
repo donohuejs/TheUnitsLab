@@ -143,10 +143,10 @@ export function ImportTutorial() {
                 aria-label="Import Betslip walkthrough"
                 onError={() => setVideoUnavailable(true)}
               >
-                <source src="/help/import-betslip-demo.webm" type="video/webm" />
+                <source src="/help/import-betslip-demo-v0.11.1.webm" type="video/webm" />
                 <track
                   kind="captions"
-                  src="/help/import-betslip-demo.vtt"
+                  src="/help/import-betslip-demo-v0.11.1.vtt"
                   srcLang="en"
                   label="English captions"
                   default
