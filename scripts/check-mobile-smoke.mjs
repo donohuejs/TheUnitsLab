@@ -60,21 +60,37 @@ try {
     console.log(`PASS: mobile header and drawer at ${viewport.width}x${viewport.height}`);
   }
 
-  await page.setViewportSize({ width: 1024, height: 768 });
-  await page.goto(`${baseUrl}/account`, { waitUntil: "networkidle" });
-  const desktopHeaderBeforeScroll = await page.locator(".top-nav").boundingBox();
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  await page.waitForTimeout(100);
-  const desktopHeaderAfterScroll = await page.locator(".top-nav").boundingBox();
-  if (
-    !desktopHeaderBeforeScroll ||
-    !desktopHeaderAfterScroll ||
-    Math.abs(desktopHeaderAfterScroll.y - desktopHeaderBeforeScroll.y) > 2 ||
-    desktopHeaderAfterScroll.y < -1
-  ) {
-    throw new Error("Desktop header did not remain pinned after an actual browser scroll.");
+  for (const width of [1280, 1440, 1920]) {
+    await page.setViewportSize({ width, height: 768 });
+    await page.goto(`${baseUrl}/account`, { waitUntil: "networkidle" });
+    const desktopHeader = page.locator(".top-nav");
+    const desktopBrand = page.locator(".desktop-nav-brand");
+    const desktopLinks = page.locator(".top-nav > .nav-links");
+    const headerBeforeScroll = await desktopHeader.boundingBox();
+    const brandBox = await desktopBrand.boundingBox();
+    const linksBox = await desktopLinks.boundingBox();
+    const linkYPositions = await page
+      .locator(".top-nav > .nav-links .nav-link")
+      .evaluateAll((links) => links.map((link) => Math.round(link.getBoundingClientRect().y)));
+    if (!brandBox || brandBox.height < 120) {
+      throw new Error(`Desktop brand did not reach the intended size at ${width}px.`);
+    }
+    if (!linksBox || linksBox.x + linksBox.width > width || new Set(linkYPositions).size > 1) {
+      throw new Error(`Desktop navigation wrapped or overflowed at ${width}px.`);
+    }
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.waitForTimeout(100);
+    const headerAfterScroll = await desktopHeader.boundingBox();
+    if (
+      !headerBeforeScroll ||
+      !headerAfterScroll ||
+      Math.abs(headerAfterScroll.y - headerBeforeScroll.y) > 2 ||
+      headerAfterScroll.y < -1
+    ) {
+      throw new Error(`Desktop header did not remain pinned at ${width}px.`);
+    }
+    console.log(`PASS: desktop header sizing and sticky behavior at ${width}px`);
   }
-  console.log("PASS: desktop sticky header after actual browser scroll");
 } finally {
   await context.close();
   await browser.close();

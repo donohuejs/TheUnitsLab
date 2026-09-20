@@ -312,7 +312,7 @@ const categorySport: Partial<Record<LeaderboardCategory, string>> = {
 function leaderboardValue(category: LeaderboardCategory, summary: AnalyticsSummary) {
   if (category === "roi") return parseFixed(summary.roiPercent, 2);
   if (category === "win_percentage") return parseFixed(summary.winPercentage, 2);
-  if (category === "total_wagers") return BigInt(summary.totalBets);
+  if (category === "total_wagers") return BigInt(summary.eligibleSettledBets);
   return parseFixed(summary.unitsWonLost, 2);
 }
 

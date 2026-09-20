@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(9);
+select plan(12);
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -105,6 +105,18 @@ select public.create_imported_wager(
   repeat('d', 63) || '4', null, true
 );
 select public.create_imported_wager(
+  '97000000-0000-0000-0000-000000000001', 'fanduel', null, 'football', 'ncaaf',
+  'Study Loss at Home', '2026-09-13T18:00:00Z', 'Home', 'home', 'moneyline', null, 150,
+  10.00, 0.00, '2026-09-13T17:00:00Z', 'lost', 'user_attested', null, 'paste', null,
+  repeat('f', 63) || '6', null, true
+);
+select public.create_imported_wager(
+  '97000000-0000-0000-0000-000000000001', 'fanduel', null, 'football', 'ncaaf',
+  'Study Push at Home', '2026-09-14T18:00:00Z', 'Home', 'home', 'moneyline', null, 150,
+  10.00, 10.00, '2026-09-14T17:00:00Z', 'push', 'user_attested', null, 'paste', null,
+  repeat('a', 63) || '7', null, true
+);
+select public.create_imported_wager(
   null, 'fanduel', null, 'football', 'ncaaf',
   'Personal Imported at Home', '2026-09-13T18:00:00Z', 'Home', 'home', 'moneyline', null, 150,
   10.00, 25.00, '2026-09-13T17:00:00Z', 'won', 'user_attested', null, 'paste', null,
@@ -113,7 +125,7 @@ select public.create_imported_wager(
 
 select is(
   (select count(*) from public.get_group_analytics_wagers('97000000-0000-0000-0000-000000000001')),
-  4::bigint,
+  6::bigint,
   'Lab Notes group analytics counts Study wagers, including open imported history'
 );
 select is(
@@ -122,13 +134,28 @@ select is(
   'settled imported Study wins reach the canonical group analytics projection'
 );
 select is(
+  (select count(*) from public.get_group_analytics_wagers('97000000-0000-0000-0000-000000000001') where status in ('won', 'lost', 'push')),
+  5::bigint,
+  'Lab Notes settled bets equal the graded W-L-P record and exclude open wagers'
+);
+select is(
+  (select count(*) from public.get_group_analytics_wagers('97000000-0000-0000-0000-000000000001') where status = 'lost'),
+  1::bigint,
+  'settled imported losses reach the canonical group analytics projection'
+);
+select is(
+  (select count(*) from public.get_group_analytics_wagers('97000000-0000-0000-0000-000000000001') where status = 'push'),
+  1::bigint,
+  'settled imported pushes reach the canonical group analytics projection'
+);
+select is(
   (select sum(profit_loss_units) from public.get_group_analytics_wagers('97000000-0000-0000-0000-000000000001') where status = 'won'),
   45.00::numeric,
   'settled imported dollars normalize to Vials for Study P/L'
 );
 select is(
   (select sum(stake_units) from public.get_group_analytics_wagers('97000000-0000-0000-0000-000000000001') where status in ('won', 'lost', 'push')),
-  30.00::numeric,
+  50.00::numeric,
   'open imported wagers do not contribute to settled stake or ROI'
 );
 select is(

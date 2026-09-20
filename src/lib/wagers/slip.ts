@@ -1,6 +1,8 @@
 import type { MarketType, SelectionType } from "@/lib/odds/types";
 
 export type SlipSelection = {
+  /** Stable UI identity. It is persisted with the slip and is not a market key. */
+  clientSelectionId?: string;
   competitionKey: string;
   eventId: string;
   sport: string;
@@ -72,6 +74,26 @@ function isSlipSelection(value: unknown): value is SlipSelection {
   );
 }
 
+export function createClientSelectionId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `slip-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function legacyClientSelectionId(selection: SlipSelection, index: number) {
+  return `legacy-${encodeURIComponent(slipSelectionKey(selection))}-${index}`;
+}
+
+export function getClientSelectionId(selection: SlipSelection, index = 0) {
+  return selection.clientSelectionId || legacyClientSelectionId(selection, index);
+}
+
+function withClientSelectionId(selection: SlipSelection, index: number, fallback?: string) {
+  return {
+    ...selection,
+    clientSelectionId: selection.clientSelectionId || fallback || createClientSelectionId(),
+  };
+}
+
 function uniqueKeys(keys: string[]) {
   return [...new Set(keys)].slice(0, 12);
 }
@@ -81,7 +103,19 @@ function stateFromSelections(
   parlayKeys: string[] = [],
   straightKeys: string[] = [],
 ): StoredSlip {
-  const validSelections = selections.filter(isSlipSelection).slice(0, MAX_PENDING_SELECTIONS);
+  const validSelections = selections
+    .filter(isSlipSelection)
+    .map((selection, index) =>
+      withClientSelectionId(selection, index, legacyClientSelectionId(selection, index)),
+    )
+    .reduce<SlipSelection[]>((unique, selection) => {
+      const existingIndex = unique.findIndex(
+        (candidate) => slipSelectionKey(candidate) === slipSelectionKey(selection),
+      );
+      if (existingIndex >= 0) unique[existingIndex] = selection;
+      else if (unique.length < MAX_PENDING_SELECTIONS) unique.push(selection);
+      return unique;
+    }, []);
   const parlaySelectionKeys = uniqueKeys(parlayKeys);
   const straightSelectionKeys = uniqueKeys(straightKeys);
   const available = new Set([...parlaySelectionKeys, ...straightSelectionKeys]);
@@ -118,19 +152,35 @@ function parseStoredSlip(serialized: string | null): StoredSlip {
   }
 }
 
-function mergeState(current: StoredSlip, selections: SlipSelection[], mode: "parlay" | "straight") {
-  const nextSelections = [...current.selections];
-  for (const selection of selections) {
+function setViewState(
+  current: StoredSlip,
+  selections: SlipSelection[],
+  mode: "parlay" | "straight",
+) {
+  const normalized = selections
+    .filter(isSlipSelection)
+    .map((selection, index) => {
+      const existing = current.selections.find(
+        (candidate) => slipSelectionKey(candidate) === slipSelectionKey(selection),
+      );
+      return withClientSelectionId(
+        selection,
+        index,
+        existing ? getClientSelectionId(existing, index) : undefined,
+      );
+    })
+    .slice(0, MAX_PENDING_SELECTIONS);
+  const nextKeys = normalized.map(slipSelectionKey);
+  const retained = current.selections.filter((selection) => {
     const key = slipSelectionKey(selection);
-    const index = nextSelections.findIndex((candidate) => slipSelectionKey(candidate) === key);
-    if (index >= 0) nextSelections[index] = selection;
-    else if (nextSelections.length < MAX_PENDING_SELECTIONS) nextSelections.push(selection);
-  }
-  const keys = selections.map(slipSelectionKey);
+    return mode === "parlay"
+      ? current.straightKeys.includes(key)
+      : current.parlayKeys.includes(key);
+  });
   return stateFromSelections(
-    nextSelections,
-    mode === "parlay" ? keys : current.parlayKeys,
-    mode === "straight" ? keys : current.straightKeys,
+    [...retained, ...normalized],
+    mode === "parlay" ? nextKeys : current.parlayKeys,
+    mode === "straight" ? nextKeys : current.straightKeys,
   );
 }
 
@@ -183,8 +233,34 @@ export function replaceMutuallyExclusiveSelection(
   );
   if (index < 0) return null;
   const next = [...selections];
-  next[index] = candidate;
+  next[index] = withClientSelectionId(
+    candidate,
+    index,
+    getClientSelectionId(selections[index], index),
+  );
   return next;
+}
+
+export function assessParlayAvailability(selections: SlipSelection[]) {
+  if (selections.length < 2) {
+    return { eligible: false, reason: "Select at least two picks to build a parlay." };
+  }
+  if (selections.length > 12) {
+    return { eligible: false, reason: "A parlay can contain at most 12 picks." };
+  }
+  if (new Set(selections.map((selection) => selection.eventId)).size !== selections.length) {
+    return {
+      eligible: false,
+      reason: "Parlay unavailable — same-game parlays are not currently supported.",
+    };
+  }
+  if (new Set(selections.map((selection) => selection.bookmakerId)).size !== 1) {
+    return {
+      eligible: false,
+      reason: "Parlay unavailable — selections use different sportsbooks.",
+    };
+  }
+  return { eligible: true, reason: "" };
 }
 
 export function removeSlipSelectionKeys(selections: SlipSelection[], keys: string[]) {
@@ -307,11 +383,31 @@ export function getEmptyStraightSlipSnapshot() {
 }
 
 export function setSlipSelections(selections: SlipSelection[]) {
-  writeState(mergeState(readState(), selections.slice(0, 12), "parlay"));
+  writeState(setViewState(readState(), selections.slice(0, 12), "parlay"));
 }
 
 export function setStraightSlipSelections(selections: SlipSelection[]) {
-  writeState(mergeState(readState(), selections.slice(0, 12), "straight"));
+  writeState(setViewState(readState(), selections.slice(0, 12), "straight"));
+}
+
+/** Mobile uses one selection collection; straight placement and parlay eligibility are derived. */
+export function setPendingSlipSelections(selections: SlipSelection[]) {
+  const current = readState();
+  const normalized = selections
+    .filter(isSlipSelection)
+    .map((selection, index) => {
+      const existing = current.selections.find(
+        (candidate) => slipSelectionKey(candidate) === slipSelectionKey(selection),
+      );
+      return withClientSelectionId(
+        selection,
+        index,
+        existing ? getClientSelectionId(existing, index) : undefined,
+      );
+    })
+    .slice(0, MAX_PENDING_SELECTIONS);
+  const keys = normalized.map(slipSelectionKey);
+  writeState(stateFromSelections(normalized, keys, keys));
 }
 
 export function clearSlip() {
@@ -357,4 +453,37 @@ export function removePendingSlipSelectionKeysAndPersist(keys: string[]) {
       state.straightKeys.filter((key) => !keySet.has(key)),
     ),
   );
+}
+
+function removeSelectionIdsAndPersist(ids: string[], mode: "parlay" | "straight" | "both") {
+  const idSet = new Set(ids);
+  const state = readState();
+  const removedKeys = new Set(
+    state.selections
+      .filter((selection, index) => idSet.has(getClientSelectionId(selection, index)))
+      .map(slipSelectionKey),
+  );
+  writeState(
+    stateFromSelections(
+      state.selections,
+      mode === "parlay" || mode === "both"
+        ? state.parlayKeys.filter((key) => !removedKeys.has(key))
+        : state.parlayKeys,
+      mode === "straight" || mode === "both"
+        ? state.straightKeys.filter((key) => !removedKeys.has(key))
+        : state.straightKeys,
+    ),
+  );
+}
+
+export function removeSlipSelectionIdsAndPersist(ids: string[]) {
+  removeSelectionIdsAndPersist(ids, "parlay");
+}
+
+export function removeStraightSlipSelectionIdsAndPersist(ids: string[]) {
+  removeSelectionIdsAndPersist(ids, "straight");
+}
+
+export function removePendingSlipSelectionIdsAndPersist(ids: string[]) {
+  removeSelectionIdsAndPersist(ids, "both");
 }

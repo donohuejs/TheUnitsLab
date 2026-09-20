@@ -25,6 +25,11 @@ describe("release-candidate fix patch 9", () => {
       {
         apiKey: "test-key",
         userId: "user-1",
+        context: {
+          ticketType: "straight",
+          sportsbook: "FanDuel",
+          legs: [{ selection: "Wake Forest", market: "spread", line: "+21.5" }],
+        },
         fetcher: async (_input, init) => {
           requestBody = String(init?.body ?? "");
           return new Response(
@@ -45,6 +50,9 @@ describe("release-candidate fix patch 9", () => {
     expect(result.usageAvailable).toBe(true);
     expect(requestBody).toContain("betslip_american_odds_recovery");
     expect(requestBody).toContain("Do not infer or calculate odds");
+    expect(requestBody).toContain("Wake Forest");
+    expect(requestBody).toContain("+21.5");
+    expect(requestBody).toContain("American price");
   });
 
   it("keeps production contracts for Luna diagnostics, canonical matching, duplicates, and UI", () => {
@@ -68,6 +76,8 @@ describe("release-candidate fix patch 9", () => {
     expect(route).toContain("p_provider_event_id");
     expect(visionRoute).toContain("requestCorrelationId");
     expect(visionRoute).toContain("betslip_import_odds_recovery");
+    expect(visionRoute).toContain("odds_recovery_value_rejected");
+    expect(visionRoute).toContain("returnedAmericanOdds");
     expect(tutorial).toContain('role="dialog"');
     expect(tutorial).toContain('type="button"');
     expect(tutorial).toContain('aria-label="Watch a quick example of importing a betslip"');

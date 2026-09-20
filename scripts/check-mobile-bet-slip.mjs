@@ -54,11 +54,20 @@ try {
     throw new Error("Mobile Bet Slip smoke test needs at least two odds-bearing event cards.");
   }
 
+  const collapsedCards = page.locator(".event-card.is-collapsed");
+  if ((await collapsedCards.count()) !== cardCount) {
+    throw new Error("Mobile Browse Odds cards were not collapsed by default.");
+  }
+  await eventCards.nth(1).locator(".event-card-toggle").tap();
+  if (!(await eventCards.nth(1).locator(".market-groups").isVisible())) {
+    throw new Error("Mobile event card did not expand from its header.");
+  }
+
   const firstOdd = eventCards.nth(1).locator("a.odd:not(.locked)").first();
   if (!(await firstOdd.count())) throw new Error("No selectable first mobile odds outcome found.");
   await firstOdd.scrollIntoViewIfNeeded();
   const scrollBeforeSheet = await page.evaluate(() => window.scrollY);
-  await firstOdd.click();
+  await firstOdd.tap();
   const tray = page.getByRole("button", { name: /Open Bet Slip/ });
   await tray.waitFor({ state: "visible" });
   if (!(await tray.getByText("1 Pick").isVisible()))
@@ -67,7 +76,7 @@ try {
     throw new Error("Selected odds outcome did not show its explicit selected state.");
   }
 
-  await tray.click();
+  await tray.tap();
   const sheet = page.getByRole("dialog", { name: "Bet Slip" });
   await sheet.waitFor({ state: "visible" });
   if (
@@ -75,7 +84,7 @@ try {
   ) {
     throw new Error("Opening the Bet Slip did not lock page scrolling.");
   }
-  await sheet.getByRole("button", { name: "Close Bet Slip" }).click();
+  await sheet.getByRole("button", { name: "Close Bet Slip" }).tap();
   await sheet.waitFor({ state: "hidden" });
   const scrollAfterSheet = await page.evaluate(() => window.scrollY);
   if (scrollAfterSheet !== scrollBeforeSheet) {
@@ -87,10 +96,11 @@ try {
   const secondOdd = eventCards.nth(2).locator("a.odd:not(.locked)").first();
   if (!(await secondOdd.count()))
     throw new Error("No selectable second mobile odds outcome found.");
+  await eventCards.nth(2).locator(".event-card-toggle").tap();
   await secondOdd.scrollIntoViewIfNeeded();
-  await secondOdd.click();
+  await secondOdd.tap();
   await tray.getByText("2 Picks").waitFor({ state: "visible" });
-  await tray.click();
+  await tray.tap();
   await page
     .getByRole("dialog", { name: "Bet Slip" })
     .getByText(/Place 2-leg parlay/)
@@ -100,9 +110,9 @@ try {
     .getByRole("dialog", { name: "Bet Slip" })
     .getByRole("button", { name: "Remove" })
     .first();
-  await removeLeg.click();
+  await removeLeg.tap();
   await page.getByRole("button", { name: /Open Bet Slip, 1 pick/ }).waitFor({ state: "visible" });
-  await page.getByRole("button", { name: "Remove selection" }).click();
+  await page.getByRole("button", { name: "Remove selection" }).tap();
   await page.getByRole("button", { name: /Open Bet Slip/ }).waitFor({ state: "detached" });
 
   console.log(

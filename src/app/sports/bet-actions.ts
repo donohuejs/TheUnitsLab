@@ -26,6 +26,7 @@ const placementSchema = z.object({
   stake: z.string().trim(),
   groupId: z.union([z.literal(""), z.uuid()]),
   slipKey: z.string().trim().max(4096).optional().default(""),
+  pendingSlipKey: z.string().trim().max(4096).optional().default(""),
   idempotencyKey: z.string().trim().min(16).max(160),
   returnTo: z
     .string()
@@ -59,6 +60,7 @@ const parlayPlacementSchema = z.object({
   stake: z.string().trim(),
   groupId: z.union([z.literal(""), z.uuid()]),
   slipKeys: z.string().trim().max(4096).optional().default(""),
+  pendingSlipKeys: z.string().trim().max(4096).optional().default(""),
   idempotencyKey: z.string().trim().min(16).max(160),
   returnTo: z
     .string()
@@ -74,6 +76,7 @@ const straightBatchSchema = z.object({
   stake: z.string().trim(),
   groupId: z.union([z.literal(""), z.uuid()]),
   slipKeys: z.string().trim().max(4096).optional().default(""),
+  pendingSlipKeys: z.string().trim().max(4096).optional().default(""),
   idempotencyKey: z.string().trim().min(16).max(160),
 });
 
@@ -123,6 +126,7 @@ export async function placeStraightBet(formData: FormData) {
     stake: formValue(formData, "stake"),
     groupId: formValue(formData, "groupId"),
     slipKey: formValue(formData, "slipKey"),
+    pendingSlipKey: formValue(formData, "pendingSlipKey"),
     idempotencyKey: formValue(formData, "idempotencyKey"),
     returnTo: formValue(formData, "returnTo"),
   });
@@ -188,9 +192,11 @@ export async function placeStraightBet(formData: FormData) {
     );
   }
 
-  const cleanupQuery = parsed.data.slipKey
-    ? `?slip=${encodeURIComponent(parsed.data.slipKey)}`
-    : "";
+  const cleanupQuery = parsed.data.pendingSlipKey
+    ? `?pending=${encodeURIComponent(parsed.data.pendingSlipKey)}`
+    : parsed.data.slipKey
+      ? `?slip=${encodeURIComponent(parsed.data.slipKey)}`
+      : "";
   notice(`/my-bets${cleanupQuery}`, "Simulated straight wager placed and stake debited once.");
 }
 
@@ -206,6 +212,7 @@ export async function placeStraightBets(formData: FormData) {
     stake: formValue(formData, "stake"),
     groupId: formValue(formData, "groupId"),
     slipKeys: formValue(formData, "slipKeys"),
+    pendingSlipKeys: formValue(formData, "pendingSlipKeys"),
     idempotencyKey: formValue(formData, "idempotencyKey"),
   });
   if (!parsed.success || parsed.data.legs.some((leg) => !getCompetition(leg.competitionKey))) {
@@ -270,7 +277,9 @@ export async function placeStraightBets(formData: FormData) {
 
   if (!placed) notice("/sports", placementMessage(firstError));
   const path = placedSlipKeys.length
-    ? `/my-bets?straight=${encodeURIComponent(placedSlipKeys.join(","))}`
+    ? parsed.data.pendingSlipKeys
+      ? `/my-bets?pending=${encodeURIComponent(placedSlipKeys.join(","))}`
+      : `/my-bets?straight=${encodeURIComponent(placedSlipKeys.join(","))}`
     : "/my-bets";
   const partial = placed < parsed.data.legs.length ? " Some selections could not be placed." : "";
   notice(
@@ -291,6 +300,7 @@ export async function placeParlayBet(formData: FormData) {
     stake: formValue(formData, "stake"),
     groupId: formValue(formData, "groupId"),
     slipKeys: formValue(formData, "slipKeys"),
+    pendingSlipKeys: formValue(formData, "pendingSlipKeys"),
     idempotencyKey: formValue(formData, "idempotencyKey"),
     returnTo: formValue(formData, "returnTo"),
   });
@@ -331,9 +341,11 @@ export async function placeParlayBet(formData: FormData) {
     }
     notice(parsed.data.returnTo || "/sports", placementMessage(message));
   }
-  const cleanupQuery = parsed.data.slipKeys
-    ? `?slip=${encodeURIComponent(parsed.data.slipKeys)}`
-    : "";
+  const cleanupQuery = parsed.data.pendingSlipKeys
+    ? `?pending=${encodeURIComponent(parsed.data.slipKeys)}`
+    : parsed.data.slipKeys
+      ? `?slip=${encodeURIComponent(parsed.data.slipKeys)}`
+      : "";
   notice(
     `/my-bets${cleanupQuery}`,
     "Simulated parlay placed atomically and its stake was debited once.",

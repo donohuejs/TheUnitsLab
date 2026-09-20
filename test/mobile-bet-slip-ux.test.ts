@@ -25,6 +25,7 @@ const leg = (
   eventId: string,
   marketType: SlipSelection["marketType"] = "moneyline",
 ): SlipSelection => ({
+  clientSelectionId: `test-${eventId}-${marketType}`,
   competitionKey: "ncaaf",
   eventId,
   sport: "football",
@@ -86,7 +87,7 @@ describe("mobile Bet Slip UX addendum", () => {
     setSlipSelections(selections);
     removePendingSlipSelectionKeysAndPersist([slipSelectionKey(selections[0])]);
     expect(getSlipSnapshot()).toEqual([selections[1]]);
-    expect(betSlip).toContain("removePendingSlipSelectionKeysAndPersist");
+    expect(betSlip).toContain("removePendingSlipSelectionIdsAndPersist");
   });
 
   it("removes the first and second legs by canonical key, including the former second leg", () => {
@@ -96,7 +97,8 @@ describe("mobile Bet Slip UX addendum", () => {
     expect(getSlipSnapshot()).toEqual([selections[1]]);
     removeSlipSelectionKeysAndPersist([slipSelectionKey(selections[1])]);
     expect(getSlipSnapshot()).toEqual([]);
-    expect(betSlip).toContain("removeParlayLeg(slipSelectionKey(leg))");
+    expect(betSlip).toContain("removeParlayLeg(getClientSelectionId(leg, index))");
+    expect(betSlip).toContain("removePendingSlipSelectionIdsAndPersist");
     expect(betSlip).not.toContain("removeParlayLeg(index)");
   });
 
@@ -138,6 +140,25 @@ describe("mobile Bet Slip UX addendum", () => {
     expect(betSlip).toContain("Place {legs.length}-leg parlay");
   });
 
+  it("keeps picks-first mobile selections together when a parlay is unavailable", () => {
+    expect(betSlip).toContain("setPendingSlipSelections([...mobileSelections, selection])");
+    expect(betSlip).toContain("Straight bet");
+    expect(betSlip).toContain("Parlay unavailable");
+    expect(betSlip).toContain("mobileParlayAvailability.eligible");
+    expect(betSlip).not.toContain(
+      'setMobileAcknowledgement("Same-game parlay picks are not supported.")',
+    );
+    expect(betSlip).not.toContain(
+      'setMobileAcknowledgement("Parlay picks must use the same bookmaker.")',
+    );
+  });
+
+  it("derives tray count from the same pending snapshot used by the sheet", () => {
+    expect(betSlip).toContain("getPendingSlipSnapshot");
+    expect(betSlip).toContain("const mobileSelectionCount = mobileSelections.length");
+    expect(betSlip).not.toContain("const [mobileSelectionCount");
+  });
+
   it("keeps moneyline, spread, and total details in the shared slip content", () => {
     expect(betSlip).toContain("MarketBadge");
     expect(betSlip).toContain('currentSelection.marketType === "spread"');
@@ -169,6 +190,18 @@ describe("mobile Bet Slip UX addendum", () => {
     expect(css).toContain(".mobile-slip-sheet {");
     expect(css).toContain("position: fixed;");
     expect(css).toContain(".sportsbook-layout:has(.has-mobile-slip)");
+  });
+
+  it("uses compact mobile event accordions while leaving desktop cards expanded", () => {
+    expect(sportsPage).toContain("ResponsiveEventCard");
+    expect(read("../src/components/responsive-event-card.tsx")).toContain("setMobileOpen");
+    expect(css).toContain(".event-card.is-collapsed");
+  });
+
+  it("keeps controls touch-sized and touch-responsive", () => {
+    expect(css).toContain("touch-action: manipulation");
+    expect(css).toContain("min-height: 2.75rem");
+    expect(betSlip).toContain('type="button"');
   });
 
   it("reserves safe-area space and layers the tray above browse content", () => {

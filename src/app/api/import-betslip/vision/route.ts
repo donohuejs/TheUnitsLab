@@ -12,6 +12,7 @@ import {
   extractBetslipWithVision,
   recoverMissingAmericanOddsWithVision,
   VisionMalformedResponseError,
+  type VisionOddsRecoveryContext,
 } from "@/lib/betslip/vision";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -75,6 +76,25 @@ async function updateLedger(
 
 const americanOddsLiteral = isAmericanOddsLiteral;
 
+function americanOddsDiagnostic(
+  primary: Awaited<ReturnType<typeof extractBetslipWithVision>>["draft"],
+  recovered: Awaited<ReturnType<typeof extractBetslipWithVision>>["draft"],
+) {
+  const primaryMissing = primary.legs.some((leg) => !americanOddsLiteral(leg.americanOdds));
+  if (
+    !primaryMissing &&
+    (primary.ticketType !== "parlay" || americanOddsLiteral(primary.combinedAmericanOdds))
+  ) {
+    return "primary_american_odds_present";
+  }
+  const recoveredValues = recovered.legs.map((leg) => leg.americanOdds);
+  if (recoveredValues.some((value) => americanOddsLiteral(value))) return "odds_recovery_mapped";
+  if (recoveredValues.some((value) => value && !americanOddsLiteral(value))) {
+    return "odds_recovery_value_rejected";
+  }
+  return "odds_recovery_no_literal_price";
+}
+
 async function recoverMissingAmericanOdds(
   admin: ReturnType<typeof createSupabaseAdminClient>,
   image: Blob,
@@ -132,7 +152,32 @@ async function recoverMissingAmericanOdds(
 
   const startedAt = Date.now();
   try {
-    const recovery = await recoverMissingAmericanOddsWithVision(image, { apiKey, userId });
+    const context: VisionOddsRecoveryContext = {
+      ticketType: draft.ticketType,
+      sportsbook: draft.sportsbook,
+      legs: draft.legs.map((leg) => ({
+        selection: leg.selectionText,
+        market: leg.market,
+        line: leg.line,
+      })),
+    };
+    const recovery = await recoverMissingAmericanOddsWithVision(image, {
+      apiKey,
+      userId,
+      context,
+    });
+    const recoveryCategory = recovery.legs.some((leg) => americanOddsLiteral(leg.americanOdds))
+      ? "odds_recovery_mapped"
+      : recovery.legs.some((leg) => leg.americanOdds)
+        ? "odds_recovery_value_rejected"
+        : "odds_recovery_no_literal_price";
+    console.info("[betslip-vision] bounded American odds recovery", {
+      correlationId,
+      legCount: recovery.legs.length,
+      returnedAmericanOdds: recovery.legs.map((leg) => Boolean(leg.americanOdds)),
+      acceptedAmericanOdds: recovery.legs.map((leg) => americanOddsLiteral(leg.americanOdds)),
+      category: recoveryCategory,
+    });
     const completion = await admin.rpc("complete_vision_request", {
       p_ledger_id: reservation.ledger_id,
       p_input_tokens: recovery.inputTokens,
@@ -160,7 +205,7 @@ async function recoverMissingAmericanOdds(
       monthly_spend_usd: reservation.reserved_spend_usd,
       provider_status: recovery.providerStatus,
       extraction_result: "succeeded",
-      provider_error_category: "odds_recovery",
+      provider_error_category: recoveryCategory,
       attempted_at: new Date(startedAt).toISOString(),
       input_tokens: recovery.inputTokens,
       output_tokens: recovery.outputTokens,
@@ -407,6 +452,13 @@ export async function POST(request: Request) {
   const calculatedCost = result.usageAvailable
     ? calculateVisionCostUsd(result.inputTokens, result.outputTokens)
     : null;
+  console.info("[betslip-vision] primary American odds mapping", {
+    correlationId,
+    legCount: result.draft.legs.length,
+    returnedAmericanOdds: result.draft.legs.map((leg) => Boolean(leg.americanOdds)),
+    acceptedAmericanOdds: result.draft.legs.map((leg) => americanOddsLiteral(leg.americanOdds)),
+    combinedAmericanOddsPresent: Boolean(result.draft.combinedAmericanOdds),
+  });
   const recoveredDraft = await recoverMissingAmericanOdds(
     admin,
     image,
@@ -423,7 +475,7 @@ export async function POST(request: Request) {
       monthly_spend_usd: reservation.reserved_spend_usd,
       provider_status: result.providerStatus,
       extraction_result: "succeeded",
-      provider_error_category: "ledger_completion_failed",
+      provider_error_category: `ledger_completion_failed:${americanOddsDiagnostic(result.draft, recoveredDraft)}`,
       attempted_at: new Date(startedAt).toISOString(),
       input_tokens: result.inputTokens,
       output_tokens: result.outputTokens,
@@ -453,6 +505,7 @@ export async function POST(request: Request) {
     monthly_spend_usd: reservation.reserved_spend_usd,
     provider_status: result.providerStatus,
     extraction_result: "succeeded",
+    provider_error_category: americanOddsDiagnostic(result.draft, recoveredDraft),
     attempted_at: new Date(startedAt).toISOString(),
     input_tokens: result.inputTokens,
     output_tokens: result.outputTokens,

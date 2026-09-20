@@ -6,7 +6,12 @@ import {
   parseSlipSelections,
   removeSlipSelectionKeys,
   areMutuallyExclusiveSelections,
+  assessParlayAvailability,
+  getPendingSlipSnapshot,
+  getClientSelectionId,
+  removePendingSlipSelectionIdsAndPersist,
   replaceMutuallyExclusiveSelection,
+  setPendingSlipSelections,
   setSlipSelections,
   setStraightSlipSelections,
   slipSelectionKey,
@@ -14,6 +19,7 @@ import {
 } from "../src/lib/wagers/slip";
 
 const leg = (competitionKey: string, eventId: string): SlipSelection => ({
+  clientSelectionId: `test-${eventId}`,
   competitionKey,
   eventId,
   sport: competitionKey === "epl" ? "soccer" : "football",
@@ -114,5 +120,43 @@ describe("persistent simulated parlay slip", () => {
         line: 45.5,
       }),
     ).toBeNull();
+  });
+
+  it("keeps same-event different-market and mixed-book picks as independent selections", () => {
+    const moneyline = { ...leg("ncaaf", "same-event"), bookmakerId: "fanduel" };
+    const spread = {
+      ...moneyline,
+      clientSelectionId: "same-event-spread",
+      marketType: "spread" as const,
+      selection: "home" as const,
+      line: -7.5,
+    };
+    const differentBook = {
+      ...leg("ncaaf", "other-event"),
+      clientSelectionId: "other-event-draftkings",
+      bookmakerId: "draftkings",
+    };
+    expect(assessParlayAvailability([moneyline, spread])).toMatchObject({ eligible: false });
+    expect(assessParlayAvailability([moneyline, differentBook])).toMatchObject({ eligible: false });
+    setPendingSlipSelections([moneyline, spread, differentBook]);
+    expect(getPendingSlipSnapshot()).toHaveLength(3);
+  });
+
+  it("assigns and persists a client selection identity when a new pick is added", () => {
+    const selection = { ...leg("ncaaf", "generated-id"), clientSelectionId: undefined };
+    setPendingSlipSelections([selection]);
+    const stored = getPendingSlipSnapshot()[0];
+    expect(stored?.clientSelectionId).toBeTruthy();
+    expect(JSON.stringify(stored)).toContain(stored?.clientSelectionId ?? "");
+  });
+
+  it.each([0, 1, 2])("removes exact stable leg identity at position %s", (index) => {
+    const selections = [leg("ncaaf", "first"), leg("nfl", "middle"), leg("epl", "final")];
+    setPendingSlipSelections(selections);
+    removePendingSlipSelectionIdsAndPersist([getClientSelectionId(selections[index]!, index)]);
+    expect(getPendingSlipSnapshot().map((selection) => selection.eventId)).not.toContain(
+      selections[index]!.eventId,
+    );
+    expect(getPendingSlipSnapshot()).toHaveLength(2);
   });
 });

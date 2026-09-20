@@ -172,7 +172,7 @@ Date: 2026-09-19
 
 - **Production reproduction:** Selecting the opposite side of a spread, total, or moneyline in the same event was incorrectly rejected by the generic unsupported same-game-parlay message, leaving the first pick active.
 - **Root cause:** The mobile and desktop add-leg paths checked same-event restrictions before distinguishing mutually exclusive outcomes in the same market.
-- **Fix:** Added a shared canonical selection comparison. Opposite spread, total, and two-/three-way moneyline outcomes replace the existing leg atomically through the persistent slip store. Same-event different-market selections still use the existing unsupported-SGP behavior.
+- **Fix:** Added a shared canonical selection comparison. Opposite spread, total, and two-/three-way moneyline outcomes replace the existing leg atomically through the persistent slip store. Same-event different-market selections now remain as independent picks while the derived parlay option is unavailable.
 - **Regression coverage:** Added spread, total, home/away/draw moneyline, replacement, and different-market tests in `test/wager-slip.test.ts` and `test/mobile-bet-slip-ux.test.ts`.
 
 ### Stable parlay-leg removal
@@ -218,4 +218,48 @@ Date: 2026-09-19
 
 ### Manual production smoke tests remaining
 
-After deployment, verify on real authenticated Browse Odds at 375px, 390px, and 430px: opposite same-market replacement, same-event different-market rejection, removal of both legs including the former second leg, header position after deep scroll, drawer layering/scroll restoration, sheet placement retry behavior, and one rapid double tap producing one My Bets ticket. Verify a Miami–Wake straight import with separate `+21.5` line and American price, and verify Lab Notes shows imported settled record/P&L/ROI while bankroll is unchanged. The local Playwright smoke scripts were attempted at all required widths plus desktop but stopped at disabled `/auth` sign-up because this workspace lacks the deployed Supabase public configuration; they remain the required authenticated production smoke gate. No commit or push was performed.
+After deployment, verify on real authenticated Browse Odds at 375px, 390px, and 430px: opposite same-market replacement, same-event different-market coexistence with parlay unavailable, removal of both legs including the former second leg, header position after deep scroll, drawer layering/scroll restoration, sheet placement retry behavior, and one rapid double tap producing one My Bets ticket. Verify a Miami–Wake straight import with separate `+21.5` line and American price, and verify Lab Notes shows imported settled record/P&L/ROI while bankroll is unchanged. The local Playwright smoke scripts were attempted at all required widths plus desktop but stopped at disabled `/auth` sign-up because this workspace lacks the deployed Supabase public configuration; they remain the required authenticated production smoke gate. No commit or push was performed.
+
+## Final Mobile Browse / Bet Slip Production Follow-up
+
+Date: 2026-09-19
+
+### Selection model and removal identity
+
+- **Root cause:** Mobile additions were treated as parlay legs first, so same-event different-market and mixed-sportsbook picks were rejected even when each was a valid straight. Removal rows also depended on canonical/index-shaped UI identity, which allowed stale or shifted targets.
+- **Fix:** The persistent slip now treats the durable selection array as the source collection. Mobile writes each selection to the shared pending collection; straight placement is always available, while parlay eligibility is derived and can be unavailable with a concise reason. Same-event same-market opposite outcomes replace atomically. Every persisted selection receives a stable `clientSelectionId`; React keys and removal handlers use it, while market matching continues to use canonical market fields.
+- **Regression coverage:** `test/wager-slip.test.ts` and `test/mobile-bet-slip-ux.test.ts` cover spread/total/moneyline replacement, same-event different-market coexistence, mixed-book coexistence, removal of first/middle/final legs, removal after replacement, exact second-leg removal, tray count synchronization, and parlay eligibility.
+
+### Mobile Bet Slip presentation and touch behavior
+
+- **Root cause:** The prior mobile implementation exposed parlay-oriented controls even when the selected set could only be placed as independent straights; some removal paths also had smaller/non-explicit touch targets.
+- **Fix:** The bottom sheet now presents the shared selection collection as straight bets plus a parlay section only when eligible. Ineligible parlay reasons do not block straight controls. Successful mobile placement cleanup removes the placed keys from both pending views. Tray count and sheet contents derive from the same live pending snapshot. Remove, tray, odds, and accordion controls use semantic buttons/controls, practical 44px targets, and `touch-action: manipulation` where appropriate.
+- **Responsive coverage:** `scripts/check-mobile-bet-slip.mjs` uses real Playwright `tap()` interactions, checks selected-state feedback, collapsed cards, tray/sheet transitions, exact scroll restoration, and removal transitions at 375px, 390px, and 430px. The authenticated run remains environment-gated because this workspace has no running/deployed Supabase-backed app.
+
+### Mobile Browse cards and header sizing
+
+- **Root cause:** Every event card rendered its full market list immediately on mobile, making long college-football catalogs unnecessarily tall. Header sticky positioning already passed, but mobile branding had excess vertical space and desktop branding/navigation were undersized.
+- **Fix:** `ResponsiveEventCard` keeps desktop cards expanded and starts mobile cards collapsed with keyboard-accessible header toggles, compact team/kickoff summaries, and no selection-state loss. Mobile lockup width and header padding were reduced while retaining safe-area, sticky, hamburger, and drawer behavior. Desktop logo and navigation typography were increased with responsive clamps. The browser smoke script now includes actual header bounding-box checks and desktop size/no-wrap assertions at 1280px, 1440px, and 1920px.
+- **Preserved behavior:** The existing sticky architecture, drawer overlay, body scroll restoration, and Bet Slip overlay z-index/safe-area structure were not redesigned.
+
+### American odds extraction diagnosis
+
+- **Root cause:** Production misses could not be distinguished between a missing primary structured value, a recovery miss, or a line-like recovery value being rejected. The recovery prompt also lacked selected-side/market/known-line context.
+- **Fix:** Primary and bounded recovery paths now record structured presence/acceptance categories, while diagnostic logs avoid image or private ticket payloads. Recovery receives the selected side, market, known line, and sportsbook context and explicitly distinguishes `+21.5` as a spread line from `-110`/`+105` as American price. Literal-only validation remains enforced; unreadable or rejected prices stay blank for manual review, with no derived/invented odds.
+- **Regression coverage:** Vision tests cover Wake `+21.5` with a separate price, negative/positive lines with negative prices, moneyline without a line, parlay leg prices, recovery context propagation, and observable accepted/rejected/missing categories.
+
+### Lab Notes settled-bet semantics
+
+- **Root cause:** The canonical analytics projection correctly aggregated imported settled performance, but the Lab Notes ranking UI displayed all wager rows, including open wagers, beside the settled W-L-P record.
+- **Fix:** Lab Notes now labels and displays `Settled Bets`, using `Wins + Losses + Pushes`. The `total_wagers` ranking category and five-settled-wager qualification use the same settled count. Open wagers remain available in My Bets and do not affect Lab Notes record/P&L/ROI. Imported analytics remain normalized at `$1 USD = 1 Vial` without bankroll entries.
+- **Regression coverage:** `test/analytics-reconciliation.test.ts` covers the settled-count semantics, and `supabase/tests/post_deployment_mobile_smoke_fixes.sql` now exercises a production-shaped 3-1-1 Study record plus an open wager, personal imported isolation, normalized performance, and unchanged bankroll.
+
+### Database and validation
+
+- **Migration:** No new migration was required for this follow-up. The existing forward-only `supabase/migrations/20261002000000_post_deployment_mobile_smoke_fixes.sql` continues to provide the server-side placement idempotency wrappers and canonical imported analytics fallback; no applied migration was edited. Only its regression fixture was expanded in `supabase/tests/post_deployment_mobile_smoke_fixes.sql`.
+- **Automated results:** `npm.cmd run validate` PASS — 221 Vitest tests, formatting, lint, typecheck, secret scan, and production build. `npm.cmd run db:reset` PASS. `npm.cmd run test:db` PASS — 20 files / 510 assertions. `npm.cmd run db:lint` PASS with the same two pre-existing settlement-helper warnings. Placement and parlay-placement concurrency suites PASS. `npm.cmd audit --audit-level=high` PASS with 0 vulnerabilities. `git diff --check` PASS.
+- **Production browser gate:** The mobile Playwright scripts are implemented but could not execute here because no local app was listening on port 3000; prior attempts also reached the disabled sign-up path because deployed Supabase public configuration is unavailable in this workspace.
+
+### Final recommendation
+
+PASS for the scoped code and database validation. Before release sign-off, run the authenticated production smoke matrix at 375px, 390px, 430px, 1280px, 1440px, and 1920px: verify collapsed-card expansion, same-event straight coexistence/replacement, mixed-book straight placement, removal of every leg, tray/sheet count agreement, exact scroll restoration, compact sticky header/drawer, rapid double-submit idempotency, Miami–Wake odds recovery/manual-review behavior, and Lab Notes settled counts with imported bankroll isolation. No commit or push was performed.

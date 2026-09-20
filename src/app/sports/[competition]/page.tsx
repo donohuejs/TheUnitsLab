@@ -6,6 +6,7 @@ import { CompetitionSwitcher } from "@/components/competition-switcher";
 import { KickoffTime } from "@/components/kickoff-time";
 import { LocalDateTime } from "@/components/local-date-time";
 import { OddsSelectionGrid } from "@/components/odds-selection-grid";
+import { ResponsiveEventCard } from "@/components/responsive-event-card";
 import { StatusBadge } from "@/components/status-badge";
 import { SubmitButton } from "@/components/submit-button";
 import { TeamMark } from "@/components/team-mark";
@@ -238,27 +239,31 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
                 ([marketType]) => marketFilter === "all" || marketType === marketFilter,
               );
               return (
-                <article className="card event-card" key={event.id}>
-                  <div className="event-heading">
-                    <div className="event-heading-main">
-                      <h2 className="event-teams">
-                        <span>
-                          <TeamMark teamName={event.awayTeam} sport={event.sport} />
-                          {event.awayTeam}
-                        </span>
-                        <span className="event-at">at</span>
-                        <span>
-                          <TeamMark teamName={event.homeTeam} sport={event.sport} />
-                          {event.homeTeam}
-                        </span>
-                      </h2>
-                      <div className="event-kickoff">
-                        <span className="sr-only">Kickoff </span>
-                        <KickoffTime value={event.scheduledStart} />
+                <ResponsiveEventCard
+                  key={event.id}
+                  heading={
+                    <div className="event-heading">
+                      <div className="event-heading-main">
+                        <h2 className="event-teams">
+                          <span>
+                            <TeamMark teamName={event.awayTeam} sport={event.sport} />
+                            {event.awayTeam}
+                          </span>
+                          <span className="event-at">at</span>
+                          <span>
+                            <TeamMark teamName={event.homeTeam} sport={event.sport} />
+                            {event.homeTeam}
+                          </span>
+                        </h2>
+                        <div className="event-kickoff">
+                          <span className="sr-only">Kickoff </span>
+                          <KickoffTime value={event.scheduledStart} />
+                        </div>
                       </div>
+                      <StatusBadge status={event.status} />
                     </div>
-                    <StatusBadge status={event.status} />
-                  </div>
+                  }
+                >
                   {odds.length || marketFilter === "other" ? (
                     <div className="market-groups">
                       {visibleGroups.map(([marketType, label]) => {
@@ -330,7 +335,7 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
                       </small>
                     </p>
                   ) : null}
-                </article>
+                </ResponsiveEventCard>
               );
             })}
           {dataset &&

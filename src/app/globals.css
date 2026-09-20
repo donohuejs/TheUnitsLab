@@ -401,8 +401,10 @@ textarea:focus {
 }
 
 .text-button {
+  min-height: 2.75rem;
   border: 0;
   padding: 0.3rem;
+  touch-action: manipulation;
   color: #087443;
   background: transparent;
   font-weight: 800;
@@ -529,9 +531,7 @@ textarea:focus {
 .nav-brand .brand-lockup img {
   display: block;
   width: auto;
-  /* Keep the desktop lockup visually modest while preserving the sticky header rhythm. */
-  height: 104px;
-  /* Patch 2 regression baseline: height: 80px remains the compact lockup reference. */
+  height: clamp(12rem, 14vw, 17rem);
   object-fit: contain;
 }
 
@@ -811,7 +811,7 @@ textarea:focus {
   border-radius: 999px;
   padding: 0.5rem clamp(0.45rem, 0.8vw, 0.9rem);
   color: #356153;
-  font-size: clamp(0.72rem, 0.78vw, 0.9rem);
+  font-size: clamp(1.1rem, 1.45vw, 1.5rem);
   font-weight: 750;
   white-space: nowrap;
   text-decoration: none;
@@ -1044,6 +1044,23 @@ textarea:focus {
   justify-content: space-between;
   gap: 1rem;
 }
+.event-card-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.event-card-toggle > .event-heading {
+  flex: 1 1 auto;
+}
+.event-card-chevron {
+  display: none;
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-size: 1.35rem;
+  font-weight: 900;
+  line-height: 1;
+}
 .event-heading-main {
   min-width: 0;
 }
@@ -1182,6 +1199,7 @@ textarea:focus {
   background: #f8fbf9;
   color: inherit;
   text-decoration: none;
+  touch-action: manipulation;
 }
 .odd:hover {
   border-color: #12b76a;
@@ -1890,7 +1908,7 @@ thead th {
     border-bottom: 0;
     margin-inline: -0.5rem;
     margin-bottom: 1.25rem;
-    padding: calc(env(safe-area-inset-top) + 0.1rem) 0.5rem 0.1rem;
+    padding: calc(env(safe-area-inset-top) + 0.05rem) 0.5rem 0.05rem;
     background: rgba(244, 247, 248, 0.96);
     backdrop-filter: blur(12px);
     isolation: isolate;
@@ -1908,11 +1926,11 @@ thead th {
     gap: 0.6rem;
     min-width: 0;
     border-bottom: 1px solid var(--border);
-    padding-bottom: 0.45rem;
+    padding-bottom: 0.25rem;
   }
 
   .mobile-nav-brand .brand-lockup {
-    width: min(72vw, 16.5rem);
+    width: min(72vw, 13.2rem);
   }
 
   .auth-grid,
@@ -2026,6 +2044,7 @@ thead th {
     font-weight: 800;
     text-align: left;
     cursor: pointer;
+    touch-action: manipulation;
   }
 
   .mobile-slip-tray:focus-visible,
@@ -2145,9 +2164,21 @@ thead th {
   .mobile-slip-sheet .mobile-empty-slip,
   .mobile-slip-sheet.mobile-single-mode .mobile-straight-slip,
   .mobile-slip-sheet.mobile-single-mode .mobile-parlay-slip,
-  .mobile-slip-sheet.mobile-parlay-mode .mobile-current-slip,
-  .mobile-slip-sheet.mobile-parlay-mode .mobile-straight-slip {
+  .mobile-slip-sheet.mobile-parlay-mode .mobile-current-slip {
     display: none;
+  }
+
+  .event-card-toggle {
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  .event-card-chevron {
+    display: inline-block;
+  }
+
+  .event-card.is-collapsed {
+    padding-block: 0.8rem;
   }
 
   .mobile-only-control {
@@ -2272,7 +2303,7 @@ thead th {
 
   .parlay-leg-list .text-button {
     flex: 0 0 auto;
-    min-height: 2.4rem;
+    min-height: 2.75rem;
   }
 
   .event-heading {

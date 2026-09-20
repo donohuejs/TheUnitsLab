@@ -196,7 +196,7 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
                   <th scope="col">Vials won/lost</th>
                   <th scope="col">ROI</th>
                   <th scope="col">Record</th>
-                  <th scope="col">Bets</th>
+                  <th scope="col">Settled Bets</th>
                 </tr>
               </thead>
               <tbody>
@@ -217,7 +217,7 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
                     <td>
                       {row.summary.wins}-{row.summary.losses}-{row.summary.pushes}
                     </td>
-                    <td>{row.summary.totalBets}</td>
+                    <td>{row.summary.eligibleSettledBets}</td>
                   </tr>
                 ))}
               </tbody>
@@ -261,8 +261,8 @@ export default async function LeaderboardsPage({ searchParams }: Props) {
                     </dd>
                   </div>
                   <div>
-                    <dt>Bets</dt>
-                    <dd>{row.summary.totalBets}</dd>
+                    <dt>Settled Bets</dt>
+                    <dd>{row.summary.eligibleSettledBets}</dd>
                   </div>
                 </dl>
               </article>

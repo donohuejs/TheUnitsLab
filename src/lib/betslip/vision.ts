@@ -252,6 +252,16 @@ export type VisionOddsRecoveryResult = {
   usageAvailable: boolean;
 };
 
+export type VisionOddsRecoveryContext = {
+  ticketType: "straight" | "parlay";
+  sportsbook: string | null;
+  legs: Array<{
+    selection: string | null;
+    market: "moneyline" | "spread" | "total" | null;
+    line: string | null;
+  }>;
+};
+
 function parseUsage(body: Record<string, unknown>) {
   const usage = body.usage && typeof body.usage === "object" ? body.usage : {};
   const rawInput = (usage as { input_tokens?: unknown }).input_tokens;
@@ -284,6 +294,7 @@ export async function recoverMissingAmericanOddsWithVision(
   options: {
     apiKey: string;
     userId: string;
+    context?: VisionOddsRecoveryContext;
     signal?: AbortSignal;
     fetcher?: typeof fetch;
   },
@@ -302,12 +313,15 @@ export async function recoverMissingAmericanOddsWithVision(
       store: false,
       safety_identifier: safetyIdentifier(options.userId),
       instructions:
-        "Read only missing signed American odds from this sportsbook receipt. Return the literal visible price attached to each selected wager in leg order. Do not return spread or total lines such as -2.5. Do not infer or calculate odds from stake or return. Use null when the signed American price is not visibly readable. Do not change event, selection, market, line, stake, or return.",
+        "Read only missing signed American odds from this sportsbook receipt. Return the literal visible price attached to each selected wager in leg order. Do not return spread or total lines such as -2.5. Do not infer or calculate odds from stake or return. Use null when the signed American price is not visibly readable. Do not change event, selection, market, line, stake, or return. Read the American price attached to THIS wager selection. Do not return the point spread or total line. For example, +21.5 is a spread line, while -110 or +105 is an American price.",
       input: [
         {
           role: "user",
           content: [
-            { type: "input_text", text: "Recover only the missing American price field(s)." },
+            {
+              type: "input_text",
+              text: `Recover only the missing American price field(s). Known ticket context: ${JSON.stringify(options.context ?? { ticketType: "unknown", sportsbook: null, legs: [] })}. Match each returned price to the selected side and market in leg order.`,
+            },
             {
               type: "input_image",
               image_url: `data:${mimeType};base64,${bytes.toString("base64")}`,

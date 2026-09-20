@@ -23,6 +23,7 @@ type Props = {
     notice?: string;
     slip?: string;
     straight?: string;
+    pending?: string;
   }>;
 };
 type Leg = {
@@ -128,6 +129,7 @@ export default async function MyBetsPage({ searchParams }: Props) {
   const filter = selectedFilter(query);
   const slipKeys = query.slip?.split(",").filter(Boolean).slice(0, 12) ?? [];
   const straightSlipKeys = query.straight?.split(",").filter(Boolean).slice(0, 12) ?? [];
+  const pendingSlipKeys = query.pending?.split(",").filter(Boolean).slice(0, 12) ?? [];
   const supabase = await createSupabaseServerClient();
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) redirect("/auth");
@@ -200,6 +202,7 @@ export default async function MyBetsPage({ searchParams }: Props) {
       <SlipPlacementCleanup
         slipKeys={slipKeys}
         straightSlipKeys={straightSlipKeys}
+        pendingSlipKeys={pendingSlipKeys}
         voidedSlipKeys={voidedSlipKeys}
       />
       <AppNav active="my-bets" userId={authData.user.id} />

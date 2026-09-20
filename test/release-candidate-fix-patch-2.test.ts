@@ -18,7 +18,7 @@ describe("release-candidate fix patch 2 surfaces", () => {
     expect(appNav).not.toContain("<BrandLockup compact />");
     expect(home).not.toContain('variant="home"');
     expect(home).not.toContain("home-lockup");
-    expect(css).toContain("height: 80px");
+    expect(css).toContain("height: clamp(12rem, 14vw, 17rem)");
     expect(css).toContain("flex-wrap: nowrap");
     expect(css).toContain("@media (max-width: 760px)");
   });

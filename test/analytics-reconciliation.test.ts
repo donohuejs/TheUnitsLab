@@ -132,6 +132,22 @@ describe("Phase 6 exact analytics reconciliation", () => {
     });
   });
 
+  it("uses settled W-L-P counts for Lab Notes wager qualification and display semantics", () => {
+    const actual = summarizeAnalytics(fixture);
+    expect(actual.wins).toBe(3);
+    expect(actual.losses).toBe(2);
+    expect(actual.pushes).toBe(1);
+    expect(actual.eligibleSettledBets).toBe(6);
+    expect(actual.totalBets).toBe(8);
+    const row = rankLeaderboard(
+      [{ userId: userA, displayName: "Alpha" }],
+      fixture.map((record) => ({ ...record, userId: userA })),
+      "total_wagers",
+    )[0];
+    expect(row?.summary.eligibleSettledBets).toBe(6);
+    expect(row?.eligible).toBe(true);
+  });
+
   it("reconciles source, wager-time, sport, market, and sportsbook filters", () => {
     const now = new Date("2026-09-14T00:00:00Z");
     const week = filterAnalyticsWagers(fixture, {

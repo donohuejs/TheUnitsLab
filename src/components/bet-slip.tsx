@@ -15,14 +15,19 @@ import {
 import {
   clearSlip,
   clearStraightSlip,
+  assessParlayAvailability,
   getEmptyStraightSlipSnapshot,
   getEmptySlipSnapshot,
+  getEmptyPendingSlipSnapshot,
+  getPendingSlipSnapshot,
+  getClientSelectionId,
   getStraightSlipSnapshot,
   getSlipSnapshot,
-  removePendingSlipSelectionKeysAndPersist,
-  removeSlipSelectionKeysAndPersist,
-  removeStraightSlipSelectionKeysAndPersist,
+  removePendingSlipSelectionIdsAndPersist,
+  removeSlipSelectionIdsAndPersist,
+  removeStraightSlipSelectionIdsAndPersist,
   replaceMutuallyExclusiveSelection,
+  setPendingSlipSelections,
   setStraightSlipSelections,
   setSlipSelections,
   subscribeToStraightSlip,
@@ -102,16 +107,11 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
     getStraightSlipSnapshot,
     getEmptyStraightSlipSnapshot,
   );
-
-  const mobileSelections = useMemo(() => {
-    const seen = new Set<string>();
-    return [...legs, ...straightSelections].filter((candidate) => {
-      const key = slipSelectionKey(candidate);
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }, [legs, straightSelections]);
+  const mobileSelections = useSyncExternalStore(
+    subscribeToSlip,
+    getPendingSlipSnapshot,
+    getEmptyPendingSlipSnapshot,
+  );
   const mobileSelectionCount = mobileSelections.length;
   const mobileSheetSelection = mobileSelectionCount === 1 ? (mobileSelections[0] ?? null) : null;
   const mobileModalOpen = mobileSheetOpen && isMobileViewport && mobileSelectionCount > 0;
@@ -131,55 +131,29 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
   useEffect(() => {
     if (!selection || !isMobileViewport) return;
     const activeKey = slipSelectionKey(selection);
-    const existingIndex = legs.findIndex((leg) => slipSelectionKey(leg) === activeKey);
+    const existingIndex = mobileSelections.findIndex((leg) => slipSelectionKey(leg) === activeKey);
     if (existingIndex >= 0) return;
-    const replacement = replaceMutuallyExclusiveSelection(legs, selection);
+    const replacement = replaceMutuallyExclusiveSelection(mobileSelections, selection);
     if (replacement) {
-      const next = replacement;
-      setSlipSelections(next);
+      setPendingSlipSelections(replacement);
       const timeout = window.setTimeout(() => {
         setMobileAcknowledgement(`${selectionLabel(selection)} replaced previous pick`);
       }, 0);
       return () => window.clearTimeout(timeout);
     }
-    if (legs.length >= 12) {
+    if (mobileSelections.length >= 12) {
       const timeout = window.setTimeout(
         () => setMobileAcknowledgement("The mobile parlay already has 12 picks."),
         0,
       );
       return () => window.clearTimeout(timeout);
     }
-    if (
-      legs.some(
-        (leg) =>
-          leg.eventId === selection.eventId &&
-          leg.bookmakerId === selection.bookmakerId &&
-          leg.marketType === selection.marketType &&
-          leg.selection === selection.selection,
-      )
-    ) {
-      return;
-    }
-    if (legs.some((leg) => leg.eventId === selection.eventId)) {
-      const timeout = window.setTimeout(
-        () => setMobileAcknowledgement("Same-game parlay picks are not supported."),
-        0,
-      );
-      return () => window.clearTimeout(timeout);
-    }
-    if (legs.length && legs[0].bookmakerId !== selection.bookmakerId) {
-      const timeout = window.setTimeout(
-        () => setMobileAcknowledgement("Parlay picks must use the same bookmaker."),
-        0,
-      );
-      return () => window.clearTimeout(timeout);
-    }
-    setSlipSelections([...legs, selection]);
+    setPendingSlipSelections([...mobileSelections, selection]);
     window.setTimeout(() => {
       setMobileAcknowledgement(`${selectionLabel(selection)} added`);
       window.setTimeout(() => setMobileAcknowledgement(""), 2400);
     }, 0);
-  }, [isMobileViewport, legs, selection]);
+  }, [isMobileViewport, mobileSelections, selection]);
 
   useEffect(() => {
     if (!mobileModalOpen) return;
@@ -222,9 +196,14 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
       (candidate) => slipSelectionKey(candidate) === slipSelectionKey(selection),
     ),
   );
+  const storedMobileSelection = selection
+    ? mobileSelections.find(
+        (candidate) => slipSelectionKey(candidate) === slipSelectionKey(selection),
+      )
+    : null;
   const currentSelection = mobileModalOpen
     ? selectionIsInMobileSlip
-      ? selection
+      ? (storedMobileSelection ?? selection)
       : mobileSheetSelection
     : selection;
   const selectionKey = currentSelection ? slipSelectionKey(currentSelection) : "";
@@ -275,12 +254,12 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
     const baseKey = slipSelectionKey(selection);
     const activeKey = slipSelectionKey(activeSelection);
     if (baseKey === activeKey) return;
-    const baseIndex = legs.findIndex((leg) => slipSelectionKey(leg) === baseKey);
+    const baseIndex = mobileSelections.findIndex((leg) => slipSelectionKey(leg) === baseKey);
     if (baseIndex < 0) return;
-    const next = [...legs];
+    const next = [...mobileSelections];
     next[baseIndex] = activeSelection;
-    setSlipSelections(next);
-  }, [activeSelection, legs, selection]);
+    setPendingSlipSelections(next);
+  }, [activeSelection, mobileSelections, selection]);
 
   function addCurrentLeg() {
     if (!selection || !activeSelection) {
@@ -298,22 +277,17 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
       setParlayNotice("A parlay can contain at most 12 legs.");
       return;
     }
-    if (legs.some((leg) => leg.eventId === selection.eventId)) {
-      setParlayNotice(
-        "Same-game parlay (SGP) pricing is not currently supported; choose a different event.",
-      );
-      return;
-    }
-    if (legs.length && legs[0].bookmakerId !== selection.bookmakerId) {
-      setParlayNotice("All simulated parlay legs must use the same bookmaker.");
-      return;
-    }
     if (legs.some((leg) => slipSelectionKey(leg) === slipSelectionKey(activeSelection))) {
       setParlayNotice("That selection is already in the parlay.");
       return;
     }
     setSlipSelections([...legs, activeSelection]);
-    setParlayNotice("Selection added to the parlay.");
+    const availability = assessParlayAvailability([...legs, activeSelection]);
+    setParlayNotice(
+      availability.eligible
+        ? "Selection added to the parlay."
+        : `Selection added. ${availability.reason} It remains available as a straight bet.`,
+    );
   }
 
   function addCurrentStraight() {
@@ -323,6 +297,12 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
     }
     if (straightSelections.length >= 12) {
       setStraightNotice("The straight-bet slip can contain at most 12 selections.");
+      return;
+    }
+    const replacement = replaceMutuallyExclusiveSelection(straightSelections, activeSelection);
+    if (replacement) {
+      setStraightSlipSelections(replacement);
+      setStraightNotice("Opposite outcome replaced the previous straight selection.");
       return;
     }
     if (
@@ -368,6 +348,11 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
       }),
     [straightSelections, straightStake],
   );
+  const mobileParlayAvailability = useMemo(
+    () => assessParlayAvailability(mobileSelections),
+    [mobileSelections],
+  );
+  const parlayAvailability = useMemo(() => assessParlayAvailability(legs), [legs]);
 
   const submittedLegs = legs.map((leg) => ({
     competitionKey: leg.competitionKey,
@@ -398,25 +383,26 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
     pricingModelVersion: leg.pricingModelVersion ?? null,
   }));
 
-  const mobileParlayMode = legs.length >= 2;
+  const mobileParlayMode = mobileSelectionCount >= 2;
   const mobileSingleMode = mobileSelectionCount === 1;
   const mobileTrayOdds =
-    mobileParlayMode && parlayPotential
+    mobileParlayAvailability.eligible && parlayPotential
       ? `Parlay ${americanPrice(parlayPotential.americanOdds)}`
       : "";
   const openMobileSheet = () => {
     if (mobileSelectionCount) setMobileSheetOpen(true);
   };
   const removeCurrentMobileSelection = () => {
-    if (selectionKey) {
-      removePendingSlipSelectionKeysAndPersist([selectionKey]);
+    if (currentSelection) {
+      removePendingSlipSelectionIdsAndPersist([getClientSelectionId(currentSelection)]);
       setMobileSheetOpen(false);
     }
   };
-  const removeParlayLeg = (key: string) => {
-    if (!legs.some((leg) => slipSelectionKey(leg) === key)) return;
-    removeSlipSelectionKeysAndPersist([key]);
-    if (legs.length <= 1 && !straightSelections.length) setMobileSheetOpen(false);
+  const removeParlayLeg = (clientSelectionId: string) => {
+    if (!legs.some((leg, index) => getClientSelectionId(leg, index) === clientSelectionId)) return;
+    if (isMobileViewport) removePendingSlipSelectionIdsAndPersist([clientSelectionId]);
+    else removeSlipSelectionIdsAndPersist([clientSelectionId]);
+    if (mobileSelectionCount <= 1) setMobileSheetOpen(false);
   };
 
   return (
@@ -696,6 +682,11 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
                   />
                   <input
                     type="hidden"
+                    name="pendingSlipKey"
+                    value={isMobileViewport ? selectionKey : ""}
+                  />
+                  <input
+                    type="hidden"
                     name="returnTo"
                     value={isMobileViewport ? mobileReturnPathValue : ""}
                   />
@@ -768,7 +759,7 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
               {straightSelections.length ? (
                 <ol className="parlay-leg-list">
                   {straightSelections.map((leg, index) => (
-                    <li key={slipSelectionKey(leg)}>
+                    <li key={getClientSelectionId(leg, index)}>
                       <div className="parlay-leg-copy">
                         <strong>
                           {index + 1}. <MarketBadge market={leg.marketType} /> {leg.selectionName}
@@ -800,7 +791,13 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
                         className="text-button"
                         type="button"
                         onClick={() =>
-                          removeStraightSlipSelectionKeysAndPersist([slipSelectionKey(leg)])
+                          isMobileViewport
+                            ? removePendingSlipSelectionIdsAndPersist([
+                                getClientSelectionId(leg, index),
+                              ])
+                            : removeStraightSlipSelectionIdsAndPersist([
+                                getClientSelectionId(leg, index),
+                              ])
                         }
                       >
                         Remove
@@ -828,6 +825,11 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
                   type="hidden"
                   name="slipKeys"
                   value={straightSelections.map(slipSelectionKey).join(",")}
+                />
+                <input
+                  type="hidden"
+                  name="pendingSlipKeys"
+                  value={isMobileViewport ? straightSelections.map(slipSelectionKey).join(",") : ""}
                 />
                 <label>
                   Stake per straight bet in Vials
@@ -886,7 +888,7 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
             </section>
 
             <section
-              className={`card bet-slip mobile-parlay-slip${legs.length >= 2 ? "" : " mobile-empty-slip"}`}
+              className={`card bet-slip mobile-parlay-slip${mobileParlayMode ? "" : " mobile-empty-slip"}`}
             >
               <div className="ticket-meta">
                 <SourceBadge source="simulated" />
@@ -894,14 +896,14 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
               </div>
               <h2>Build a parlay — {legs.length} of 12 legs</h2>
               <p className="muted">
-                Add another eligible selection from a different event to make a standard multi-game
-                parlay. Same-game parlay pricing is not supported because the provider does not
-                supply a valid SGP price here.
+                {parlayAvailability.eligible
+                  ? "These selections are eligible for a standard multi-game parlay."
+                  : `Parlay unavailable — ${parlayAvailability.reason.replace(/^Parlay unavailable — /, "")}`}
               </p>
               {parlayNotice ? <p className="notice">{parlayNotice}</p> : null}
               <ol className="parlay-leg-list">
-                {legs.map((leg) => (
-                  <li key={slipSelectionKey(leg)}>
+                {legs.map((leg, index) => (
+                  <li key={getClientSelectionId(leg, index)}>
                     <div className="parlay-leg-copy">
                       <strong>
                         <MarketBadge market={leg.marketType} /> {leg.selectionName}
@@ -928,7 +930,7 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
                     <button
                       className="text-button"
                       type="button"
-                      onClick={() => removeParlayLeg(slipSelectionKey(leg))}
+                      onClick={() => removeParlayLeg(getClientSelectionId(leg, index))}
                     >
                       Remove
                     </button>
@@ -951,6 +953,11 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
                 <input type="hidden" name="idempotencyKey" defaultValue="" />
                 <input type="hidden" name="legs" value={JSON.stringify(submittedLegs)} />
                 <input type="hidden" name="slipKeys" value={legs.map(slipSelectionKey).join(",")} />
+                <input
+                  type="hidden"
+                  name="pendingSlipKeys"
+                  value={isMobileViewport ? legs.map(slipSelectionKey).join(",") : ""}
+                />
                 <input
                   type="hidden"
                   name="returnTo"
@@ -1009,7 +1016,7 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
                 <SubmitButton
                   pendingLabel="Placing parlay…"
                   className="button"
-                  disabled={!parlayPotential}
+                  disabled={!parlayPotential || !parlayAvailability.eligible}
                 >
                   <span className="desktop-cta-label">Place simulated parlay</span>
                   <span className="mobile-cta-label">Place {legs.length}-leg parlay</span>
