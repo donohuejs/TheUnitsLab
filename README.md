@@ -4,7 +4,8 @@ The Units Lab is a private, entertainment-focused sports wagering simulator and 
 
 ## Phase status
 
-Phases 0-8 are complete. Release-candidate Fix Patch 10 is the current pre-UAT UX hardening pass; it removes redundant Home navigation, stabilizes the mobile drawer/header, tightens responsive header sizing, and hardens final Bet Slip item removal while preserving the Phase 7 wagering engine. Phase 9 has not started.
+Phases 0-8 are complete. v0.11.0 is the private-beta readiness release for approximately 2–3
+friends. Release-candidate Fix Patch 10 remains the wager-engine baseline; Phase 9 has not started.
 
 The interface supports account/group workflows, pregame odds for EPL, UCL, NCAAF, NCAAB, NFL, NHL, La Liga, and Europa League, straight and multi-leg simulated bet slips, a unified My Bets ledger, cached scores, deterministic simulated settlement, reviewed local screenshot/text/manual betslip import, imported straight/parlay tracking, Performance analytics, private-group leaderboards, and a dashboard that keeps simulated and imported records distinct. External records never change the simulated virtual-bankroll ledger. Screenshot extraction remains review-first: OCR runs locally first, and only low-confidence or incomplete images may use the server-only configured vision fallback. No canonical sport, competition, event, or settlement fact is invented by the fallback, and no provider polling or Phase 9 work was added.
 
@@ -95,5 +96,8 @@ Individual commands are `npm run format:check`, `npm run lint`, `npm run typeche
 - [Rollout Part 1 release-readiness report](ROLLOUT_PART_1_RELEASE_READINESS_REPORT.md)
 - [Release candidate checklist](RELEASE_CANDIDATE_CHECKLIST.md)
 - [Agent guidance](AGENTS.md)
+- [Production backup and recovery runbook](docs/PRODUCTION_BACKUP_AND_RECOVERY.md)
+- [Pre-beta reset runbook](docs/PRE_BETA_RESET_RUNBOOK.md)
+- [Product backlog](PRODUCT_BACKLOG.md)
 
 The governing source is `docs/Virtual Sportsbook - Governing Specification V1.docx`. If it conflicts with repository documentation, stop and surface the difference. Later explicit product changes must be recorded rather than silently overriding it.

@@ -27,6 +27,8 @@ if (page.url().includes("/auth")) {
   );
 }
 
+// Record the real multi-stage flow: upload, processing, event/canonical review, market review,
+// economics/Study review, final draft review, confirmation, and My Bets verification.
 await page.getByRole("button", { name: "Upload Screenshot" }).click();
 await page.getByLabel("Betslip screenshot").setInputFiles({
   name: "synthetic-fanduel-example.png",
@@ -51,8 +53,10 @@ if (await eventField.isVisible().catch(() => false)) {
   await page.getByLabel("Competition").selectOption({ label: /College Football/i });
   await page.getByLabel("Kickoff").fill("2026-09-11T19:30");
 }
+// Continue from event and canonical-event review to market review.
 await page.getByRole("button", { name: "Continue" }).click();
 await page.getByLabel("Your Pick").fill("Boston College");
+// Continue from market review to Study/economics review.
 await page.getByRole("button", { name: "Continue" }).click();
 await page.getByLabel("Study (required)").selectOption({ label: "No Study — Personal" });
 await page.getByLabel("Stake (source USD)").fill("$8.00");

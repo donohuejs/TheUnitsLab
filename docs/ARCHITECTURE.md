@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-This document turns the governing product specification into architectural boundaries and records the technical foundation selected during Phase 0. Phases 0–8 are implemented; Phase 8 changes presentation and release-readiness surfaces only. Product questions left open by the source remain open unless an explicit owner clarification is recorded.
+This document turns the governing product specification into architectural boundaries and records the technical foundation selected during Phase 0. Phases 0–8 are implemented; v0.11.0 adds private-beta release-readiness surfaces and feedback administration without changing the provider or wager engine. Product questions left open by the source remain open unless an explicit owner clarification is recorded.
 
 The system must support multiple authenticated users and private groups, server-side odds ingestion, virtual-unit wagering, external-wager tracking, secure screenshots, deterministic settlement, analytics, leaderboards, and quota-aware operation without real-money wagering.
 
@@ -143,6 +143,21 @@ loading, error, global-error, and not-found boundaries provide safe fallbacks. N
 server-action pending affordances, visible focus rings, captions, responsive data regions, and
 reduced-motion support are presentation concerns only; server-authoritative placement, settlement,
 RLS, screenshot access, and analytics rules are unchanged.
+
+### v0.11.0 private-beta boundary
+
+The private-beta Home announcement and Settings feedback form are presentation/server-action
+surfaces over a new `public.beta_feedback` table. Feedback submission uses a caller-derived,
+idempotent security-definer function; ordinary authenticated users can read only their own reports
+and have no direct insert or status-update grant. The existing `APP_ADMIN_USER_IDS` allowlist gates
+the Admin feedback page, which uses the server-only service-role client for all-feedback reads and
+status transitions. Feedback captures only the release version, originating route, user-agent, and
+small non-sensitive context; screenshot upload is out of scope.
+
+`package.json` remains the canonical version source. The Settings version/history display imports
+that value through `src/config/version.ts`, while release history stays in source control. The
+Import Betslip tutorial remains a real production-route recording with controls, captions, and a
+written sequence that includes each Continue/review stage.
 
 ### Release-candidate UX patch 1 boundaries
 
@@ -365,7 +380,11 @@ exclusion, and imported-vs-simulated table boundaries remain unchanged.
 
 ### Administration and operations
 
-Administrative capabilities include quota inspection, request history, settlement-failure inspection, safe settlement reruns, bankroll adjustments, group membership management, upload moderation, and competition or bookmaker toggles. The source does not define the boundary between group administration and application administration.
+Administrative capabilities include quota inspection, request history, settlement-failure inspection,
+safe settlement reruns, beta feedback review, bankroll adjustments, group membership management,
+upload moderation, and competition or bookmaker toggles. The source does not define the boundary
+between group administration and application administration; v0.11.0 reuses the existing server-side
+administrator allowlist for feedback review.
 
 ## Data model direction
 

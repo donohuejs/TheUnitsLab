@@ -1,16 +1,28 @@
 WEBVTT
 
-00:00.000 --> 00:06.000
-Upload your sportsbook screenshot
+00:00.000 --> 00:04.000
+Open Import Betslip and upload a synthetic sportsbook screenshot.
 
-00:06.000 --> 00:13.000
-Review the extracted wager
+00:04.000 --> 00:08.000
+Luna processes the screenshot. Review the extracted draft.
 
-00:13.000 --> 00:20.000
-AI can make mistakes — verify your pick and odds
+00:08.000 --> 00:12.000
+Correct the event, kickoff, market, selection, line, and odds when needed.
 
-00:20.000 --> 00:27.000
-Choose a Study or No Study — Personal
+00:12.000 --> 00:16.000
+Choose Continue to review the market and selection.
 
-00:27.000 --> 00:34.000
-Confirm to add it to My Bets
+00:16.000 --> 00:20.000
+Confirm the canonical event and details when available.
+
+00:20.000 --> 00:24.000
+Choose Continue, then select a Study or No Study — Personal.
+
+00:24.000 --> 00:28.000
+Confirm stake, American odds, and total return, then choose Review draft.
+
+00:28.000 --> 00:32.000
+Check the final editable summary and choose Confirm and save the import.
+
+00:32.000 --> 00:34.000
+Open My Bets and verify the successful imported wager.

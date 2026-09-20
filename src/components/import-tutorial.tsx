@@ -66,7 +66,8 @@ export function ImportTutorial() {
         <p className="eyebrow">New to importing?</p>
         <h2 id="import-tutorial-title">Watch a quick example</h2>
         <p className="muted">
-          See the current Import Betslip flow from screenshot upload through My Bets.
+          See the current Import Betslip flow from screenshot upload through the review stages and
+          My Bets.
         </p>
         <button
           ref={triggerRef}
@@ -118,11 +119,20 @@ export function ImportTutorial() {
                 <strong>Video unavailable in this browser.</strong>
                 <p>Follow this short walkthrough of the current Import Betslip flow:</p>
                 <ol>
-                  <li>Upload a sportsbook screenshot.</li>
-                  <li>Let Luna extract a draft, then review and correct every field.</li>
-                  <li>Confirm the canonical event and kickoff when a match is available.</li>
+                  <li>Open Import Betslip and upload a sportsbook screenshot.</li>
+                  <li>Wait while Luna processes the screenshot.</li>
+                  <li>Review the extracted wager fields.</li>
+                  <li>
+                    Correct missing or incorrect event, market, selection, line, and odds values.
+                  </li>
+                  <li>Choose Continue to move from event review to market review.</li>
+                  <li>Review or confirm the canonical event and kickoff details.</li>
+                  <li>Choose Continue to move to the economics review.</li>
                   <li>Choose a Study or No Study — Personal.</li>
-                  <li>Confirm the import and open My Bets.</li>
+                  <li>Enter or confirm stake, American odds, and total return.</li>
+                  <li>Choose Review draft, then check the final editable summary.</li>
+                  <li>Confirm and save the import.</li>
+                  <li>Open My Bets and verify the successful imported wager.</li>
                 </ol>
               </div>
             ) : (
@@ -145,11 +155,16 @@ export function ImportTutorial() {
               </video>
             )}
             <ol className="import-tutorial-steps">
-              <li>Upload a sportsbook screenshot.</li>
-              <li>Let Luna extract a draft, then review and correct every field.</li>
-              <li>Confirm the canonical event and kickoff when a match is available.</li>
+              <li>Open Import Betslip and upload a sportsbook screenshot.</li>
+              <li>Luna processes the screenshot; review the extracted wager fields.</li>
+              <li>Correct missing or incorrect event, market, selection, line, and odds values.</li>
+              <li>Choose Continue through event, market, and economics review stages.</li>
+              <li>Confirm the canonical event and kickoff details when available.</li>
               <li>Choose a Study or No Study — Personal.</li>
-              <li>Confirm the import and open My Bets.</li>
+              <li>Enter or confirm stake, American odds, and total return.</li>
+              <li>Choose Review draft and check the final editable summary.</li>
+              <li>Confirm and save the import.</li>
+              <li>Open My Bets and verify the successful imported wager.</li>
             </ol>
             <p id="import-tutorial-dialog-description" className="muted">
               No autoplay: use the native controls. AI can make mistakes, so verify your pick, line,

@@ -99,6 +99,9 @@ export default async function SettlementTestsPage({ searchParams }: Props) {
           </label>
           <div className="inline-actions">
             <SubmitButton pendingLabel="Creating test…">Create synthetic wager</SubmitButton>
+            <Link className="button secondary" href="/admin/feedback">
+              Review beta feedback
+            </Link>
             <Link className="button secondary" href="/admin/api-usage">
               Review API quota
             </Link>

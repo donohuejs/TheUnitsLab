@@ -1,6 +1,6 @@
 {
   "name": "sportsbook-simulator",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "private": true,
   "type": "module",
   "description": "The Units Lab private virtual-unit sports performance and wager tracker foundation.",
@@ -25,6 +25,7 @@
     "test:db:parlay-settlement-concurrency": "node test/phase7-parlay-settlement-concurrency.mjs",
     "test:db:vision-budget-concurrency": "node test/vision-budget-concurrency.mjs",
     "record:import-demo": "node scripts/record-import-demo.mjs",
+    "prebeta:reset:preview": "node scripts/pre-beta-reset-preview.mjs",
     "check:mobile": "node scripts/check-mobile-smoke.mjs",
     "check:mobile:bet-slip": "node scripts/check-mobile-bet-slip.mjs",
     "check:release:ux": "node scripts/check-patch-10-release-ux.mjs",

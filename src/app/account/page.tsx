@@ -1,11 +1,21 @@
 import Link from "next/link";
+import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 
-import { removeMember, setMemberRole, signOut, updateProfile } from "@/app/actions";
+import {
+  removeMember,
+  setMemberRole,
+  signOut,
+  submitBetaFeedback,
+  updateProfile,
+} from "@/app/actions";
 import { AppNav } from "@/components/app-nav";
 import { SubmitButton } from "@/components/submit-button";
 import { hasPublicEnvironment } from "@/config/env.public";
+import { APP_VERSION_LABEL } from "@/config/version";
+import { VERSION_HISTORY } from "@/config/version-history";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { PRODUCT_NAME } from "@/lib/ui";
 
 type AccountPageProps = {
   searchParams: Promise<{ notice?: string }>;
@@ -78,6 +88,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
     (memberProfileResult.data ?? []).map((profile) => [profile.user_id, profile.display_name]),
   );
   const profile = profileData as Profile | null;
+  const feedbackSubmissionKey = randomUUID();
   const dataError =
     profileError ?? groupError ?? membershipResult.error ?? memberProfileResult.error ?? null;
 
@@ -115,6 +126,84 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
         The Units Lab is a simulation and wager-tracking companion. No real-money wagering,
         deposits, withdrawals, or sportsbook execution occurs in the app.
       </p>
+
+      <section
+        id="feedback"
+        className="card feedback-version-card"
+        aria-labelledby="feedback-title"
+      >
+        <div className="feedback-version-grid">
+          <div>
+            <p className="eyebrow">Private beta support</p>
+            <h2 id="feedback-title">Feedback &amp; Version</h2>
+            <p className="muted">
+              Tell us what went wrong, what felt confusing, or what would make the Lab better.
+              Technical context is captured automatically when available.
+            </p>
+            <form action={submitBetaFeedback} className="form-stack">
+              <input type="hidden" name="submissionKey" value={feedbackSubmissionKey} />
+              <label>
+                Feedback type
+                <select name="category" defaultValue="bug" required>
+                  <option value="bug">Bug</option>
+                  <option value="usability">Usability</option>
+                  <option value="feature_request">Feature Request</option>
+                  <option value="other">Other</option>
+                </select>
+              </label>
+              <label>
+                Title
+                <input name="title" maxLength={160} required placeholder="Short summary" />
+              </label>
+              <label>
+                Description
+                <textarea
+                  name="description"
+                  minLength={10}
+                  maxLength={5000}
+                  rows={5}
+                  required
+                  placeholder="What happened, or what would you like to see?"
+                />
+              </label>
+              <label>
+                Steps to reproduce <span className="muted">(optional for bug reports)</span>
+                <textarea
+                  name="stepsToReproduce"
+                  maxLength={5000}
+                  rows={4}
+                  placeholder="1. Open… 2. Select… 3. Notice…"
+                />
+              </label>
+              <SubmitButton pendingLabel="Sending feedback…">
+                Report a Bug / Send Feedback
+              </SubmitButton>
+            </form>
+          </div>
+          <aside className="version-panel" aria-labelledby="version-title">
+            <p className="eyebrow">Build information</p>
+            <h3 id="version-title">{PRODUCT_NAME}</h3>
+            <strong>{APP_VERSION_LABEL}</strong>
+            <details>
+              <summary>What&apos;s New / Version History</summary>
+              <div className="version-history">
+                {VERSION_HISTORY.map((entry) => (
+                  <article key={entry.version}>
+                    <h4>
+                      v{entry.version} — {entry.title}
+                    </h4>
+                    <ul>
+                      {entry.changes.map((change) => (
+                        <li key={change}>{change}</li>
+                      ))}
+                    </ul>
+                  </article>
+                ))}
+              </div>
+            </details>
+          </aside>
+        </div>
+      </section>
 
       <div className="dashboard-grid">
         <section className="card">

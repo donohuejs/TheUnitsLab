@@ -112,6 +112,12 @@ and keeps unknown usage reservations budget-occupied. Application code uses the 
 cache and The Odds API event-list endpoint before any priced odds refresh. No prior migration is
 rewritten, and no RLS, bankroll, audit, or settlement boundary is weakened.
 
+v0.11.0 adds `20261003000000_private_beta_feedback.sql`. It creates the forced-RLS
+`beta_feedback` table, caller-derived idempotent submission RPC, authenticated own-row reads, and
+service-role administrator review access. Feedback status is not writable by the ordinary role.
+`supabase/tests/private_beta_feedback.sql` covers schema, direct authorization, cross-user
+isolation, caller identity, status protection, context capture, and duplicate-submit behavior.
+
 ## Source of truth
 
 Ordered SQL files under `supabase/migrations` are the database source of truth. Configuration in a hosted dashboard is not sufficient. Migrations must include tables, constraints, functions, grants, Row Level Security enablement, policies, storage policies, and indexes needed by the corresponding phase.

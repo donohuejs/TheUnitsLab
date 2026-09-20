@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { APP_VERSION } from "@/config/version";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type InviteActionState = {
@@ -33,6 +35,14 @@ const profileSchema = z.object({
   defaultBankroll: z.union([z.literal(""), z.coerce.number().min(0).max(999999999999.99)]),
   timeZone: z.string().trim().min(1).max(100),
   profileVisibility: z.enum(["private", "group_members"]),
+});
+
+const betaFeedbackSchema = z.object({
+  submissionKey: z.uuid(),
+  category: z.enum(["bug", "usability", "feature_request", "other"]),
+  title: z.string().trim().min(3).max(160),
+  description: z.string().trim().min(10).max(5000),
+  stepsToReproduce: z.string().trim().max(5000),
 });
 
 function value(formData: FormData, field: string) {
@@ -166,6 +176,44 @@ export async function updateProfile(formData: FormData) {
   }
   revalidatePath("/account");
   redirectWithNotice("/account", "Profile updated.");
+}
+
+export async function submitBetaFeedback(formData: FormData) {
+  const { supabase } = await requireAuthenticatedUser();
+  const parsed = betaFeedbackSchema.safeParse({
+    submissionKey: value(formData, "submissionKey"),
+    category: value(formData, "category"),
+    title: value(formData, "title"),
+    description: value(formData, "description"),
+    stepsToReproduce: value(formData, "stepsToReproduce"),
+  });
+  if (!parsed.success) {
+    redirectWithNotice(
+      "/account",
+      "Choose a feedback type and enter a title plus a description before sending.",
+    );
+  }
+
+  const requestHeaders = await headers();
+  const { error } = await supabase.rpc("submit_beta_feedback", {
+    p_submission_key: parsed.data.submissionKey,
+    p_category: parsed.data.category,
+    p_title: parsed.data.title,
+    p_description: parsed.data.description,
+    p_steps_to_reproduce: parsed.data.stepsToReproduce || null,
+    p_page_path: "/account#feedback",
+    p_app_version: APP_VERSION,
+    p_user_agent: requestHeaders.get("user-agent")?.slice(0, 500) ?? null,
+    p_environment: { source: "settings_feedback" },
+  });
+  if (error) {
+    redirectWithNotice(
+      "/account",
+      "Feedback could not be sent. Your draft was not saved; please try again.",
+    );
+  }
+  revalidatePath("/account");
+  redirectWithNotice("/account", "Thanks — your feedback was sent to The Units Lab team.");
 }
 
 export async function createGroup(formData: FormData) {

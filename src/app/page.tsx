@@ -172,6 +172,29 @@ export default async function HomePage() {
         </div>
       </header>
 
+      <section className="beta-announcement" aria-labelledby="beta-announcement-title">
+        <div>
+          <p className="eyebrow">Private beta · early access</p>
+          <h2 id="beta-announcement-title">Welcome to The Units Lab Beta</h2>
+          <p>
+            You&apos;re part of the first small group testing The Units Lab. Browse real sportsbook
+            odds, experiment with simulated wagers using Vials, import bets you placed elsewhere,
+            and use Analysis and Lab Notes to see how you&apos;re performing.
+          </p>
+          <p>
+            This is an early beta, so you may occasionally find something that doesn&apos;t behave
+            the way you expect. If you hit a bug, find something confusing, or have an idea that
+            would make the Lab better, send it through{" "}
+            <Link href="/account#feedback">Settings → Feedback &amp; Bugs</Link>.
+          </p>
+          <p>
+            Vials are simulated currency. The Units Lab does not place real-money wagers. Imported
+            bets are stored for tracking and analysis.
+          </p>
+          <p className="muted">Thanks for helping test the Lab before the doors open wider.</p>
+        </div>
+      </section>
+
       <section className="stats-grid dashboard-stats" aria-label="Account summary">
         <div className="card">
           <small>Open simulated bets</small>
