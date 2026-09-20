@@ -4,7 +4,7 @@ The Units Lab is a private, entertainment-focused sports wagering simulator and 
 
 ## Phase status
 
-Phases 0-8 are complete. Release-candidate UX Patch 3 and Fix Patches 1-6 are the current pre-UAT gate; Fix Patch 6 adds local OCR with a server-only, budgeted GPT-5.6 Luna fallback, historical canonical event matching, imported Study choice, mobile header refinements, and an import tutorial while preserving the Phase 7 wagering engine. Phase 9 has not started.
+Phases 0-8 are complete. Release-candidate Fix Patch 10 is the current pre-UAT UX hardening pass; it removes redundant Home navigation, stabilizes the mobile drawer/header, tightens responsive header sizing, and hardens final Bet Slip item removal while preserving the Phase 7 wagering engine. Phase 9 has not started.
 
 The interface supports account/group workflows, pregame odds for EPL, UCL, NCAAF, NCAAB, NFL, NHL, La Liga, and Europa League, straight and multi-leg simulated bet slips, a unified My Bets ledger, cached scores, deterministic simulated settlement, reviewed local screenshot/text/manual betslip import, imported straight/parlay tracking, Performance analytics, private-group leaderboards, and a dashboard that keeps simulated and imported records distinct. External records never change the simulated virtual-bankroll ledger. Screenshot extraction remains review-first: OCR runs locally first, and only low-confidence or incomplete images may use the server-only configured vision fallback. No canonical sport, competition, event, or settlement fact is invented by the fallback, and no provider polling or Phase 9 work was added.
 

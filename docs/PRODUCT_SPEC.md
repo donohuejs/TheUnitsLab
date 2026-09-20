@@ -946,3 +946,23 @@ bankroll isolation, or change idempotent settlement.
 - Odds browsing excludes locked/live-only selections and empty games, NCAA logo aliases are retained,
   and mobile changes are limited to sticky navigation, safe-area spacing, responsive headings,
   reachable filter rows, and non-overlapping admin metrics.
+
+## Approved release-candidate fix patch 10 amendment — 2026-09-20
+
+The owner explicitly authorizes this final Phase 8 release-UX hardening pass. It does not begin
+Phase 9, change the virtual-only product boundary, alter wager/settlement/analytics rules, change
+provider or quota behavior, or add a database migration.
+
+- The approved full logo is the sole Home navigation affordance. The redundant Home item is removed
+  from desktop and mobile navigation; the logo remains an accessible keyboard-operable link to `/`.
+- The existing full logo asset was inspected at 1448×1086 pixels. Its nontransparent artwork bounds
+  are x=27..1399 and y=21..1059, leaving only 27/21/48/26 pixels of edge canvas. That is not
+  meaningful excess canvas for production cropping, so the source asset remains unchanged and
+  header spacing is corrected in CSS.
+- Header sizing uses responsive desktop grid/clamp rules and a compact safe-area-aware mobile
+  layout. The mobile drawer remains mounted, preserves body scroll locking/restoration, and keeps
+  the visible header above its backdrop.
+- Bet Slip removal resolves each stored client selection identity from the current canonical
+  collection before applying the same removal action for every transition through zero selections.
+  Empty persisted slip state remains valid. Touch removal controls remain semantic buttons with
+  approximately 44px targets.

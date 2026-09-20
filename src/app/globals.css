@@ -498,10 +498,11 @@ textarea:focus {
   position: sticky;
   top: 0;
   z-index: 15;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
   border-bottom: 1px solid var(--border);
-  gap: clamp(1rem, 2.4vw, 2.5rem);
-  flex-wrap: nowrap;
+  gap: clamp(1rem, 3vw, 3rem);
   min-width: 0;
   padding-top: 0.35rem;
   padding-bottom: 0.85rem;
@@ -531,7 +532,7 @@ textarea:focus {
 .nav-brand .brand-lockup img {
   display: block;
   width: auto;
-  height: clamp(12rem, 14vw, 17rem);
+  height: clamp(7rem, 10vw, 11rem);
   object-fit: contain;
 }
 
@@ -595,13 +596,17 @@ textarea:focus {
 
 .mobile-menu-backdrop {
   position: fixed;
-  z-index: 20;
+  z-index: 1;
   inset: 0;
   height: 100dvh;
-  display: flex;
+  display: none;
   justify-content: flex-end;
   background: rgba(18, 63, 46, 0.26);
   overscroll-behavior: contain;
+}
+
+.mobile-menu-backdrop.is-open {
+  display: flex;
 }
 
 .mobile-menu {
@@ -800,18 +805,18 @@ textarea:focus {
 .nav-links {
   display: flex;
   flex: 1 1 auto;
-  justify-content: flex-end;
+  justify-content: space-between;
   flex-wrap: nowrap;
-  gap: clamp(0.35rem, 1.1vw, 1.25rem);
+  gap: clamp(0.15rem, 0.65vw, 0.8rem);
   min-width: 0;
 }
 
 .nav-link {
   flex: 0 0 auto;
   border-radius: 999px;
-  padding: 0.5rem clamp(0.45rem, 0.8vw, 0.9rem);
+  padding: 0.5rem clamp(0.3rem, 0.65vw, 0.75rem);
   color: #356153;
-  font-size: clamp(1.1rem, 1.45vw, 1.5rem);
+  font-size: clamp(0.82rem, 1.05vw, 1.1rem);
   font-weight: 750;
   white-space: nowrap;
   text-decoration: none;
@@ -1330,7 +1335,22 @@ textarea:focus {
   color: var(--accent);
   cursor: pointer;
   font: inherit;
-  padding: 0;
+  display: inline-flex;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.45rem;
+  padding: 0.3rem;
+  touch-action: manipulation;
+}
+
+.text-button:hover {
+  background: #eff8f3;
+}
+
+.text-button:active {
+  background: #dff5e9;
 }
 
 .parlay-leg-fieldset {
@@ -1896,7 +1916,7 @@ thead th {
 @media (max-width: 760px) {
   .shell {
     width: min(calc(100% - 1rem), 72rem);
-    padding-top: 1rem;
+    padding-top: 0.35rem;
   }
 
   .top-nav {
@@ -1904,11 +1924,10 @@ thead th {
     top: 0;
     z-index: 15;
     display: block;
-    align-self: flex-start;
     border-bottom: 0;
     margin-inline: -0.5rem;
-    margin-bottom: 1.25rem;
-    padding: calc(env(safe-area-inset-top) + 0.05rem) 0.5rem 0.05rem;
+    margin-bottom: 1rem;
+    padding: env(safe-area-inset-top) 0.5rem 0.25rem;
     background: rgba(244, 247, 248, 0.96);
     backdrop-filter: blur(12px);
     isolation: isolate;
@@ -1920,6 +1939,8 @@ thead th {
   }
 
   .mobile-nav {
+    position: relative;
+    z-index: 2;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1930,7 +1951,7 @@ thead th {
   }
 
   .mobile-nav-brand .brand-lockup {
-    width: min(72vw, 13.2rem);
+    width: min(58vw, 12rem);
   }
 
   .auth-grid,

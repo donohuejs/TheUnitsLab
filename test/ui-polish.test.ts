@@ -23,7 +23,6 @@ describe("shared product presentation", () => {
 
   it("keeps the primary navigation in the signed-in information architecture", () => {
     expect(primaryNavigation.map((item) => item.key)).toEqual([
-      "home",
       "sports",
       "my-bets",
       "import-betslip",

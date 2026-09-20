@@ -392,17 +392,28 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
   const openMobileSheet = () => {
     if (mobileSelectionCount) setMobileSheetOpen(true);
   };
-  const removeCurrentMobileSelection = () => {
-    if (currentSelection) {
-      removePendingSlipSelectionIdsAndPersist([getClientSelectionId(currentSelection)]);
-      setMobileSheetOpen(false);
-    }
+  const removeSelection = (
+    candidate: SlipSelection | null,
+    index: number,
+    mode: "mobile" | "parlay" | "straight",
+  ) => {
+    if (!candidate) return;
+    const clientSelectionId = getClientSelectionId(candidate, index);
+    if (mode === "mobile") removePendingSlipSelectionIdsAndPersist([clientSelectionId]);
+    else if (mode === "parlay") removeSlipSelectionIdsAndPersist([clientSelectionId]);
+    else removeStraightSlipSelectionIdsAndPersist([clientSelectionId]);
+    if (mode === "mobile" && mobileSelectionCount <= 1) setMobileSheetOpen(false);
   };
-  const removeParlayLeg = (clientSelectionId: string) => {
-    if (!legs.some((leg, index) => getClientSelectionId(leg, index) === clientSelectionId)) return;
-    if (isMobileViewport) removePendingSlipSelectionIdsAndPersist([clientSelectionId]);
-    else removeSlipSelectionIdsAndPersist([clientSelectionId]);
-    if (mobileSelectionCount <= 1) setMobileSheetOpen(false);
+  const removeCurrentMobileSelection = () => {
+    if (!currentSelection) return;
+    const index = mobileSelections.findIndex(
+      (candidate) => slipSelectionKey(candidate) === slipSelectionKey(currentSelection),
+    );
+    if (index >= 0) removeSelection(mobileSelections[index] ?? null, index, "mobile");
+  };
+  const removeParlayLeg = (leg: SlipSelection, index: number) => {
+    if (!legs.some((candidate) => slipSelectionKey(candidate) === slipSelectionKey(leg))) return;
+    removeSelection(leg, index, isMobileViewport ? "mobile" : "parlay");
   };
 
   return (
@@ -791,13 +802,7 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
                         className="text-button"
                         type="button"
                         onClick={() =>
-                          isMobileViewport
-                            ? removePendingSlipSelectionIdsAndPersist([
-                                getClientSelectionId(leg, index),
-                              ])
-                            : removeStraightSlipSelectionIdsAndPersist([
-                                getClientSelectionId(leg, index),
-                              ])
+                          removeSelection(leg, index, isMobileViewport ? "mobile" : "straight")
                         }
                       >
                         Remove
@@ -930,7 +935,7 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
                     <button
                       className="text-button"
                       type="button"
-                      onClick={() => removeParlayLeg(getClientSelectionId(leg, index))}
+                      onClick={() => removeParlayLeg(leg, index)}
                     >
                       Remove
                     </button>

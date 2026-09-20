@@ -603,3 +603,19 @@ Odds browsing removes live/locked events and empty market cards from the selecti
 resolution uses canonical aliases before the existing ESPN asset lookup and retains initials only for
 unknown/unusable assets. Mobile changes are limited to release UX: a safe-area-aware sticky header,
 responsive heading scale, reachable horizontal filter rows, and stacked adaptive vision metric cards.
+
+## Release-candidate fix patch 10 architecture
+
+Patch 10 is a final Phase 8 presentation and interaction hardening pass. It removes the redundant
+Home navigation item while retaining the accessible logo link, constrains the desktop header with a
+responsive grid, and reduces mobile header padding without changing the visible brand artwork. The
+mobile drawer stays mounted and uses a lower backdrop stacking layer than the header, while the
+existing exact body scroll lock/restoration effect remains the state boundary for drawer open/close.
+
+The full logo source was measured at 1448×1086 with artwork bounds x=27..1399 and y=21..1059. The
+small edge canvas is not a meaningful production defect, so no binary asset or image-processing
+dependency was added. Bet Slip removal continues to operate on the persisted client selection ID,
+but now resolves that ID against the current canonical collection with its current index before
+removing the selection. The same path therefore handles 3→2→1→0 for straight and parlay views.
+No database, provider, cache, quota, bankroll, settlement, or analytics boundary changes are part
+of Patch 10.

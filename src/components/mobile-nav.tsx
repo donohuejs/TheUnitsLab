@@ -99,40 +99,43 @@ export function MobileNav({
         </span>
         <span className="sr-only">{open ? "Close" : "Menu"}</span>
       </button>
-      {open ? (
-        <div className="mobile-menu-backdrop" onClick={closeMenu}>
-          <div
-            id="mobile-primary-menu"
-            ref={menuRef}
-            className="mobile-menu"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Primary navigation menu"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="mobile-menu-heading">
-              <strong>Navigate</strong>
-              <button className="text-button" type="button" onClick={closeMenu}>
-                Close menu
-              </button>
-            </div>
-            <div className="mobile-menu-links">
-              {navigation.map((item, index) => (
-                <Link
-                  ref={index === 0 ? firstLinkRef : undefined}
-                  className={item.key === active ? "mobile-nav-link active" : "mobile-nav-link"}
-                  href={item.href}
-                  key={item.key}
-                  aria-current={item.key === active ? "page" : undefined}
-                  onClick={closeAfterNavigation}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
+      <div
+        className={`mobile-menu-backdrop${open ? " is-open" : ""}`}
+        aria-hidden={!open}
+        hidden={!open}
+        onClick={closeMenu}
+      >
+        <div
+          id="mobile-primary-menu"
+          ref={menuRef}
+          className="mobile-menu"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Primary navigation menu"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="mobile-menu-heading">
+            <strong>Navigate</strong>
+            <button className="text-button" type="button" onClick={closeMenu}>
+              Close menu
+            </button>
+          </div>
+          <div className="mobile-menu-links">
+            {navigation.map((item, index) => (
+              <Link
+                ref={index === 0 ? firstLinkRef : undefined}
+                className={item.key === active ? "mobile-nav-link active" : "mobile-nav-link"}
+                href={item.href}
+                key={item.key}
+                aria-current={item.key === active ? "page" : undefined}
+                onClick={closeAfterNavigation}
+              >
+                {item.label}
+              </Link>
+            ))}
           </div>
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }

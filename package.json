@@ -27,6 +27,7 @@
     "record:import-demo": "node scripts/record-import-demo.mjs",
     "check:mobile": "node scripts/check-mobile-smoke.mjs",
     "check:mobile:bet-slip": "node scripts/check-mobile-bet-slip.mjs",
+    "check:release:ux": "node scripts/check-patch-10-release-ux.mjs",
     "test:coverage": "vitest run --coverage",
     "security:scan": "node test/secret-scan.mjs",
     "validate": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run security:scan && npm run build",

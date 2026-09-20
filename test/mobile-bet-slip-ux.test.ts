@@ -97,7 +97,7 @@ describe("mobile Bet Slip UX addendum", () => {
     expect(getSlipSnapshot()).toEqual([selections[1]]);
     removeSlipSelectionKeysAndPersist([slipSelectionKey(selections[1])]);
     expect(getSlipSnapshot()).toEqual([]);
-    expect(betSlip).toContain("removeParlayLeg(getClientSelectionId(leg, index))");
+    expect(betSlip).toContain("removeParlayLeg(leg, index)");
     expect(betSlip).toContain("removePendingSlipSelectionIdsAndPersist");
     expect(betSlip).not.toContain("removeParlayLeg(index)");
   });
