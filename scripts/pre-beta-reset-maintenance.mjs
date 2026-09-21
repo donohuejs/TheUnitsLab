@@ -362,7 +362,7 @@ async function verifyPostState(users, adminUser, testUserId) {
 }
 
 const users = await listAllUsers();
-const admin = requireExactUserId(users, adminUser, "PRE_BETA_ADMIN_USER_ID");
+const admin = requireExactUserId(users, adminUserId, "PRE_BETA_ADMIN_USER_ID");
 const matchingTestUsers = users.filter(
   (user) => user.email?.toLowerCase() === TEST_USER_EMAIL.toLowerCase(),
 );

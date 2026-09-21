@@ -505,3 +505,57 @@ Validation results:
 - Production reset, production cleanup, Auth deletion, commit, and push: **NOT PERFORMED**.
 
 PRE-BETA CLEAN-START MAINTENANCE GATE: PASS
+
+## Pre-Beta Dry-Run Tooling Hotfix
+
+Date: 2026-09-21
+Application version: **v0.11.2**
+Scope: maintenance CLI dry-run identity-resolution fix only
+
+### Root cause and exact fix
+
+The production dry-run failed before any mutation because the environment value was correctly
+parsed as `adminUserId`, but the shared identity-resolution path still called
+`requireExactUserId(users, adminUser, "PRE_BETA_ADMIN_USER_ID")`. `adminUser` was undefined, so
+Node raised a `ReferenceError` before the dry-run report could be produced.
+
+The fix passes `adminUserId` to `requireExactUserId()`. The resolved `admin` object is then used
+consistently by dry-run, execute, and verify paths. The administrator identity continues to come
+only from the exact `PRE_BETA_ADMIN_USER_ID` value; no email, display name, or fallback inference
+was added. Verify mode continues to require the reviewed `PRE_BETA_TEST_USER_ID`, and all execute
+confirmation/environment guards remain unchanged.
+
+### Regression coverage and cleanup behavior
+
+Previous validation checked the helper guards and source contracts but did not spawn the actual
+top-level maintenance CLI with fixture responses. That allowed a stale top-level variable name to
+escape. Added `test/pre-beta-reset-maintenance-cli.test.mjs`, which executes the real CLI against a
+local isolated fixture HTTP server and proves:
+
+- `PRE_BETA_ADMIN_USER_ID` resolves the exact admin UUID;
+- the exact `jadaxi4311@meonvr.com` fixture user resolves;
+- dry-run returns valid JSON with both identities;
+- no `ReferenceError` occurs;
+- every fixture request is read-only; and
+- `public.pre_beta_clean_start` is never called in dry-run mode.
+
+`vitest.config.ts` now includes `.test.mjs` files so this subprocess test runs in the normal
+validation suite. No database migration was required and no production rows or Auth users were
+mutated. The reported Windows libuv closing assertion was not reproduced after the unhandled
+ReferenceError was removed; no forced `process.exit()` or lifecycle workaround was added.
+
+### Validation
+
+- `npm.cmd run validate`: **PASS** — format, lint, typecheck, 37 test files / 237 tests, secret
+  scan, and production build.
+- `npm.cmd run test:db`: **PASS** — 23 files, 582 tests; no migration was added.
+- `npm.cmd audit --audit-level=high`: **PASS** — 0 vulnerabilities.
+- `git diff --check`: **PASS**.
+- Actual CLI dry-run fixture regression: **PASS**.
+- Production dry-run rerun: **NOT PERFORMED** in this implementation task.
+- Production reset, user deletion, commit, and push: **NOT PERFORMED**.
+
+The operator command remains `npm.cmd run prebeta:reset -- --dry-run`; after the reviewed dry-run,
+the exact test UUID is supplied through `PRE_BETA_TEST_USER_ID` for post-reset verification.
+
+PRE-BETA DRY-RUN TOOLING HOTFIX GATE: PASS

@@ -22,3 +22,6 @@ Thumbs.db
 tmp/
 temp/
 
+
+# Local production backups
+ops/backups/
