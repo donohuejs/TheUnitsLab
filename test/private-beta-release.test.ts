@@ -7,13 +7,13 @@ import { VERSION_HISTORY } from "../src/config/version-history";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 
-describe("v0.12.0 private beta launch release contracts", () => {
+describe("v0.12.1 private beta authentication hotfix release contracts", () => {
   it("uses one canonical package version in Settings", () => {
     const packageJson = JSON.parse(read("../package.json")) as { version: string };
     const accountPage = read("../src/app/account/page.tsx");
 
-    expect(APP_VERSION).toBe("0.12.0");
-    expect(APP_VERSION_LABEL).toBe("v0.12.0");
+    expect(APP_VERSION).toBe("0.12.1");
+    expect(APP_VERSION_LABEL).toBe("v0.12.1");
     expect(packageJson.version).toBe(APP_VERSION);
     expect(accountPage).toContain("APP_VERSION_LABEL");
     expect(accountPage).not.toContain('"v0.11.0"');
@@ -22,6 +22,7 @@ describe("v0.12.0 private beta launch release contracts", () => {
   it("keeps the requested release history entries", () => {
     expect(VERSION_HISTORY).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({ version: "0.12.1", title: "Authentication Onboarding Hotfix" }),
         expect.objectContaining({ version: "0.12.0", title: "Private Beta Launch" }),
         expect.objectContaining({ version: "0.11.2", title: "Tutorial Caption Layout Hotfix" }),
         expect.objectContaining({ version: "0.11.1", title: "Tutorial Video Hotfix" }),

@@ -30,6 +30,7 @@ select is((select file_size_limit from storage.buckets where id='external-wager-
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','71000000-0000-0000-0000-000000000001',true);
+select public.ensure_initial_bankroll();
 
 select is((select count(*) from public.sports_catalog),4::bigint,'authenticated users can read the centralized sport catalog');
 select is((select count(*) from public.competitions_catalog where enabled),8::bigint,'eight core competitions are enabled after release-candidate catalog expansion');

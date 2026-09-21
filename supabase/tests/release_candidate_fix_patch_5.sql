@@ -67,6 +67,7 @@ on conflict (id) do nothing;
 reset role;
 set role authenticated;
 select set_config('request.jwt.claim.sub', '97000000-0000-0000-0000-000000000001', false);
+select public.ensure_initial_bankroll();
 
 select set_config(
   'patch5.inferred_import',

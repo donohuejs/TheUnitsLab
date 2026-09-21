@@ -36,6 +36,8 @@ values
     now(), now(), '', '', '', ''
   );
 
+select app_private.allocate_initial_bankroll('c0000000-0000-0000-0000-000000000003');
+
 insert into public.groups (id, name, owner_user_id)
 values
   ('c1000000-0000-0000-0000-000000000001', 'Admin Study', 'c0000000-0000-0000-0000-000000000001'),

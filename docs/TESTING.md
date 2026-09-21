@@ -47,6 +47,7 @@ npm run supabase:start
 npm run db:reset
 npm run db:lint
 npm run test:db
+npm run test:db:auth-lifecycle-concurrency
 npm run test:db:concurrency
 npm run test:db:settlement-concurrency
 npm run test:db:parlay-placement-concurrency
@@ -58,5 +59,20 @@ npm run test:db:parlay-settlement-concurrency
 `test:db:settlement-concurrency` creates an isolated synthetic ticket and final score, invokes settlement twice concurrently through the local service boundary, and requires one success, one `already_settled` response, one stored-return credit, and an exact ledger balance. Its append-only audit fixture remains isolated until the next local database reset.
 
 `test:db:parlay-placement-concurrency` sends two concurrent two-leg parlay requests for 7,500 units and requires exactly one accepted parent, two immutable legs, one stake debit, and a 2,500-unit balance. `test:db:parlay-settlement-concurrency` creates a two-leg final parlay and invokes the service settlement function twice concurrently; it requires one success, one `already_settled` response, two won leg results, one 50-unit return credit, and a 10,040-unit balance. Both suites delete their synthetic users (and placement cache rows) on completion.
+
+The v0.12.1 lifecycle suite `supabase/tests/auth_onboarding_bankroll_lifecycle.sql` proves that an
+unconfirmed Auth fixture creates a profile but no ledger row and can be removed through the supported
+Auth cascade, while a confirmed fixture gets exactly one canonical allocation only when the
+caller-derived bootstrap runs. It also checks repeated initialization, the per-user advisory-lock
+concurrency boundary, existing ledger history preservation, normal wager placement, append-only
+protection, and the service-role-only legacy abandoned-user cleanup boundary. The cleanup function is
+never a client deletion path.
+
+`test:db:auth-lifecycle-concurrency` creates one unconfirmed synthetic local Auth user, uses two
+independent locally signed authenticated test clients to race the database bootstrap RPC, requires two
+canonical 10,000-unit responses and one initial-allocation row, then cleans the synthetic user with the
+exact local-only abandoned-user maintenance boundary. The SQL lifecycle suite separately proves that
+real unconfirmed signup state has no ledger row and is safely deletable. This integration test never
+runs against production.
 
 Fixtures must be synthetic or redacted, deterministic, small, and source-controlled. They must not contain API keys, service-role credentials, private screenshots, email addresses, or live network dependencies.

@@ -26,6 +26,10 @@ shell transcript.
 4. Confirm the canonical new-user Vial behavior by reviewing
    `public.ensure_initial_bankroll()` and `app_private.allocate_initial_bankroll()`. The
    maintenance RPC calls that allocator; it does not introduce a second starting amount.
+5. Separately verify the deployed app flow and Supabase project email configuration: `APP_URL`, Site
+   URL, exact callback redirect URLs, confirmation/recovery templates, sender/from settings, SMTP or
+   Supabase email-service status, rate limits, and an actual delivered confirmation email to a
+   controlled test address. A callback route check alone is not proof of email delivery.
 
 No database reset command is part of this procedure. Do not run `supabase db reset` against
 production or local data during this maintenance task.
@@ -123,6 +127,48 @@ the server-only access issue, then retry the exact operation; the RPC permits a 
 the exact test Auth UUID still exists and no test application rows remain. Do not run ad hoc SQL
 deletes. If the retry cannot proceed, restore from the verified backup or escalate with the saved
 operator output.
+
+## 5A. One-time cleanup of the pre-v0.12.1 unconfirmed signup
+
+The v0.12.1 migration removes the profile-created bankroll trigger for all future signups. It does
+not rewrite production history. If the one known abandoned signup was created before that migration,
+it may still have one legacy `initial_allocation` row and the Auth Admin delete may still fail until
+the narrow cleanup boundary removes that legacy row.
+
+The repository does not contain the production Auth UUID, and no production lookup is performed by
+implementation or tests. The operator must obtain the exact UUID from Supabase Dashboard →
+Authentication → Users or the server-only Auth Admin API, confirm that the email is still unconfirmed,
+and record that UUID in the reviewed maintenance log. Do not substitute an email-derived or guessed
+UUID. The exact value belongs only in the protected operator environment:
+
+```powershell
+$env:NEXT_PUBLIC_SUPABASE_URL = "https://<production-project>.supabase.co"
+Set-Item Env:SUPABASE_SERVICE_ROLE_KEY "replace_with_server_only_value"
+$env:PRE_BETA_MAINTENANCE_ENV = "production"
+$env:UNCONFIRMED_AUTH_USER_ID = "<exact-auth-uuid-from-reviewed-auth-lookup>"
+```
+
+Run the read-only preview first:
+
+```powershell
+npm.cmd run auth:cleanup:unconfirmed
+```
+
+The preview must show the same exact UUID, `emailConfirmedAt: null`, and only the expected profile and
+legacy bankroll rows. Stop if the user is confirmed or has any wager, Study, membership, feedback,
+vision, audit, or other application history. After backup verification and human review, execute the
+two-step supported lifecycle:
+
+```powershell
+npm.cmd run auth:cleanup:unconfirmed -- --execute --confirm REMOVE_UNCONFIRMED_USER
+```
+
+The server-only script calls `public.remove_abandoned_unconfirmed_user_data(<exact UUID>)`, which is
+service-role-only, refuses confirmed users, refuses any application history, and removes only the
+legacy user profile/ledger rows using the existing transaction-local maintenance trigger allowance.
+It then calls the Supabase Auth Admin API to delete that same exact UUID and verifies that Auth,
+profile, and ledger rows are gone. It never deletes `auth.users` with SQL. This procedure is not an
+established-user deletion path and must not be generalized to confirmed users or users with history.
 
 ## 6. Acceptance checklist
 

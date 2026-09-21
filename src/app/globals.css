@@ -193,6 +193,41 @@ h4 {
   gap: 1.25rem;
 }
 
+.auth-links {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 1rem;
+}
+
+.auth-result {
+  max-width: 42rem;
+  margin: 5vh auto 0;
+}
+
+.auth-result-error {
+  border-color: #e3b8b2;
+}
+
+.auth-result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.auth-result-actions form {
+  margin: 0;
+}
+
+.auth-result strong {
+  overflow-wrap: anywhere;
+}
+
+.auth-resend-form {
+  margin-block: 1.5rem;
+}
+
 .auth-grid,
 .dashboard-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2082,6 +2117,18 @@ thead th {
   .auth-grid,
   .dashboard-grid {
     grid-template-columns: 1fr;
+  }
+
+  .auth-result-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .auth-result-actions .button,
+  .auth-result-actions form,
+  .auth-result-actions form .button {
+    width: 100%;
+    text-align: center;
   }
 
   .stats-grid {

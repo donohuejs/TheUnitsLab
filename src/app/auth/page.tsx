@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 import { signIn, signUp } from "@/app/actions";
+import { SubmitButton } from "@/components/submit-button";
 import { hasPublicEnvironment } from "@/config/env.public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PRODUCT_NAME } from "@/lib/ui";
@@ -53,10 +55,14 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
               Password
               <input name="password" type="password" autoComplete="current-password" required />
             </label>
-            <button className="button" type="submit" disabled={!configured}>
+            <SubmitButton disabled={!configured} pendingLabel="Signing in…">
               Sign in
-            </button>
+            </SubmitButton>
           </form>
+          <div className="auth-links">
+            <Link href="/auth/forgot-password">Forgot password?</Link>
+            <Link href="/auth/check-email">Need another confirmation email?</Link>
+          </div>
         </section>
 
         <section className="card">
@@ -80,9 +86,9 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
                 required
               />
             </label>
-            <button className="button" type="submit" disabled={!configured}>
+            <SubmitButton disabled={!configured} pendingLabel="Creating account…">
               Sign up
-            </button>
+            </SubmitButton>
           </form>
         </section>
       </div>

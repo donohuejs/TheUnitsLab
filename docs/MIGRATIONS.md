@@ -4,6 +4,13 @@ Phase 2 adds `20260913000000_phase_2_sports_odds.sql`: shared odds cache, API us
 
 Phase 3 adds `20260914000000_phase_3_simulated_straight_bets.sql`: exact ticket and leg snapshots, the append-only bankroll ledger, idempotent 10,000-unit allocation and backfill, forced RLS, immutable terms, and the authenticated atomic placement function. It replays after the Phase 0-2 migrations without manual state.
 
+v0.12.1 adds `20261006000000_auth_onboarding_bankroll_lifecycle.sql`: it removes only the profile-
+insert bankroll trigger so an unconfirmed Auth identity has no permanent ledger state, while keeping
+profile creation, the canonical caller-derived allocator, idempotency/advisory locking, RLS, and
+append-only protections. It also adds a service-role-only exact-UUID cleanup boundary for legacy
+unconfirmed users; it refuses confirmed users and any application history, and Auth Admin deletion
+remains a separate supported operation.
+
 Phase 4 adds `20260914100000_phase_4_bankroll_void_type.sql` and `20260915000000_phase_4_scores_settlement.sql`. The first commits the PostgreSQL enum addition before later constraints reference it. The second adds normalized shared scores, score refresh state, quota-ledger purposes, append-only settlement audits, forced RLS, final-score protection, deterministic grading, atomic settlement and documented void functions, and the database-enforced one-economic-credit rule.
 
 Phase 5 adds `20260916000000_phase_5_external_wagers.sql`: centralized read-only sport, competition, and external-sportsbook catalogs; the separate external-wager system of record; append-only result-correction audits; deterministic owner-only creation and result functions; a private five-MiB screenshot bucket; and object policies aligned with wager ownership and current group membership. The migration contains no virtual-bankroll mutation.

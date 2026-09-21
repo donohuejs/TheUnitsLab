@@ -6,6 +6,15 @@ export type VersionHistoryEntry = {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = [
   {
+    version: "0.12.1",
+    title: "Authentication Onboarding Hotfix",
+    changes: [
+      "Completed the email-confirmation callback and success flow",
+      "Added safe expired, invalid, and already-used confirmation states",
+      "Added privacy-safe forgot-password and recovery-session password updates",
+    ],
+  },
+  {
     version: "0.12.0",
     title: "Private Beta Launch",
     changes: [

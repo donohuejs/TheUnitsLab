@@ -19,7 +19,11 @@ On 2026-09-12, the process, user, and machine environments contained neither `TH
 - The browser submits only selection identifiers, requested stake, optional group ID, and the line/price the user saw. A security-definer database function derives the caller from `auth.uid()`, resolves trusted event and market data from the current cache, and rejects changed terms explicitly.
 - Phase 3 persists one `bets` row and one `bet_legs` row. The one-to-many relationship is retained so Phase 7 can add multiple legs without destructive schema changes, but the Phase 3 function always creates exactly one leg and `ticket_type = straight`.
 - The ledger is authoritative. A transaction-scoped PostgreSQL advisory lock serializes bankroll-changing operations per user, balance is calculated from ledger entries while that lock is held, and a unique bet-linked stake transaction prevents duplicate debits.
-- An idempotent initial-allocation function, a profile-insert trigger, and migration backfill give existing and future profiles one allocation only. A partial unique index enforces the rule during retries and races.
+- An idempotent initial-allocation function and migration backfill give existing profiles one
+  allocation only. The original profile-insert trigger was later superseded by the v0.12.1 auth
+  onboarding lifecycle migration so unconfirmed Auth users do not receive permanent bankroll state;
+  authenticated application bootstrap now invokes the same canonical function. A partial unique index
+  enforces the rule during retries and races.
 - `group_id` is nullable. When supplied, the placement function verifies current membership and stores the association on the ticket.
 - Ordinary users receive read-only access to their own ticket, leg, and ledger records. They receive no direct insert, update, or delete grants. All new exposed tables enable and force Row Level Security.
 

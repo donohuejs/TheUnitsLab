@@ -11,6 +11,9 @@ insert into auth.users (
 ('00000000-0000-0000-0000-000000000000','51000000-0000-0000-0000-000000000001','authenticated','authenticated','phase4-a@example.test',extensions.crypt('test',extensions.gen_salt('bf')),now(),'{}','{"display_name":"Phase 4 A"}',now(),now(),'','','',''),
 ('00000000-0000-0000-0000-000000000000','52000000-0000-0000-0000-000000000002','authenticated','authenticated','phase4-b@example.test',extensions.crypt('test',extensions.gen_salt('bf')),now(),'{}','{"display_name":"Phase 4 B"}',now(),now(),'','','','');
 
+select app_private.allocate_initial_bankroll('51000000-0000-0000-0000-000000000001');
+select app_private.allocate_initial_bankroll('52000000-0000-0000-0000-000000000002');
+
 insert into public.bets (id,user_id,source,ticket_type,stake_units,decimal_equivalent_odds,american_odds,potential_profit_units,potential_return_units)
 values
 ('61000000-0000-0000-0000-000000000001','51000000-0000-0000-0000-000000000001','simulated','straight',10,2.5,150,15,25),

@@ -6,6 +6,15 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { APP_VERSION } from "@/config/version";
+import {
+  AUTH_CHECK_EMAIL_PATH,
+  AUTH_CONFIRMED_PATH,
+  AUTH_FORGOT_PASSWORD_PATH,
+  AUTH_RECOVERY_PATH,
+  buildAuthCallbackUrl,
+} from "@/lib/auth-flow";
+import { ensureInitialBankroll } from "@/lib/authenticated-bootstrap";
+import { getApplicationSiteUrl } from "@/lib/auth-urls";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type InviteActionState = {
@@ -68,10 +77,16 @@ function authErrorMessage(message: string, fallback: string) {
     return "An account with that email already exists. Try signing in.";
   }
   if (normalized.includes("email not confirmed")) {
-    return "Confirm your email address before signing in.";
+    return "Email not confirmed. Check your inbox or resend the confirmation email.";
+  }
+  if (normalized.includes("weak password") || normalized.includes("password should be")) {
+    return "Choose a password with at least 8 characters.";
   }
   return fallback;
 }
+
+const privacySafeResetNotice =
+  "If an account exists for that email, we've sent password reset instructions.";
 
 async function requireAuthenticatedUser() {
   const supabase = await createSupabaseServerClient();
@@ -80,6 +95,8 @@ async function requireAuthenticatedUser() {
   if (error || !data.user) {
     redirectWithNotice("/auth", "Please sign in to continue.");
   }
+
+  await ensureInitialBankroll(supabase);
 
   return { supabase, user: data.user };
 }
@@ -99,17 +116,21 @@ export async function signUp(formData: FormData) {
   }
 
   const supabase = await createSupabaseServerClient();
+  const siteUrl = await getApplicationSiteUrl();
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
-    options: { data: { display_name: parsed.data.displayName } },
+    options: {
+      data: { display_name: parsed.data.displayName },
+      emailRedirectTo: buildAuthCallbackUrl(siteUrl, AUTH_CONFIRMED_PATH),
+    },
   });
 
   if (error) {
     redirectWithNotice("/auth", authErrorMessage(error.message, "Sign-up could not be completed."));
   }
   if (!data.session) {
-    redirectWithNotice("/auth", "Check your email to confirm the account, then sign in.");
+    redirect(`${AUTH_CHECK_EMAIL_PATH}?email=${encodeURIComponent(parsed.data.email)}`);
   }
 
   redirect("/account");
@@ -132,6 +153,76 @@ export async function signIn(formData: FormData) {
   }
 
   redirect("/account");
+}
+
+export async function resendConfirmation(formData: FormData) {
+  const email = value(formData, "email").trim();
+  const parsed = z.email().safeParse(email);
+
+  if (!parsed.success) {
+    redirect(
+      `${AUTH_CHECK_EMAIL_PATH}?notice=${encodeURIComponent("Enter a valid email address.")}`,
+    );
+  }
+
+  const supabase = await createSupabaseServerClient();
+  try {
+    const siteUrl = await getApplicationSiteUrl();
+    await supabase.auth.resend({
+      type: "signup",
+      email: parsed.data,
+      options: { emailRedirectTo: buildAuthCallbackUrl(siteUrl, AUTH_CONFIRMED_PATH) },
+    });
+  } catch {
+    // Keep resend responses privacy-safe and avoid exposing provider details.
+  }
+
+  redirect(
+    `${AUTH_CHECK_EMAIL_PATH}?email=${encodeURIComponent(parsed.data)}&notice=${encodeURIComponent("If that account needs confirmation, we sent a new email.")}`,
+  );
+}
+
+export async function requestPasswordReset(formData: FormData) {
+  const email = value(formData, "email").trim();
+  const parsed = z.email().safeParse(email);
+
+  if (!parsed.success) {
+    redirectWithNotice(AUTH_FORGOT_PASSWORD_PATH, "Enter a valid email address.");
+  }
+
+  const supabase = await createSupabaseServerClient();
+  try {
+    const siteUrl = await getApplicationSiteUrl();
+    await supabase.auth.resetPasswordForEmail(parsed.data, {
+      redirectTo: buildAuthCallbackUrl(siteUrl, AUTH_RECOVERY_PATH),
+    });
+  } catch {
+    // The same response is used for provider failures and unknown addresses.
+  }
+
+  redirectWithNotice(AUTH_FORGOT_PASSWORD_PATH, privacySafeResetNotice);
+}
+
+export async function updatePassword(formData: FormData) {
+  const password = value(formData, "password");
+  const confirmPassword = value(formData, "confirmPassword");
+
+  if (password.length < 8 || password.length > 128 || password !== confirmPassword) {
+    redirect(`${AUTH_RECOVERY_PATH}?status=${password !== confirmPassword ? "mismatch" : "weak"}`);
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) {
+    redirect(`${AUTH_RECOVERY_PATH}?status=invalid`);
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    redirect(`${AUTH_RECOVERY_PATH}?status=failed`);
+  }
+
+  redirect(`${AUTH_RECOVERY_PATH}?status=updated`);
 }
 
 export async function signOut() {

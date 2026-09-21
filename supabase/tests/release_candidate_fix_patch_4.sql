@@ -43,6 +43,7 @@ select set_config(
   '{"sub":"96000000-0000-0000-0000-000000000001","role":"authenticated"}',
   true
 );
+select public.ensure_initial_bankroll();
 
 select lives_ok($$select public.create_imported_wager(
   null, null, null, 'soccer', 'epl', 'Patch Four Away at Patch Four Home',

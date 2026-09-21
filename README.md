@@ -4,8 +4,9 @@ The Units Lab is a private, entertainment-focused sports wagering simulator and 
 
 ## Phase status
 
-Phases 0-8 are complete. v0.11.0 is the private-beta readiness release for approximately 2–3
-friends. Release-candidate Fix Patch 10 remains the wager-engine baseline; Phase 9 has not started.
+Phases 0-8 are complete. v0.12.0 is the private-beta launch release for approximately 2–3 friends,
+and v0.12.1 is the authentication onboarding hotfix. Release-candidate Fix Patch 10 remains the
+wager-engine baseline; Phase 9 has not started.
 
 The interface supports account/group workflows, pregame odds for EPL, UCL, NCAAF, NCAAB, NFL, NHL, La Liga, and Europa League, straight and multi-leg simulated bet slips, a unified My Bets ledger, cached scores, deterministic simulated settlement, reviewed local screenshot/text/manual betslip import, imported straight/parlay tracking, Performance analytics, private-group leaderboards, and a dashboard that keeps simulated and imported records distinct. External records never change the simulated virtual-bankroll ledger. Screenshot extraction remains review-first: OCR runs locally first, and only low-confidence or incomplete images may use the server-only configured vision fallback. No canonical sport, competition, event, or settlement fact is invented by the fallback, and no provider polling or Phase 9 work was added.
 
@@ -35,9 +36,24 @@ npm ci
 Copy-Item .env.example .env.local
 ```
 
-Replace placeholder values in `.env.local`; never commit that file. Browser-safe variables use the `NEXT_PUBLIC_` prefix. The Odds API key and Supabase service-role key are server-only and intentionally have no public prefix.
+Replace placeholder values in `.env.local`; never commit that file. Browser-safe variables use the `NEXT_PUBLIC_` prefix. `APP_URL` is server-only and must be `https://theunitslab.vercel.app` in production (use `http://localhost:3000` locally) so Supabase confirmation and password-recovery links return to the intended application. The Odds API key and Supabase service-role key are server-only and intentionally have no public prefix.
 
 The application build does not require credentials and renders setup behavior when public Supabase configuration is absent. Authentication requires the project URL and public key. Live odds and scores require server-only `SUPABASE_SERVICE_ROLE_KEY` and `THE_ODDS_API_KEY`. Screenshot vision fallback is disabled unless server-only `OPENAI_API_KEY` is set; its default monthly application budget is $5.00 and the admin dashboard supports audited increases. Set `CRON_SECRET` to a random server-only value before invoking the bounded settlement job endpoint, and set `APP_ADMIN_USER_IDS` to comma-separated Supabase user UUIDs for the quota dashboard. The browser never receives these credentials.
+
+### Supabase Auth URL configuration
+
+For the production project, set the Supabase Dashboard Auth URL Configuration values as follows:
+
+- Site URL: `https://theunitslab.vercel.app`
+- Redirect URL: `https://theunitslab.vercel.app/auth/callback?next=%2Fauth%2Fconfirmed`
+- Redirect URL: `https://theunitslab.vercel.app/auth/callback?next=%2Fauth%2Frecovery`
+
+For local development, add the corresponding localhost URLs:
+
+- `http://localhost:3000/auth/callback?next=%2Fauth%2Fconfirmed`
+- `http://localhost:3000/auth/callback?next=%2Fauth%2Frecovery`
+
+Add the `127.0.0.1` equivalents only when that exact host is used. Keep Supabase's confirmation and recovery email templates pointed at their standard confirmation URL; the application callback exchanges the returned PKCE `code` server-side.
 
 ## Local database
 

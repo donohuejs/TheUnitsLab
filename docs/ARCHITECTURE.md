@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-This document turns the governing product specification into architectural boundaries and records the technical foundation selected during Phase 0. Phases 0–8 are implemented; v0.11.0 adds private-beta release-readiness surfaces and feedback administration without changing the provider or wager engine. Product questions left open by the source remain open unless an explicit owner clarification is recorded.
+This document turns the governing product specification into architectural boundaries and records the technical foundation selected during Phase 0. Phases 0–8 are implemented; v0.11.0 added private-beta release-readiness surfaces, v0.12.0 launched the private beta, and v0.12.1 adds the authentication onboarding hotfix without changing the provider or wager engine. Product questions left open by the source remain open unless an explicit owner clarification is recorded.
 
 The system must support multiple authenticated users and private groups, server-side odds ingestion, virtual-unit wagering, external-wager tracking, secure screenshots, deterministic settlement, analytics, leaderboards, and quota-aware operation without real-money wagering.
 
@@ -33,7 +33,7 @@ The governing source proposes, but does not fully select:
 
 Phase 0 selects Node.js 24.18.1, npm 11.16.0, Next.js 16.3.5, React 19.3.0, TypeScript 6.0.3, Supabase CLI 2.117.0, Vitest 5, ESLint 9.39.5, and Prettier 3. TypeScript 6 and ESLint 9 are selected because the current Next.js lint stack does not yet support TypeScript 7 or ESLint 10. Vercel Hobby is the zero-cost deployment baseline for a private, non-commercial project. These are reversible technical selections, not new product rules. Authentication method remains an owner decision for Phase 1.
 
-Phase 1 adds `@supabase/ssr` 0.12.7 and `@supabase/supabase-js` 2.116.0 and selects email-and-password authentication. App Router Server Components and Server Actions use request-scoped cookie clients, while the root Next.js proxy refreshes sessions. The browser receives only the public Supabase URL and public anonymous or publishable key.
+Phase 1 adds `@supabase/ssr` 0.12.7 and `@supabase/supabase-js` 2.116.0 and selects email-and-password authentication. App Router Server Components and Server Actions use request-scoped cookie clients, while the root Next.js proxy refreshes sessions. The browser receives only the public Supabase URL and public anonymous or publishable key. The v0.12.1 authentication hotfix uses the server client's default PKCE flow: signup and recovery request explicit callback URLs, `/auth/callback` exchanges the authorization code with `exchangeCodeForSession`, and the resulting cookie session is consumed by the confirmation or password-update page. No token is decoded in browser code.
 
 ## Phase 0 component boundaries
 
@@ -75,7 +75,26 @@ Phase 0 selects a PostgreSQL-backed shared cache as a reversible technical choic
 
 Supabase Auth owns credentials. A separate application profile holds non-authentication data such as display name, avatar, created date, optional unit-size description, default bankroll, time zone, and privacy settings. Email addresses must not be exposed to other users.
 
-Phase 1 implements `public.profiles` one-to-one with `auth.users`. A signup trigger creates the application profile from validated display-name metadata, and the migration backfills any pre-existing authentication identities without copying email. Users may read and update their own profile. A profile marked `group_members` is also readable by shared-group members; a private profile is self-only. Identity and creation timestamps are immutable.
+Phase 1 implements `public.profiles` one-to-one with `auth.users`. A signup trigger creates the application profile from validated display-name metadata, and the migration backfills any pre-existing authentication identities without copying email. Users may read and update their own profile. A profile marked `group_members` is also readable by shared-group members; a private profile is self-only. Identity and creation timestamps are immutable. Profile creation remains safely cascade-deletable for an abandoned, unconfirmed signup.
+
+### Authentication onboarding and recovery
+
+The signup action preserves the existing server-side profile-trigger path and supplies
+`/auth/callback?next=%2Fauth%2Fconfirmed` as `emailRedirectTo`. A successful signup without a
+session sends the user to the dedicated Check your email page. Supabase's confirmation link returns
+to the callback with a one-time PKCE code; the route exchanges it using the request-scoped SSR
+client, persists the session cookie, and shows an explicit Email confirmed state. Callback errors
+are reduced to safe expired, invalid, already-used, missing, or exchange-failed states.
+
+Password recovery uses `resetPasswordForEmail` with
+`/auth/callback?next=%2Fauth%2Frecovery`. The same server-side code exchange establishes the recovery
+session before the recovery page renders. `updateUser({ password })` is called only after
+`getUser()` confirms that session; password values never enter URLs or logs. The privacy-safe reset
+response is identical for unknown addresses and provider failures. `APP_URL` is the production
+origin configuration, with localhost fallback only for local development. The callback and the root
+application layout both run the caller-derived authenticated bootstrap; the layout is the fallback when
+a browser closes during the callback or the callback page is not revisited. The bootstrap calls
+`public.ensure_initial_bankroll()` without a client-supplied user ID.
 
 ### Groups and authorization
 
@@ -101,7 +120,7 @@ The authenticated placement function accepts selection identifiers, the requeste
 
 The ledger is the source of truth. Current balance is derived from ledger transactions rather than trusted as an independently mutable value.
 
-Phase 3 implements `public.bankroll_ledger` as append-only exact `numeric(14,2)` movements. Existing profiles are backfilled once, future profile creation triggers one 10,000-unit allocation, and a partial unique index plus idempotency key prevents duplicate allocation under retries or races. Placement takes a transaction-scoped advisory lock derived from the authenticated user ID, sums ledger entries while serialized, rejects insufficient funds, and inserts the ticket, leg, and negative stake entry in one PostgreSQL transaction. There is no independently mutable balance column.
+Phase 3 implements `public.bankroll_ledger` as append-only exact `numeric(14,2)` movements. Existing profiles were backfilled once, and `public.ensure_initial_bankroll()` remains the canonical caller-derived allocator. Since v0.12.1, profile creation no longer allocates bankroll state: an unconfirmed signup has a profile but no permanent ledger row, so supported Auth deletion can cascade safely. After confirmation, the callback/root application bootstrap creates the canonical allocation exactly once. A partial unique index, idempotency key, and transaction-scoped advisory lock prevent duplicate allocation under retries or concurrent initialization. Placement takes the same user-derived lock, sums ledger entries while serialized, rejects insufficient funds, and inserts the ticket, leg, and negative stake entry in one PostgreSQL transaction. There is no independently mutable balance column. The append-only trigger remains active for ordinary operations; only the exact service-role abandoned-user maintenance boundary can remove legacy rows for an unconfirmed UUID after it proves there is no application history.
 
 ### External wagering
 
