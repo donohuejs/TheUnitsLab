@@ -140,6 +140,7 @@ export default async function MyBetsPage({ searchParams }: Props) {
       .select(
         "id,group_id,ticket_type,leg_count,stake_units,decimal_equivalent_odds,potential_profit_units,potential_return_units,american_odds,status,settled_profit_units,settled_return_units,created_at,bet_legs(*)",
       )
+      .eq("user_id", authData.user.id)
       .eq("is_synthetic", false)
       .order("created_at", { ascending: false }),
     supabase
@@ -149,9 +150,25 @@ export default async function MyBetsPage({ searchParams }: Props) {
       )
       .eq("user_id", authData.user.id)
       .order("wager_date", { ascending: false }),
-    supabase.from("bankroll_ledger").select("amount_units"),
+    supabase.from("bankroll_ledger").select("amount_units").eq("user_id", authData.user.id),
     supabase.from("groups").select("id,name").order("name"),
   ]);
+  const failedReads = [
+    ["simulated wagers", ticketResult.error],
+    ["imported wagers", importedResult.error],
+    ["bankroll ledger", ledgerResult.error],
+    ["Study selector", groupsResult.error],
+  ].filter(([, error]) => error);
+  if (failedReads.length > 0) {
+    console.error("My Bets read failed", {
+      failures: failedReads.map(([operation, error]) => ({
+        operation,
+        code: typeof error === "string" ? null : (error?.code ?? null),
+        message:
+          typeof error === "string" ? error : (error?.message ?? "Unknown database read error"),
+      })),
+    });
+  }
   const allTickets = (ticketResult.data ?? []) as Ticket[];
   const allImported = (importedResult.data ?? []) as ImportedWager[];
   const voidedSlipKeys = allTickets

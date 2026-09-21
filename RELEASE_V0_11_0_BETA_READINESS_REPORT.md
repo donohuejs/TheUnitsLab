@@ -306,3 +306,102 @@ The corrected multi-stage Import Betslip walkthrough and written steps remain un
   were made. No commit or push was performed.
 
 V0.11.2 TUTORIAL CAPTION HOTFIX GATE: PASS
+
+## Pre-Beta Permission / My Bets Maintenance Hotfix
+
+Date: 2026-09-20
+Application version: **v0.11.2**
+Scope: forward-only read-permission repair and My Bets read-path diagnostics
+
+### Findings and root causes
+
+The pre-beta preview is a read-only service-role Supabase client. Its complete direct database
+dependency set is `bets`, `external_wagers`, `bankroll_ledger`, `group_members`, `groups`,
+`beta_feedback`, `bet_legs`, `external_wager_legs`, `settlement_audits`,
+`external_wager_result_audits`, and `wager_study_assignment_audits`. Auth Admin `listUsers` is an
+Auth API dependency, not a database table grant. The preview does not call an RPC or view, and its
+row lookups do not introduce an additional database object dependency.
+
+`wager_study_assignment_audits` was created by `20260927000000_release_candidate_fix_patch_5.sql`
+after the older blanket service-role grant migration. That migration forced RLS and revoked ordinary
+role access, but did not add the required service-role `SELECT` grant. The reported `permission
+denied for table wager_study_assignment_audits` is therefore a table privilege omission; FORCE RLS
+was not weakened and no preview mutation occurred.
+
+The production My Bets page is a separate authenticated server-component path in
+`src/app/my-bets/page.tsx`. It uses the ordinary authenticated Supabase client and directly reads:
+
+- `bets` with embedded `bet_legs`, filtered to the signed-in owner and non-synthetic tickets;
+- `external_wagers` with embedded `external_wager_legs`, filtered to the signed-in owner;
+- `bankroll_ledger`, filtered to the signed-in owner; and
+- `groups` for the Study selector.
+
+It then optionally reads `event_scores` for the returned simulated ticket events. It does not read
+`wager_study_assignment_audits`, call an analytics projection, or call an RPC for the list. Existing
+RLS policies are the row-authorization boundary, and the current migration graph already declares
+the intended authenticated `SELECT` grants for these tables. The repository did not contain a
+production log or request trace preserving which of the page's parallel reads produced the reported
+message, so an exact live object/error cannot be claimed from source inspection alone. The page now
+records a server-only diagnostic with the failed operation label and database error code/message;
+ordinary users still receive the same non-sensitive error notice. The two failures are therefore
+different: the preview has a proven missing service-role grant, while the My Bets incident had no
+reproducible missing grant in the checked-in migration graph and required production retest
+observability. The hotfix also reasserts only the exact authenticated table `SELECT` prerequisites
+used by My Bets.
+
+### Migration and grant audit
+
+Added the forward-only migration
+`supabase/migrations/20261004000000_pre_beta_permissions_my_bets.sql`.
+
+- `service_role`: `SELECT` on `wager_study_assignment_audits` only for the maintenance preview.
+- `authenticated`: `SELECT` reasserted only on `bets`, `bet_legs`, `bankroll_ledger`, `groups`,
+  `external_wagers`, `external_wager_legs`, and `event_scores`, which are the direct My Bets path.
+- `anon` and `public`: no grants added.
+- `wager_study_assignment_audits`: no authenticated grant was added; forced RLS remains unchanged.
+- `simulated_placement_idempotency`: remains service-role denied by design and is not a preview or
+  My Bets read dependency; its SECURITY DEFINER placement boundary remains unchanged.
+- Recent Luna server-only tables already receive their reviewed service-role grants in patch 9;
+  `beta_feedback` already has its explicit service-role grant. No broad regrant was added.
+
+The page now adds explicit owner predicates to simulated-ticket and ledger reads as defense in depth
+around the existing RLS policies. No wager, Study, bankroll, or user data was modified.
+
+### Regression coverage and validation
+
+Added `supabase/tests/pre_beta_permissions_my_bets.sql` and
+`test/pre-beta-permissions-my-bets.test.ts`. The database test covers the complete preview privilege
+set, service-role access, anon/authenticated denial for the Study audit table, authenticated-only
+My Bets table prerequisites, forced RLS, and executable ordinary-role reads. Existing phase tests
+continue to cover User A/User B ownership, imported and simulated wager isolation, Study assignment
+authorization, and unchanged admin/service behavior.
+
+- Focused hotfix unit test: **PASS** — 2 tests.
+- `npm.cmd run validate`: **PASS** — 34 files, 232 tests, security scan, and production build.
+- Local migration application: **PASS** — applied only the new forward migration; no reset run.
+- `npx.cmd supabase db lint --local`: **PASS** — only the repository's existing settlement-harness
+  warnings were reported.
+- `npm.cmd run test:db`: **PASS** — 22 files, 553 tests.
+- `npm.cmd audit --audit-level=high`: **PASS** — 0 vulnerabilities.
+- `git diff --check`: **PASS**.
+- No production browser session, production reset, production data operation, commit, or push was
+  performed. A live My Bets browser retest remains an operator step below because production
+  credentials/log access were not provided to this task.
+
+### Production retest steps
+
+1. Verify the existing backup and the linked Supabase project, then apply the migration with
+   `npx supabase db push --linked` (or run the exact migration SQL through the protected production
+   migration workflow). Do not run `supabase db reset`, delete users, or run the admin clean-start.
+2. Deploy the application code containing the explicit My Bets owner predicates and safe diagnostics.
+3. In the server-only operator environment, rerun
+   `npm.cmd run prebeta:reset:preview`. Confirm the preview completes and includes the
+   `studyAssignmentAudits` count without any mutation step.
+4. Sign in as an ordinary beta user and open My Bets. Verify the user's simulated wagers, imported
+   wagers, Vial balance, Study selector, and event-score display load; verify another user's wagers
+   remain absent. Check server logs for the labeled `My Bets read failed` diagnostic and confirm no
+   failure is emitted.
+5. Compare the read-only preview counts with the pre-migration backup/operator snapshot and confirm
+   there were no inserts, updates, deletes, ownership changes, bankroll changes, or Study changes.
+
+PRE-BETA PERMISSION / MY BETS HOTFIX GATE: PASS
