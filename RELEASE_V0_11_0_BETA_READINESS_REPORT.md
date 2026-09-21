@@ -559,3 +559,51 @@ The operator command remains `npm.cmd run prebeta:reset -- --dry-run`; after the
 the exact test UUID is supplied through `PRE_BETA_TEST_USER_ID` for post-reset verification.
 
 PRE-BETA DRY-RUN TOOLING HOTFIX GATE: PASS
+
+## v0.12.0 — Private Beta Launch
+
+Date: 2026-09-21
+Application version: **v0.12.0**
+Release label: **v0.12.0 — Private Beta Launch**
+Status: **Private beta may begin**
+
+### Release state
+
+The first formal private beta begins on the finalized pre-beta state. Pre-beta clean-start
+maintenance completed successfully, including the canonical administrator bankroll/history reset
+and removal of the beta test user. My Bets production permissions were repaired, feedback remains
+available, the tutorial and onboarding/readiness surfaces are finalized, and maintenance,
+backup, and recovery procedures are documented. Final production smoke checks passed.
+
+The application remains pre-1.0 and under active beta development. `v1.0.0` is reserved for a
+future stable, non-beta milestone; this release does not claim future features are complete.
+
+### Versioning and preserved history
+
+The current version sources are synchronized at `0.12.0` in `package.json` and `package-lock.json`.
+`src/config/version.ts` remains the canonical package-derived runtime source, so Settings and
+other version displays resolve to `v0.12.0` without introducing a duplicate constant. The release
+contract now checks the `v0.12.0` label and launch history entry while retaining the historical
+`v0.11.2`, `v0.11.1`, `v0.11.0`, and `v0.10.1` entries.
+
+Historical tutorial asset references such as
+`public/help/import-betslip-demo-v0.11.2.webm` and `.vtt` remain intentionally unchanged: they
+identify the finalized tutorial media path, not the current application release. No application
+behavior, provider logic, database migration, or production data was changed.
+
+### Validation
+
+- `npm.cmd run validate`: **PASS** — format, lint, typecheck, 37 test files / 237 tests, secret
+  scan, and production build.
+- `npm.cmd audit --audit-level=high`: **PASS** — 0 vulnerabilities.
+- `git diff --check`: **PASS**.
+- Focused `test/private-beta-release.test.ts`: **PASS** — 1 file / 4 tests.
+- Package and lockfile versions: **PASS** — `0.12.0` in both package metadata locations.
+- Settings/current display: **PASS** — derived label `v0.12.0`.
+- Database migrations and production changes: **NOT PERFORMED**.
+- Git tag, commit, and push: **NOT PERFORMED**.
+
+The current CI release-contract expectation is now `0.12.0` / `v0.12.0`, so GitHub CI should pass
+the former stale-version failure.
+
+PRIVATE BETA LAUNCH VERSIONING GATE: PASS

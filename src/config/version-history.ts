@@ -6,6 +6,17 @@ export type VersionHistoryEntry = {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = [
   {
+    version: "0.12.0",
+    title: "Private Beta Launch",
+    changes: [
+      "Marked the start of the first formal private beta",
+      "Completed the production clean-start and canonical admin bankroll reset",
+      "Removed the beta test user and repaired My Bets production permissions",
+      "Finalized feedback, tutorial, onboarding, maintenance, backup, and recovery readiness",
+      "Passed the final production smoke checks",
+    ],
+  },
+  {
     version: "0.11.2",
     title: "Tutorial Caption Layout Hotfix",
     changes: [
