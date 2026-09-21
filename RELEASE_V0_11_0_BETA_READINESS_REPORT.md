@@ -405,3 +405,103 @@ authorization, and unchanged admin/service behavior.
    there were no inserts, updates, deletes, ownership changes, bankroll changes, or Study changes.
 
 PRE-BETA PERMISSION / MY BETS HOTFIX GATE: PASS
+
+## Pre-Beta Clean-Start Maintenance
+
+Date: 2026-09-20
+Application version: **v0.11.2**
+Scope: safe production clean-start maintenance tooling and validation only
+
+### Root cause and maintenance architecture
+
+The repository had a read-only preview helper, but no reviewed execution path. Direct production
+deletes would be unsafe because wager legs and audit/ledger rows use restrictive foreign keys and
+settlement, imported-result, and bankroll tables are append-only under database triggers. The
+maintenance implementation therefore adds a forward-only, service-role-only
+`public.pre_beta_clean_start(admin_uuid, test_uuid)` `SECURITY DEFINER` RPC plus a server-only Node
+operator wrapper. The wrapper defaults to dry-run, requires the exact
+`PRE_BETA_ADMIN_USER_ID`, resolves exactly `jadaxi4311@meonvr.com`, and permits mutation only with
+`--execute`, `PRE_BETA_MAINTENANCE_ENV=production`, and
+`--confirm RESET_PRIVATE_BETA_TEST_DATA`.
+
+The RPC revalidates both Auth users and application profiles, aborts on unexpected ownership or
+membership graphs, performs the database cleanup in one transaction, reconciles the admin through
+the existing `app_private.allocate_initial_bankroll()` mechanism, and verifies the post-cleanup
+state before commit. Storage-object removal and Auth Admin deletion necessarily occur after the
+database transaction through server-only APIs; errors report the committed stage and exact
+screenshot paths for a controlled retry. A retry is idempotent only for the same exact UUID and
+only when no test application rows remain. A completed run is also a verified no-op if the test
+Auth user is already gone.
+
+### Objects and data behavior
+
+The maintenance transaction removes only target-owned simulator/application rows:
+
+- simulated and imported wagers, wager legs, settlement/result audits, and Study-assignment audits;
+- target bankroll ledger rows, then one canonical admin initial-allocation row is restored;
+- target beta feedback;
+- target vision usage, OCR, diagnostic, and vision-budget audit records;
+- user-scoped simulated-placement idempotency rows;
+- invitations created by the target users and target memberships;
+- the single admin-owned Study, its invitations/membership, and related target wagers; and
+- the test user's application profile.
+
+Private screenshot paths are collected from target imported wagers and removed from the
+`external-wager-screenshots` bucket after the database transaction. The exact test Auth user is
+then deleted through the supported Supabase Auth Admin API. No SQL operation deletes `auth.users`.
+Global sports/competition/bookmaker catalogs, odds cache, global vision budget configuration,
+unrelated users/Studies/wagers/feedback, and the administrator's Auth/profile/allowlist identity
+are preserved.
+
+### Admin reset and Study safety
+
+The admin UUID is never inferred. The RPC allows zero or one admin-owned Study. If one exists, it
+must have exactly one member and that member must be the admin; the admin must have no other Study
+membership; and no wager in that Study may belong to another user. Otherwise the transaction
+aborts before mutation. The test user must own no Study. Test memberships in an unrelated Study
+are removed while the unrelated Study and its other members remain. An owned Study with any other
+member is covered by a database test and is a hard failure, not an implicit cascade.
+
+Feedback rows are removed only for the exact admin/test user IDs. The feedback feature, policies,
+status model, and submission path are unchanged. The existing admin allowlist is configuration,
+not a row in the reset scope, and is not modified.
+
+### Bankroll reconciliation
+
+The transaction deletes both targets' ledger rows in dependency-safe order and calls the existing
+canonical allocator for the preserved admin. It does not independently set a starting amount.
+Post-cleanup checks require exactly one admin `initial_allocation` row, no remaining admin wagers or
+test ledger/profile rows, and a balance equal to the sum of the canonical ledger. The SQL fixture
+also compares the result with an unrelated fresh profile's allocator-produced balance.
+
+### Runbook, tests, and validation
+
+Updated `docs/PRE_BETA_RESET_RUNBOOK.md` with the exact backup, server-only environment, dry-run,
+execution, verify, failure-retry, acceptance, and repository-validation sequence. Added:
+
+- `supabase/migrations/20261005000000_pre_beta_clean_start_maintenance.sql`;
+- `scripts/pre-beta-reset-maintenance-lib.mjs`;
+- `scripts/pre-beta-reset-maintenance.mjs`;
+- `supabase/tests/pre_beta_clean_start_maintenance.sql`; and
+- `test/pre-beta-clean-start-maintenance.test.ts`.
+
+The database fixture covers transaction abort safety, append-only trigger preservation, target
+wager/leg/audit/feedback/vision/idempotency cleanup, admin profile preservation, canonical
+bankroll restoration, exact Study handling, Auth-row preservation until the external Auth step,
+and unrelated Study/feedback preservation. The unit contract covers service-role-only execution,
+exact confirmation/environment guards, dry-run/verify modes, and Auth deletion ordering.
+
+Validation results:
+
+- `npm.cmd run test:db`: **PASS** — 23 files, 582 tests.
+- Local migration application: **PASS** — applied the forward maintenance migration without a
+  database reset.
+- `npm.cmd run validate`: **PASS** — format, lint, typecheck, 36 test files / 236 tests, secret
+  scan, and production build.
+- `npm.cmd audit --audit-level=high`: **PASS** — 0 vulnerabilities.
+- `npx.cmd supabase db lint --local`: **PASS** — only the repository's two existing
+  settlement-harness warnings were reported; the new maintenance function is clean.
+- `git diff --check`: **PASS**.
+- Production reset, production cleanup, Auth deletion, commit, and push: **NOT PERFORMED**.
+
+PRE-BETA CLEAN-START MAINTENANCE GATE: PASS
