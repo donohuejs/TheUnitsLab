@@ -15,12 +15,14 @@ import {
 } from "@/lib/auth-flow";
 import { ensureInitialBankroll } from "@/lib/authenticated-bootstrap";
 import { getApplicationSiteUrl } from "@/lib/auth-urls";
+import { isInviteCode, normalizeInviteCode } from "@/lib/invite-code";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type InviteActionState = {
   error?: string;
   inviteId?: string;
   token?: string;
+  code?: string;
   expiresAt?: string;
   maxUses?: number | null;
 };
@@ -334,24 +336,46 @@ export async function createGroup(formData: FormData) {
 export async function joinGroup(formData: FormData) {
   const { supabase } = await requireAuthenticatedUser();
   const destination = returnPath(formData);
+  const codeInput = value(formData, "inviteCode");
   const token = value(formData, "inviteToken").trim();
-  if (token.length < 32 || token.length > 512) {
-    redirectWithNotice(destination, "Enter a valid invitation token.");
+  const code = normalizeInviteCode(codeInput);
+  const useCode = codeInput.trim().length > 0;
+
+  if (useCode && !isInviteCode(code)) {
+    redirectWithNotice(destination, "Enter an 8-character Study Invite Code.");
+  }
+  if (!useCode && (token.length < 32 || token.length > 512)) {
+    redirectWithNotice(destination, "Enter a valid Study Invite link or token.");
   }
 
-  const { error } = await supabase.rpc("join_group_with_invite", { invite_token: token });
-  if (error) {
-    const message = error.message.toLowerCase();
+  const { data, error } = useCode
+    ? await supabase.rpc("join_group_with_invite_code_status", { invite_code: code }).maybeSingle()
+    : await supabase.rpc("join_group_with_invite_status", { invite_token: token }).maybeSingle();
+  const redemption = data as {
+    group_name: string;
+    already_member: boolean;
+    error_code?: string | null;
+  } | null;
+  if (error || !redemption || redemption.error_code) {
+    const message = [error?.message, redemption?.error_code]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
     redirectWithNotice(
       destination,
-      message.includes("expired") || message.includes("invalid") || message.includes("revoked")
-        ? "This invite is invalid, expired, revoked, or no longer available."
-        : "The invitation could not be redeemed. Check the token and try again.",
+      message.includes("rate limit") || message.includes("rate_limited")
+        ? "Too many Study Invite Code attempts. Try again in a few minutes."
+        : "That Study Invite is invalid or no longer active.",
     );
   }
   revalidatePath("/account");
   revalidatePath("/leaderboards");
-  redirectWithNotice(destination, "Study joined.");
+  redirectWithNotice(
+    destination,
+    redemption.already_member
+      ? `You’re already a member of ${redemption.group_name}.`
+      : "Study joined.",
+  );
 }
 
 export async function createInvite(
@@ -385,6 +409,7 @@ export async function createInvite(
   const invitation = data as {
     invite_id: string;
     invite_token: string;
+    invite_code: string;
     invite_expires_at: string;
     invite_max_uses: number | null;
   };
@@ -392,6 +417,7 @@ export async function createInvite(
   return {
     inviteId: invitation.invite_id,
     token: invitation.invite_token,
+    code: invitation.invite_code,
     expiresAt: invitation.invite_expires_at,
     maxUses: invitation.invite_max_uses,
   };

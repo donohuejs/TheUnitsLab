@@ -400,6 +400,34 @@ textarea:focus {
   margin-top: 0.8rem;
 }
 
+.invite-code-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.invite-code-display {
+  max-width: 13rem;
+  color: #123f2e;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 1.35rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.join-code-form {
+  border-top: 1px solid var(--border);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.form-help {
+  margin: -0.55rem 0 0;
+  font-size: 0.86rem;
+}
+
 .token-result code {
   display: block;
   overflow-wrap: anywhere;
@@ -1868,6 +1896,20 @@ table {
 
 .token-fallback {
   overflow-wrap: anywhere;
+}
+
+@media (max-width: 38rem) {
+  .invite-code-row {
+    grid-template-columns: 1fr;
+  }
+
+  .invite-code-display {
+    max-width: none;
+  }
+
+  .invite-code-row .button {
+    width: 100%;
+  }
 }
 
 th,

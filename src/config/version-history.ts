@@ -6,6 +6,15 @@ export type VersionHistoryEntry = {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = [
   {
+    version: "0.13.0",
+    title: "Group Invite Codes",
+    changes: [
+      "Added a short, copyable code to every new private-group invitation",
+      "Let existing users join from Study Management with a normalized code",
+      "Preserved secure link redemption, legacy invites, and server-authoritative membership rules",
+    ],
+  },
+  {
     version: "0.12.1",
     title: "Authentication Onboarding Hotfix",
     changes: [

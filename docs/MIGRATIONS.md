@@ -11,6 +11,14 @@ append-only protections. It also adds a service-role-only exact-UUID cleanup bou
 unconfirmed users; it refuses confirmed users and any application history, and Auth Admin deletion
 remains a separate supported operation.
 
+v0.13.0 adds `20261007000000_v0_13_group_invite_codes.sql`. It adds a nullable hashed invite-code
+column so pre-v0.13.0 link-only invitations remain valid, generates a cryptographically random
+eight-character code for new invites with uniqueness retries, and adds the code redemption wrapper.
+Both link and code redemption call one locked membership transaction. The unexposed schema records
+authenticated code attempts and applies a bounded rate limit without adding infrastructure or a
+paid dependency. `supabase/tests/v0_13_group_invite_codes.sql` covers creation, normalization,
+legacy links, authorization, existing-member behavior, invalid states, and throttling.
+
 Phase 4 adds `20260914100000_phase_4_bankroll_void_type.sql` and `20260915000000_phase_4_scores_settlement.sql`. The first commits the PostgreSQL enum addition before later constraints reference it. The second adds normalized shared scores, score refresh state, quota-ledger purposes, append-only settlement audits, forced RLS, final-score protection, deterministic grading, atomic settlement and documented void functions, and the database-enforced one-economic-credit rule.
 
 Phase 5 adds `20260916000000_phase_5_external_wagers.sql`: centralized read-only sport, competition, and external-sportsbook catalogs; the separate external-wager system of record; append-only result-correction audits; deterministic owner-only creation and result functions; a private five-MiB screenshot bucket; and object policies aligned with wager ownership and current group membership. The migration contains no virtual-bankroll mutation.

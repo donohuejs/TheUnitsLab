@@ -4,12 +4,14 @@ import { useActionState, useState, useSyncExternalStore } from "react";
 
 import { createInvite, revokeInvite, type InviteActionState } from "@/app/actions";
 import { LocalDateTime } from "@/components/local-date-time";
+import { formatInviteCode } from "@/lib/invite-code";
 
 const initialState: InviteActionState = {};
 
 export function InviteForm({ groupId }: { groupId: string }) {
   const [state, formAction, pending] = useActionState(createInvite, initialState);
-  const [copied, setCopied] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
   const origin = useSyncExternalStore(
     () => () => {},
     () => window.location.origin,
@@ -18,14 +20,27 @@ export function InviteForm({ groupId }: { groupId: string }) {
   const inviteUrl = state.token
     ? `${origin}/leaderboards?invite=${encodeURIComponent(state.token)}`
     : "";
+  const inviteCode = state.code ? formatInviteCode(state.code) : "";
 
   async function copyInviteLink() {
     if (!inviteUrl) return;
     try {
       await navigator.clipboard.writeText(inviteUrl);
-      setCopied(true);
+      setCopiedLink(true);
+      setCopiedCode(false);
     } catch {
-      setCopied(false);
+      setCopiedLink(false);
+    }
+  }
+
+  async function copyInviteCode() {
+    if (!inviteCode) return;
+    try {
+      await navigator.clipboard.writeText(inviteCode);
+      setCopiedCode(true);
+      setCopiedLink(false);
+    } catch {
+      setCopiedCode(false);
     }
   }
 
@@ -55,18 +70,35 @@ export function InviteForm({ groupId }: { groupId: string }) {
       {state.token ? (
         <div className="token-result" aria-live="polite">
           <p>
-            Share this expiring invite link securely. It can be reused by authenticated people
+            New users can use the invite link. Existing users can also enter the join code from
+            Study Management. This invitation can be reused by authenticated people
             {state.maxUses ? ` up to ${state.maxUses} times` : " until it expires"}.
           </p>
           <div className="invite-link-row">
             <label>
-              Study Invite
+              Invite Link
               <input readOnly value={inviteUrl} aria-label="Secure invite link" />
             </label>
             <button className="button secondary" type="button" onClick={copyInviteLink}>
-              {copied ? "Copied" : "Copy Study Invite"}
+              {copiedLink ? "Copied" : "Copy Invite Link"}
             </button>
           </div>
+          {inviteCode ? (
+            <div className="invite-code-row">
+              <label>
+                Join Code
+                <input
+                  className="invite-code-display"
+                  readOnly
+                  value={inviteCode}
+                  aria-label="Study Invite Code"
+                />
+              </label>
+              <button className="button secondary" type="button" onClick={copyInviteCode}>
+                {copiedCode ? "Copied" : "Copy Code"}
+              </button>
+            </div>
+          ) : null}
           <details className="disclosure">
             <summary>Advanced</summary>
             <p className="muted token-fallback">

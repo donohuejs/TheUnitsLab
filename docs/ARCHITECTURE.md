@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-This document turns the governing product specification into architectural boundaries and records the technical foundation selected during Phase 0. Phases 0–8 are implemented; v0.11.0 added private-beta release-readiness surfaces, v0.12.0 launched the private beta, and v0.12.1 adds the authentication onboarding hotfix without changing the provider or wager engine. Product questions left open by the source remain open unless an explicit owner clarification is recorded.
+This document turns the governing product specification into architectural boundaries and records the technical foundation selected during Phase 0. Phases 0–8 are implemented; v0.11.0 added private-beta release-readiness surfaces, v0.12.0 launched the private beta, v0.12.1 added the authentication onboarding hotfix, and v0.13.0 adds hashed group invite codes without changing the provider or wager engine. Product questions left open by the source remain open unless an explicit owner clarification is recorded.
 
 The system must support multiple authenticated users and private groups, server-side odds ingestion, virtual-unit wagering, external-wager tracking, secure screenshots, deterministic settlement, analytics, leaderboards, and quota-aware operation without real-money wagering.
 
@@ -102,7 +102,7 @@ Private groups and group membership define social visibility. The source recomme
 
 Phase 1 implements `public.groups`, `public.group_members`, and `public.group_invites`. Membership is many-to-many. Group creation automatically creates one owner membership. The owner is immutable during Phase 1; owners control other users' roles, owners and admins create or revoke invites, owners may remove non-owners, admins may remove members, and non-owners may leave.
 
-Invite bearer tokens are random, expiring, and limited-use. The plaintext token is returned once and only a SHA-256 hash is stored. Membership joins, role changes, invite creation or revocation, and removals run through narrow security-definer functions. Authenticated users receive no direct write grant on membership or invitation tables.
+Invite bearer tokens are random, expiring, and limited-use. The plaintext token is returned once and only a SHA-256 hash is stored. v0.13.0 adds an optional SHA-256 hash for an eight-character, ambiguous-character-avoiding code; legacy link-only rows remain valid. Link and code wrappers call one locked private redemption function, which handles membership insertion and use counting atomically. Authenticated code attempts are throttled in the unexposed database schema without a paid service. Membership joins, role changes, invite creation or revocation, and removals run through narrow security-definer functions. Authenticated users receive no direct write grant on membership or invitation tables.
 
 ### Sports provider data
 

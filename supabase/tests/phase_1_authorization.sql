@@ -256,11 +256,10 @@ select results_eq(
   $$values ('Group A'::text)$$,
   'The invited user can read the group after joining'
 );
-select throws_ok(
-  $$select public.join_group_with_invite('phase-1-valid-invite-token-user-b-1234567890')$$,
-  '22023',
-  'Invite is invalid or unavailable',
-  'A single-use invitation cannot be consumed again'
+select is(
+  public.join_group_with_invite('phase-1-valid-invite-token-user-b-1234567890'),
+  'a0000000-0000-0000-0000-00000000000a'::uuid,
+  'An existing member can retry a single-use invitation without a duplicate membership'
 );
 
 reset role;

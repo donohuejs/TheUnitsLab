@@ -46,7 +46,7 @@ describe("release-candidate fix patch 3 surfaces", () => {
     expect(migration).toContain("list_group_invites");
     expect(actions).toContain('allowed_uses: maxUses.data === "" ? null : maxUses.data');
     expect(actions).toContain("revokeInvite");
-    expect(invite).toContain("Copy Study Invite");
+    expect(invite).toContain("Copy Invite Link");
     expect(invite).toContain("Revoke Study Invite");
     expect(leaderboards).toContain("invite_use_count");
     expect(dbTest).toContain("same reusable invite");

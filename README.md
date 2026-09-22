@@ -4,9 +4,10 @@ The Units Lab is a private, entertainment-focused sports wagering simulator and 
 
 ## Phase status
 
-Phases 0-8 are complete. v0.12.0 is the private-beta launch release for approximately 2–3 friends,
-and v0.12.1 is the authentication onboarding hotfix. Release-candidate Fix Patch 10 remains the
-wager-engine baseline; Phase 9 has not started.
+Phases 0-8 are complete. v0.13.0 is the group-invite-code enhancement following the v0.12.1
+authentication onboarding hotfix. New private-group invites include both the existing secure link
+and a short code for authenticated users joining from Study Management. Release-candidate Fix Patch
+10 remains the wager-engine baseline; Phase 9 has not started.
 
 The interface supports account/group workflows, pregame odds for EPL, UCL, NCAAF, NCAAB, NFL, NHL, La Liga, and Europa League, straight and multi-leg simulated bet slips, a unified My Bets ledger, cached scores, deterministic simulated settlement, reviewed local screenshot/text/manual betslip import, imported straight/parlay tracking, Performance analytics, private-group leaderboards, and a dashboard that keeps simulated and imported records distinct. External records never change the simulated virtual-bankroll ledger. Screenshot extraction remains review-first: OCR runs locally first, and only low-confidence or incomplete images may use the server-only configured vision fallback. No canonical sport, competition, event, or settlement fact is invented by the fallback, and no provider polling or Phase 9 work was added.
 
@@ -75,7 +76,7 @@ Run repository checks with:
 npm run validate
 ```
 
-Individual commands are `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run security:scan`, and `npm run build`. With local Supabase running, use `npm run test:db` for direct authorization and integrity tests, `npm run test:db:concurrency` and `npm run test:db:parlay-placement-concurrency` for concurrent overspend, and `npm run test:db:settlement-concurrency` plus `npm run test:db:parlay-settlement-concurrency` for duplicate-payout gates. `npm run record:import-demo` regenerates the private-safe 390x844 tutorial video after Playwright browsers are installed. `npm run validate` includes the secret scan. Tests and builds make no live provider calls and require no paid service; the optional vision fallback is never called by automated tests.
+Individual commands are `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run security:scan`, and `npm run build`. With local Supabase running, use `npm run test:db` for direct authorization and integrity tests, `npm run test:db:invite-code-concurrency` for limited-use invite-code redemption, `npm run test:db:concurrency` and `npm run test:db:parlay-placement-concurrency` for concurrent overspend, and `npm run test:db:settlement-concurrency` plus `npm run test:db:parlay-settlement-concurrency` for duplicate-payout gates. `npm run record:import-demo` regenerates the private-safe 390x844 tutorial video after Playwright browsers are installed. `npm run validate` includes the secret scan. Tests and builds make no live provider calls and require no paid service; the optional vision fallback is never called by automated tests.
 
 ## Documentation
 

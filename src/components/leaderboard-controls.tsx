@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useFormStatus } from "react-dom";
 
 import { InviteForm } from "@/components/invite-form";
 
@@ -208,10 +209,13 @@ export function ManageGroupDialog({
                 </form>
               </ManageSection>
               <ManageSection title="Join a Study">
+                <p className="muted">
+                  Use a secure invite link or enter a code shared by a Study Partner.
+                </p>
                 <form action={joinGroupAction} className="form-stack">
                   <input type="hidden" name="returnTo" value="/leaderboards" />
                   <label>
-                    Study Invite
+                    Invite Link or Token
                     <input
                       name="inviteToken"
                       minLength={32}
@@ -221,9 +225,29 @@ export function ManageGroupDialog({
                       required
                     />
                   </label>
-                  <button className="button secondary" type="submit">
-                    Join Study
-                  </button>
+                  <JoinSubmitButton label="Join Study" />
+                </form>
+                <form action={joinGroupAction} className="form-stack join-code-form">
+                  <input type="hidden" name="returnTo" value="/leaderboards" />
+                  <label>
+                    Join Code
+                    <input
+                      name="inviteCode"
+                      minLength={8}
+                      maxLength={9}
+                      inputMode="text"
+                      autoCapitalize="characters"
+                      autoComplete="off"
+                      spellCheck={false}
+                      placeholder="ABCD-EFGH"
+                      aria-describedby="join-code-help"
+                      required
+                    />
+                  </label>
+                  <p id="join-code-help" className="muted form-help">
+                    Enter the 8-character code with or without its hyphen.
+                  </p>
+                  <JoinSubmitButton label="Join Group" />
                 </form>
               </ManageSection>
               {selectedGroup && canInvite ? (
@@ -241,6 +265,15 @@ export function ManageGroupDialog({
         </dialog>
       ) : null}
     </section>
+  );
+}
+
+function JoinSubmitButton({ label }: { label: string }) {
+  const { pending } = useFormStatus();
+  return (
+    <button className="button secondary" type="submit" disabled={pending}>
+      {pending ? "Joining…" : label}
+    </button>
   );
 }
 
