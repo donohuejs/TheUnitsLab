@@ -22,8 +22,39 @@ version now agrees across the application metadata and release documentation:
 - `src/config/version-history.ts`: adds v0.15.1 while retaining the v0.15.0 history.
 - README, architecture, product, migration, testing, and this report identify v0.15.1.
 
-No Git tag, GitHub Release, deployment, commit, or push was created for this implementation
-turn. The historical v0.15.0 report was not rewritten.
+The initial v0.15.0 source-preservation commit was `5ca2a32d16670ab7c14b696b3980b537618371f6`.
+The corrective preview commit is `ddeb96bf41ea4484f4bd98bbe5eae4d24737ffd7`
+(`fix: correct browse market board prop contract`).
+Both are on `release/v0.15.1`; `main` remains unchanged. No Git tag, GitHub Release, merge to
+main, or production deployment was created. The historical v0.15.0 report was not rewritten.
+
+## Vercel Preview correction
+
+The first Preview for `5ca2a32d16670ab7c14b696b3980b537618371f6` failed during TypeScript
+validation at `src/components/browse-market-board.tsx:88`. `BrowseMarketBoard` passed the intended
+optional `watchlistAvailable` flag into `OddsSelectionGrid`, but the committed `OddsSelectionGrid`
+prop contract accepted only `odds`. The current dirty worktree contained the corresponding
+Watchlist-aware prop contract and forwarding logic, which is why validation run from that dirty
+checkout passed while the clean Vercel artifact failed. The v0.15.1 commit did not depend on the
+other dirty Watchlist/cache/Postgres changes.
+
+The minimum fix adds `watchlistAvailable?: boolean` with a backward-compatible `true` default to
+`OddsSelectionGrid`, forwards it to desktop/mobile `OddChoice` renderings, and suppresses Watchlist
+controls only when the Browse page reports that Watchlist reads are unavailable. No `any` cast,
+TypeScript suppression, or unrelated Watchlist/cache/Postgres file was included.
+
+The clean corrective worktree at `ddeb96bf41ea4484f4bd98bbe5eae4d24737ffd7` ran `npm ci`, lint, typecheck, `npm test` (46 files / 277
+tests), production build, and secret scan successfully. The clean Windows checkout initially
+reported repository-wide LF/CRLF formatting differences and three LF-sensitive source-contract
+test failures; normalizing only that disposable verification worktree removed those environment
+artifacts without changing the committed source, after which all required gates passed.
+
+Vercel Preview for `ddeb96bf41ea4484f4bd98bbe5eae4d24737ffd7` completed successfully (`success` / `Deployment has completed`). The
+Preview URL is:
+<https://theunitslab-git-release-v0151-donohuejs-1066s-projects.vercel.app>
+
+The deployment is protected by Vercel Login from this environment, so Preview environment-variable
+configuration cannot be independently confirmed. No Vercel environment variables were changed.
 
 ## Implementation summary
 
@@ -140,6 +171,8 @@ Passed:
 - Read-only linked Supabase project and migration parity checks passed; no v0.15.1 migration exists
   or is pending.
 - `git diff --check` and source-level responsive/master-detail contracts passed.
+- Clean corrective-commit validation at `ddeb96bf41ea4484f4bd98bbe5eae4d24737ffd7`: `npm ci`, lint, typecheck, 46 test files / 277
+  tests, production build, and secret scan all passed.
 
 Blocked or pending:
 
