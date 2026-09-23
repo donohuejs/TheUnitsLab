@@ -29,7 +29,17 @@ The source authority is “Virtual Sportsbook - Governing Specification V1.docx.
 - Distinguish confirmed requirements, source recommendations, assumptions, and unresolved decisions. Do not promote a recommendation into a product decision without recording it.
 - Inspect existing work before editing, keep changes within the active phase, and update the governing repository documents when an approved decision changes them.
 - Every phase must end with validation and a Phase Completion Report covering work completed, files changed, database changes, tests and results, remaining issues, API-cost implications, security implications, deviations, and a gate recommendation.
-- Phase 0 and Phase 1 are implemented. Do not begin Phase 2 until the Phase 1 completion report and authorization gate have been reviewed.
+- Phases 0–8 are implemented and the Phase 8 gate is PASS. Continue to respect sequential phase gates; do not begin a future phase until the current phase gate has been validated.
+
+## Production release governance
+
+Before performing any production release, read and follow [docs/PRODUCTION_RELEASE_WORKFLOW.md](docs/PRODUCTION_RELEASE_WORKFLOW.md).
+
+- Never assume GitHub or Vercel applies Supabase migrations.
+- If a task creates or discovers a Supabase migration, the release response must state whether it is local only, pending remote, applied remote, or verified in migration history.
+- For safe forward-only production migrations, Codex is authorized to apply them only after the required validation, linked-project verification, dry run, SQL safety review, backup-policy review, and migration-parity check.
+- Codex is authorized to commit and push ordinary releases after all release gates pass; force-push remains unauthorized.
+- Destructive production data operations always require separate explicit operator approval and the appropriate maintenance runbook.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

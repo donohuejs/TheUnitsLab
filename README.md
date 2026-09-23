@@ -12,6 +12,13 @@ baseline; Phase 9 has not started.
 
 The interface supports account/group workflows, pregame odds for EPL, UCL, NCAAF, NCAAB, NFL, NHL, La Liga, and Europa League, a Watchlist with captured odds movement, straight and multi-leg simulated bet slips, a unified My Bets ledger with imported-wager management, cached scores, deterministic simulated settlement, reviewed local screenshot/text/manual betslip import, imported straight/parlay tracking, Performance analytics, private-group leaderboards, and a dashboard that keeps simulated and imported records distinct. External records never change the simulated virtual-bankroll ledger. Screenshot extraction remains review-first: OCR runs locally first, and only low-confidence or incomplete images may use the server-only configured vision fallback. No canonical sport, competition, event, or settlement fact is invented by the fallback, and watching creates no provider polling.
 
+## Production releases
+
+Maintainers and Codex must follow the canonical [production release workflow](docs/PRODUCTION_RELEASE_WORKFLOW.md).
+It covers validation, Supabase migration parity, safe forward-only production migrations, GitHub,
+Vercel, and production smoke verification. Destructive production maintenance remains separately
+gated and requires explicit operator approval.
+
 Parlays use one bookmaker and distinct provider events; same-event combinations and cross-book tickets are rejected because the current provider model has no verified correlation pricing. Push and void legs are neutral prices; if no active leg remains, all-void is `void` and any push/void mixture is `push` with the stake returned. Settlement waits for every non-void leg to have a durable final result.
 
 ## Selected foundation

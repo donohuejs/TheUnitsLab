@@ -1,5 +1,19 @@
 # Database Migration Strategy
 
+## Production release boundary
+
+The canonical production sequence is documented in [Production Release Workflow](PRODUCTION_RELEASE_WORKFLOW.md).
+Creating a SQL file under supabase/migrations changes only the repository; it does not apply the
+migration to the linked Supabase project. Before any production release, compare local files with
+npx.cmd supabase migration list --linked, classify every difference, run the supported dry run,
+apply only reviewed safe forward-only migrations, and verify local/remote parity afterward. GitHub
+and Vercel deployments do not apply Supabase migrations automatically.
+
+Migration history is append-only. An ordinary release may autonomously apply a reviewed additive or
+otherwise safe forward migration after the release gates pass. Destructive, irreversible, or
+ambiguous data operations require separate operator approval; see [Production Release Workflow](PRODUCTION_RELEASE_WORKFLOW.md)
+and [Production Backup and Recovery](PRODUCTION_BACKUP_AND_RECOVERY.md).
+
 Phase 2 adds `20260913000000_phase_2_sports_odds.sql`: shared odds cache, API usage ledger, private refresh leases, forced RLS, authenticated read-only cache access, and service-only lease functions.
 
 Phase 3 adds `20260914000000_phase_3_simulated_straight_bets.sql`: exact ticket and leg snapshots, the append-only bankroll ledger, idempotent 10,000-unit allocation and backfill, forced RLS, immutable terms, and the authenticated atomic placement function. It replays after the Phase 0-2 migrations without manual state.
