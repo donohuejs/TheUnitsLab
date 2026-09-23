@@ -74,9 +74,8 @@ export function BrowseScheduleControls({
   }
 
   function changeEvent(value: string) {
-    if (!value) return;
     const changes = clearActiveEventChanges();
-    changes.event = value;
+    if (value) changes.event = value;
     navigate(changes);
   }
 
@@ -94,15 +93,20 @@ export function BrowseScheduleControls({
           >
             ←
           </button>
-          <input
-            id={`browse-date-${competitionId}`}
-            name="date"
-            type="date"
-            value={selectedDate}
-            list={`browse-date-options-${competitionId}`}
-            onChange={(event) => changeDate(event.target.value)}
-            aria-describedby={`browse-date-help-${competitionId}`}
-          />
+          <div className="browse-date-input-shell">
+            <span aria-hidden="true" className="browse-date-icon">
+              ▣
+            </span>
+            <input
+              id={`browse-date-${competitionId}`}
+              name="date"
+              type="date"
+              value={selectedDate}
+              list={`browse-date-options-${competitionId}`}
+              onChange={(event) => changeDate(event.target.value)}
+              aria-describedby={`browse-date-help-${competitionId}`}
+            />
+          </div>
           <button
             className="button secondary browse-date-step"
             type="button"
@@ -113,8 +117,10 @@ export function BrowseScheduleControls({
             →
           </button>
         </div>
-        <small id={`browse-date-help-${competitionId}`} className="muted">
-          {dateOptions.length ? "Dates with cached games are suggested." : "No cached dates yet."}
+        <small id={`browse-date-help-${competitionId}`} className="sr-only">
+          {dateOptions.length
+            ? "Choose a date with available games."
+            : "No games are available yet."}
         </small>
         <datalist id={`browse-date-options-${competitionId}`}>
           {dateOptions.map((option) => (
@@ -131,15 +137,14 @@ export function BrowseScheduleControls({
           onChange={(event) => changeEvent(event.target.value)}
           disabled={!eventOptions.length}
         >
-          {eventOptions.length ? (
-            eventOptions.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))
-          ) : (
-            <option value="">No games on this date</option>
-          )}
+          <option value="">Select a matchup...</option>
+          {eventOptions.length
+            ? eventOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))
+            : null}
         </select>
       </div>
     </section>

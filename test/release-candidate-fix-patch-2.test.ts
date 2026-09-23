@@ -50,6 +50,7 @@ describe("release-candidate fix patch 2 surfaces", () => {
   it("keeps straight and parlay selections in one persistent cart", () => {
     const slip = read("../src/lib/wagers/slip.ts");
     const sports = read("../src/app/sports/[competition]/page.tsx");
+    const marketBoard = read("../src/components/browse-market-board.tsx");
     const sportsConfig = read("../src/config/sports.ts");
     expect(slip).toContain('SLIP_STORAGE_KEY = "sportsbook-simulator:pending-slip"');
     expect(slip).toContain("straightKeys");
@@ -57,8 +58,8 @@ describe("release-candidate fix patch 2 surfaces", () => {
     for (const competition of ["ncaaf", "nfl", "nhl", "epl", "ucl", "uel", "laliga"]) {
       expect(sportsConfig).toContain('id: "' + competition + '"');
     }
-    expect(sports).toContain("marketFilters");
-    expect(sports).toContain("Spread / Handicap");
+    expect(sports + marketBoard).toContain("BROWSE_MARKET_FILTERS");
+    expect(marketBoard).toContain("Spread / Handicap");
   });
 
   it("labels simulated alternate pricing and preserves server validation metadata", () => {

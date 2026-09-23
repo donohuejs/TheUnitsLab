@@ -975,7 +975,7 @@ provider or quota behavior, or add a database migration.
 
 ## 30 Post-V1 Product Amendments
 
-The following v0.14.0 and v0.15.0 requirements amend the original V1 product flow after its initial
+The following v0.14.0, v0.15.0, and v0.15.1 requirements amend the original V1 product flow after its initial
 phased implementation. Sections 1 through 29 remain the historical V1 requirements. These releases
 do not begin Phase 9 or add real-money wagering, a paid dependency, or a new provider polling path.
 
@@ -1070,3 +1070,18 @@ must be defined and tested before exposing CLV numbers to users.
 - Desktop uses one coordinated sticky Bet Slip rail with controlled internal scrolling. Mobile uses
   its compact schedule and existing mobile slip controls without inheriting the desktop sticky rail;
   focused controls remain keyboard and screen-reader accessible.
+
+### 30.5 v0.15.1 Browse Odds Corrective Patch
+
+- Browse date filtering, date labels, kickoff buckets, chronological ordering, Jump to Game labels,
+  and Browse game cards use one timezone-normalized event datetime. The established Eastern Time
+  Browse fallback is retained for profiles that still carry the historical UTC default; an explicit
+  valid profile timezone remains respected. DST-aware timezone conversion is used without manual
+  offset arithmetic or UTC string slicing.
+- Browse Odds starts with no selected event. A valid explicit event query may deep-link to a game;
+  date changes and competition navigation clear ordinary active-event state. Jump to Game starts at
+  a neutral placeholder and clicking a navigator row or selecting an option drives the same event ID.
+- Desktop/tablet-landscape Browse uses a compact Games navigator, one selected-game market detail
+  region, and the coordinated Bet Slip rail. Mobile retains the single-column schedule with inline
+  selected-game market expansion. The full market board is not rendered in every desktop schedule
+  row.

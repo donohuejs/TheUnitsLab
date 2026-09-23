@@ -4,9 +4,11 @@ The Units Lab is a private, entertainment-focused sports wagering simulator and 
 
 ## Phase status
 
-Phases 0-8 are complete. v0.15.0 adds schedule-first Browse Odds navigation with date filtering,
-kickoff grouping, deterministic sport-aware prioritization, college ranking context, and a coordinated
-desktop Bet Slip rail. v0.14.0 added a pregame Odds Watchlist with captured market movement and
+Phases 0-8 are complete. v0.15.1 corrects Browse Odds timezone/date grouping, neutral default
+selection, and desktop Games / selected-game / Bet Slip master-detail conformance. v0.15.0 added
+schedule-first Browse Odds navigation with date filtering, kickoff grouping, deterministic sport-aware
+prioritization, college ranking context, and a coordinated desktop Bet Slip rail. v0.14.0 added a
+pregame Odds Watchlist with captured market movement and
 moved manual imported-wager settlement to My Bets. Watches are separate from wagers and do not
 affect the virtual bankroll or performance metrics. v0.13.0 added short private-group invite codes;
 v0.12.1 repaired authentication onboarding. Release-candidate Fix Patch 10 remains the wager-engine

@@ -13,6 +13,24 @@ import {
 
 export type BrowseDateKey = string;
 
+/**
+ * Browse has historically presented US college schedules in Eastern Time. Profiles created
+ * before Browse timezone support use UTC as their database default, so UTC is treated as the
+ * legacy sentinel rather than allowing schedule groups to drift four hours from the card label.
+ */
+export const DEFAULT_BROWSE_TIME_ZONE = "America/New_York";
+
+export function normalizeBrowseTimeZone(timeZone?: string | null) {
+  const candidate = timeZone?.trim();
+  if (!candidate || candidate === "UTC") return DEFAULT_BROWSE_TIME_ZONE;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: candidate }).format(0);
+    return candidate;
+  } catch {
+    return DEFAULT_BROWSE_TIME_ZONE;
+  }
+}
+
 export type KickoffGroup = {
   key: string;
   label: string;
@@ -141,6 +159,14 @@ export function availableBrowseDates(events: readonly NormalizedEvent[], timeZon
   return [...new Set(events.map((event) => getLocalDateKey(event.scheduledStart, timeZone)))]
     .filter((value): value is string => Boolean(value))
     .sort();
+}
+
+export function filterEventsForBrowseDate(
+  events: readonly NormalizedEvent[],
+  date: BrowseDateKey,
+  timeZone: string,
+) {
+  return events.filter((event) => getLocalDateKey(event.scheduledStart, timeZone) === date);
 }
 
 export function previousBrowseDate(date: string, dates: readonly string[]) {

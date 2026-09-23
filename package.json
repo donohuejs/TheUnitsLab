@@ -1,6 +1,6 @@
 {
   "name": "sportsbook-simulator",
-  "version": "0.15.0",
+  "version": "0.15.1",
   "private": true,
   "type": "module",
   "description": "The Units Lab private virtual-unit sports performance and wager tracker foundation.",

@@ -4,12 +4,18 @@ import { redirect } from "next/navigation";
 import { AppNav } from "@/components/app-nav";
 import { BetSlip } from "@/components/bet-slip";
 import { BrowseGameCard } from "@/components/browse-game-card";
+import {
+  BROWSE_MARKET_FILTERS,
+  BrowseMarketBoard,
+  type BrowseMarketFilter,
+} from "@/components/browse-market-board";
 import { BrowseScheduleControls } from "@/components/browse-schedule-controls";
 import { CompetitionSwitcher } from "@/components/competition-switcher";
+import { KickoffTime } from "@/components/kickoff-time";
 import { LocalDateTime } from "@/components/local-date-time";
-import { OddsSelectionGrid } from "@/components/odds-selection-grid";
 import { StatusBadge } from "@/components/status-badge";
 import { SubmitButton } from "@/components/submit-button";
+import { TeamMark } from "@/components/team-mark";
 import {
   getActiveRankingSnapshot,
   getCollegeTeamContext,
@@ -22,20 +28,20 @@ import {
   availableBrowseDates,
   formatBrowseDate,
   formatBrowseTime,
+  filterEventsForBrowseDate,
   getDefaultBrowseDate,
   getLocalDateKey,
   getMarqueeEventIds,
   groupEventsByKickoff,
   isBrowseDateKey,
+  normalizeBrowseTimeZone,
   nextBrowseDate,
   previousBrowseDate,
   sortEventsForBrowse,
 } from "@/lib/browse-schedule";
-import { normalizeAnalyticsTimeZone } from "@/lib/analytics/calculations";
-import { hasSelectableOdds } from "@/lib/odds/display";
 import { getCompetition } from "@/lib/odds/request";
 import { getCompetitionOdds, getEventAlternateOdds } from "@/lib/odds/server";
-import type { CompetitionId, NormalizedEvent } from "@/lib/odds/types";
+import type { CompetitionId } from "@/lib/odds/types";
 import { findStraightSelection } from "@/lib/wagers/selection";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getActiveWatchesForUser } from "@/lib/watchlist/server";
@@ -59,25 +65,10 @@ type Props = {
   }>;
 };
 
-const marketGroups = [
-  ["moneyline", "Moneyline"],
-  ["spread", "Point spread / handicap"],
-  ["total", "Total"],
-  ["other", "Props / Other"],
-] as const;
-
-const marketFilters = [
-  ["all", "All"],
-  ["moneyline", "Moneyline"],
-  ["spread", "Spread / Handicap"],
-  ["total", "Total"],
-  ["other", "Props / Other"],
-] as const;
-
-type MarketFilter = (typeof marketFilters)[number][0];
-
-function selectedMarketFilter(value: string | undefined): MarketFilter {
-  return marketFilters.some(([candidate]) => candidate === value) ? (value as MarketFilter) : "all";
+function selectedMarketFilter(value: string | undefined): BrowseMarketFilter {
+  return BROWSE_MARKET_FILTERS.some(([candidate]) => candidate === value)
+    ? (value as BrowseMarketFilter)
+    : "all";
 }
 
 function recordLabel(teamName: string) {
@@ -96,20 +87,9 @@ function rankedTeamLabel(teamName: string, snapshot: ReturnType<typeof getActive
   return (ranking ? "#" + String(ranking.rank) + " " : "") + teamName;
 }
 
-function hasBrowseOdds(
-  event: NormalizedEvent,
-  selectedBookmaker: string,
-  marketFilter: MarketFilter,
-) {
-  if (event.status === "completed") return false;
-  if (event.status === "live") return event.odds.length > 0;
-  if (marketFilter === "other") return event.odds.length > 0;
-  return hasSelectableOdds(event, selectedBookmaker, marketFilter);
-}
-
 function queryStringForFilters(
   selectedBookmaker: string,
-  marketFilter: MarketFilter,
+  marketFilter: BrowseMarketFilter,
   date: string,
   eventId?: string,
 ) {
@@ -124,7 +104,7 @@ function queryStringForFilters(
 function filterHref(
   id: string,
   selectedBookmaker: string,
-  marketFilter: MarketFilter,
+  marketFilter: BrowseMarketFilter,
   date: string,
 ) {
   const query = queryStringForFilters(selectedBookmaker, marketFilter, date);
@@ -147,7 +127,7 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
     supabase.from("profiles").select("time_zone").eq("user_id", data.user.id).maybeSingle(),
   ]);
   const groups = (groupRows ?? []) as { id: string; name: string }[];
-  const timeZone = normalizeAnalyticsTimeZone(profile?.time_zone ?? "UTC");
+  const timeZone = normalizeBrowseTimeZone(profile?.time_zone);
   const books = sportsProviderConfiguration.bookmakers.filter((book) => book.enabled);
   const selected = books.some((book) => book.id === query.bookmaker) ? query.bookmaker! : "all";
   const marketFilter = selectedMarketFilter(query.marketFilter);
@@ -170,16 +150,10 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
   const standingsSnapshot = getLeagueStandingsSnapshot(competition.id as CompetitionId);
   const priorityContext = { rankingSnapshot, standingsSnapshot };
   const availableDates = availableBrowseDates(browseDatasetEvents, timeZone);
-  const visibleEvents = browseDatasetEvents.filter(
-    (event) => getLocalDateKey(event.scheduledStart, timeZone) === selectedDate,
-  );
+  const visibleEvents = filterEventsForBrowseDate(browseDatasetEvents, selectedDate, timeZone);
   const orderedEvents = sortEventsForBrowse(visibleEvents, timeZone, priorityContext);
   const requestedActiveEvent = orderedEvents.find((event) => event.id === query.event) ?? null;
-  const activeEvent =
-    requestedActiveEvent ??
-    orderedEvents.find((event) => hasBrowseOdds(event, selected, marketFilter)) ??
-    orderedEvents[0] ??
-    null;
+  const activeEvent = requestedActiveEvent;
   const shouldScrollToActiveEvent = Boolean(query.event && requestedActiveEvent);
 
   const baseEvent = rawEvents.find((event) => event.id === activeEvent?.id) ?? null;
@@ -216,9 +190,31 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
   const selectedEventStarted =
     selectedEvent?.status === "live" || selectedEvent?.status === "completed";
 
-  const activeWatches = dataset
-    ? await getActiveWatchesForUser(dataset.events.map((event) => event.providerEventId))
-    : [];
+  let activeWatches: Awaited<ReturnType<typeof getActiveWatchesForUser>> = [];
+  let watchlistUnavailable = false;
+  if (dataset) {
+    try {
+      activeWatches = await getActiveWatchesForUser(
+        dataset.events.map((event) => event.providerEventId),
+      );
+    } catch (watchlistError) {
+      watchlistUnavailable = true;
+      const failure = watchlistError as { code?: unknown; message?: unknown };
+      console.error(
+        "[sports-watchlist] Watch state could not be loaded; continuing to render current odds.",
+        {
+          competitionId: id,
+          errorCode: typeof failure?.code === "string" ? failure.code : undefined,
+          errorMessage:
+            typeof failure?.message === "string"
+              ? failure.message
+              : watchlistError instanceof Error
+                ? watchlistError.message
+                : String(watchlistError),
+        },
+      );
+    }
+  }
   const watchesBySelection = new Map(
     activeWatches.map((watch) => [
       [watch.providerEventId, watch.bookmakerId, watch.marketType, watch.selection].join("|"),
@@ -260,6 +256,22 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
       }
     : null;
 
+  const activeMarketBoard = selectedEvent ? (
+    <BrowseMarketBoard
+      event={selectedEvent}
+      competitionId={id}
+      selectedBookmaker={selected}
+      marketFilter={marketFilter}
+      selectedDate={selectedDate}
+      chosen={chosen}
+      watchesBySelection={watchesBySelection}
+      alternateMarketsAvailable={competition.alternateMarkets.length > 0}
+      alternateLoaded={loadAlternates}
+      alternateEvents={alternateResult?.dataset.events ?? []}
+      watchlistAvailable={!watchlistUnavailable}
+    />
+  ) : null;
+
   const dateOptions = availableDates.map((date) => ({
     value: date,
     label: formatBrowseDate(date, timeZone),
@@ -291,22 +303,16 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
         <div>
           <p className="eyebrow">{competition.sport}</p>
           <h1>{competition.name}</h1>
-          {result ? (
-            <p className="muted">
-              Last refreshed <LocalDateTime value={result.dataset.fetchedAt} /> ·{" "}
-              {result.cacheStatus} · quota {result.quotaState}
-            </p>
-          ) : null}
         </div>
-        <form action={refreshOdds}>
-          <input type="hidden" name="competitionId" value={id} />
-          <input type="hidden" name="returnTo" value={"/sports/" + id + "?" + controlsQuery} />
-          <SubmitButton pendingLabel="Refreshing odds…">Refresh odds</SubmitButton>
-        </form>
       </header>
       {query.notice ? (
         <p className="notice" role="status" aria-live="polite">
           {query.notice}
+        </p>
+      ) : null}
+      {watchlistUnavailable ? (
+        <p className="notice error" role="status">
+          Watchlist status is temporarily unavailable. Current odds are still shown.
         </p>
       ) : null}
       {error ? (
@@ -321,237 +327,199 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
           <span>Shared data · quota state {result.quotaState}</span>
         </p>
       ) : null}
-      <section className="book-filter">
-        <strong>Bookmaker</strong>
-        <Link
-          className={selected === "all" ? "pill active" : "pill"}
-          href={filterHref(id, "all", marketFilter, selectedDate)}
-        >
-          All
-        </Link>
-        {books.map((book) => (
-          <Link
-            className={selected === book.id ? "pill active" : "pill"}
-            href={filterHref(id, book.id, marketFilter, selectedDate)}
-            key={book.id}
-          >
-            {book.name}
-          </Link>
-        ))}
-      </section>
-      <section className="market-filter" aria-label="Market type filters">
-        <span className="market-filter-label">Market</span>
-        {marketFilters.map(([value, label]) => (
-          <Link
-            className={marketFilter === value ? "pill active" : "pill"}
-            href={filterHref(id, selected, value, selectedDate)}
-            key={value}
-          >
-            {label}
-          </Link>
-        ))}
-      </section>
-      <p className="muted odds-pricing-note">
-        Provider-priced alternate lines are preferred when available. The Bet Slip’s Adjust line
-        control is a separate simulated estimate and is never presented as bookmaker pricing.
-      </p>
-      {rankingSnapshot ? (
-        <p className="browse-context-note">
-          Rankings: {rankingSnapshot.label} · updated{" "}
-          {formatBrowseDate(getLocalDateKey(rankingSnapshot.updatedAt, timeZone) ?? "", timeZone)}
-        </p>
-      ) : null}
-      {standingsSnapshot ? (
-        <p className="browse-context-note">
-          Standings: {standingsSnapshot.label} · updated{" "}
-          {formatBrowseDate(getLocalDateKey(standingsSnapshot.updatedAt, timeZone) ?? "", timeZone)}
-        </p>
-      ) : null}
-      <BrowseScheduleControls
-        pathname={"/sports/" + id}
-        baseQuery={controlsQuery}
-        competitionId={id}
-        selectedDate={selectedDate}
-        dateOptions={dateOptions}
-        previousDate={previousDate}
-        nextDate={nextDate}
-        eventOptions={eventOptions}
-        activeEventId={activeEvent?.id ?? null}
-        shouldScrollToActiveEvent={shouldScrollToActiveEvent}
-      />
-      <div className="sportsbook-layout">
-        <div className="event-list browse-event-list">
-          {orderedEvents.length ? (
-            groupEventsByKickoff(orderedEvents, timeZone, priorityContext).map((group) => (
-              <section className="kickoff-group" key={group.key}>
-                <h2 className="kickoff-group-heading">
-                  <span>{group.label}</span>
-                  <span>
-                    {group.events.length} {group.events.length === 1 ? "game" : "games"}
-                  </span>
-                </h2>
-                <div className="kickoff-group-games">
-                  {group.events.map((event) => {
-                    const isActive = event.id === activeEvent?.id;
-                    const renderEvent =
-                      isActive && selectedEvent?.id === event.id ? selectedEvent : event;
-                    const eventStarted =
-                      renderEvent.status === "live" || renderEvent.status === "completed";
-                    const odds = renderEvent.odds.filter(
-                      (odd) =>
-                        (selected === "all" || odd.bookmakerId === selected) &&
-                        (marketFilter === "all" || odd.marketType === marketFilter),
-                    );
-                    const visibleGroups = marketGroups.filter(
-                      ([marketType]) => marketFilter === "all" || marketType === marketFilter,
-                    );
-                    const eventHrefParams = new URLSearchParams();
-                    if (selected !== "all") eventHrefParams.set("bookmaker", selected);
-                    if (marketFilter !== "all") eventHrefParams.set("marketFilter", marketFilter);
-                    eventHrefParams.set("date", selectedDate);
-                    eventHrefParams.set("event", event.id);
-                    const eventHref = "/sports/" + id + "?" + eventHrefParams.toString();
-                    return (
-                      <BrowseGameCard
-                        key={event.id}
-                        event={renderEvent}
-                        href={eventHref}
-                        active={isActive}
-                        marquee={marqueeEventIds.has(event.id)}
-                        away={{
-                          name: event.awayTeam,
-                          rank: getTeamRanking(event.awayTeam, rankingSnapshot)?.rank ?? null,
-                          record: recordLabel(event.awayTeam),
-                          sport: event.sport,
-                        }}
-                        home={{
-                          name: event.homeTeam,
-                          rank: getTeamRanking(event.homeTeam, rankingSnapshot)?.rank ?? null,
-                          record: recordLabel(event.homeTeam),
-                          sport: event.sport,
-                        }}
-                      >
-                        {odds.length || marketFilter === "other" ? (
-                          <div className="market-groups">
-                            {visibleGroups.map(([marketType, label]) => {
-                              const marketOdds =
-                                marketType === "other"
-                                  ? []
-                                  : odds.filter((odd) => odd.marketType === marketType);
-                              return (
-                                <section className="market-group" key={marketType}>
-                                  <h3>{label}</h3>
-                                  {marketOdds.length ? (
-                                    <OddsSelectionGrid
-                                      odds={marketOdds.map((odd) => ({
-                                        ...odd,
-                                        providerEventId: renderEvent.providerEventId,
-                                        competitionKey: id,
-                                        eventId: renderEvent.id,
-                                        watch:
-                                          watchesBySelection.get(
-                                            [
-                                              renderEvent.providerEventId,
-                                              odd.bookmakerId,
-                                              odd.marketType,
-                                              odd.selection,
-                                            ].join("|"),
-                                          ) ?? null,
-                                        href:
-                                          "/sports/" +
-                                          id +
-                                          "?" +
-                                          new URLSearchParams({
-                                            ...(selected === "all" ? {} : { bookmaker: selected }),
-                                            date: selectedDate,
-                                            event: renderEvent.id,
-                                            book: odd.bookmakerId,
-                                            market: odd.marketType,
-                                            selection: odd.selection,
-                                            ...(odd.point === null
-                                              ? {}
-                                              : { point: String(odd.point) }),
-                                            ...(marketFilter === "all" ? {} : { marketFilter }),
-                                          }).toString(),
-                                        isSelected:
-                                          chosen?.event.id === renderEvent.id &&
-                                          chosen.odds.bookmakerId === odd.bookmakerId &&
-                                          chosen.odds.marketType === odd.marketType &&
-                                          chosen.odds.selection === odd.selection &&
-                                          chosen.odds.point === odd.point,
-                                        eventStarted,
-                                      }))}
-                                    />
-                                  ) : marketType === "other" ? (
-                                    <p className="muted">
-                                      No props or other markets are returned by the configured
-                                      provider feed.
-                                    </p>
-                                  ) : null}
-                                </section>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <p className="empty-state">
-                            {eventStarted
-                              ? "This game has started; its pregame prices are locked."
-                              : "No supported odds from the selected bookmaker."}
-                          </p>
-                        )}
-                        {competition.alternateMarkets.length && !eventStarted ? (
-                          <p className="alternate-lines-link">
-                            <Link
-                              href={
-                                "/sports/" +
-                                id +
-                                "?" +
-                                new URLSearchParams({
-                                  ...(selected === "all" ? {} : { bookmaker: selected }),
-                                  date: selectedDate,
-                                  event: renderEvent.id,
-                                  alternates: "1",
-                                  ...(marketFilter === "all" ? {} : { marketFilter }),
-                                }).toString()
-                              }
-                            >
-                              {loadAlternates && baseEvent?.id === renderEvent.id
-                                ? alternateResult?.dataset.events.some(
-                                    (candidate) => candidate.odds.length,
-                                  )
-                                  ? "Provider-priced alternate lines loaded"
-                                  : "No alternate lines returned by the provider"
-                                : "Load provider-priced alternate lines"}
-                            </Link>
-                            <small>
-                              {loadAlternates &&
-                              baseEvent?.id === renderEvent.id &&
-                              !alternateResult
-                                ? "Alternate pricing is unavailable right now."
-                                : "Separate on-demand provider pricing; no line interpolation."}
-                            </small>
-                          </p>
-                        ) : null}
-                      </BrowseGameCard>
-                    );
-                  })}
-                </div>
-              </section>
-            ))
-          ) : result ? (
-            <p className="empty-state">
-              <strong>
-                No games with supported odds on {formatBrowseDate(selectedDate, timeZone)}.
-              </strong>
-              Choose another date or refresh the shared odds cache.
-            </p>
-          ) : null}
-          {!result && !error ? (
-            <p className="empty-state">
-              Odds are loading. The page will update when the shared cache responds.
-            </p>
+      <div className="browse-filter-bar">
+        <BrowseScheduleControls
+          pathname={"/sports/" + id}
+          baseQuery={controlsQuery}
+          competitionId={id}
+          selectedDate={selectedDate}
+          dateOptions={dateOptions}
+          previousDate={previousDate}
+          nextDate={nextDate}
+          eventOptions={eventOptions}
+          activeEventId={activeEvent?.id ?? null}
+          shouldScrollToActiveEvent={shouldScrollToActiveEvent}
+        />
+        <div className="browse-filter-group browse-bookmaker-control">
+          <span className="browse-filter-label">Bookmaker</span>
+          <div className="browse-filter-options">
+            <Link
+              className={selected === "all" ? "pill active" : "pill"}
+              href={filterHref(id, "all", marketFilter, selectedDate)}
+            >
+              All
+            </Link>
+            {books.map((book) => (
+              <Link
+                className={selected === book.id ? "pill active" : "pill"}
+                href={filterHref(id, book.id, marketFilter, selectedDate)}
+                key={book.id}
+              >
+                {book.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+        <div className="browse-filter-group browse-market-control">
+          <span className="browse-filter-label">Market</span>
+          <div className="browse-filter-options">
+            {BROWSE_MARKET_FILTERS.map(([value, label]) => (
+              <Link
+                className={marketFilter === value ? "pill active" : "pill"}
+                href={filterHref(id, selected, value, selectedDate)}
+                key={value}
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+        </div>
+        <div className="browse-refresh-control">
+          <form action={refreshOdds}>
+            <input type="hidden" name="competitionId" value={id} />
+            <input type="hidden" name="returnTo" value={"/sports/" + id + "?" + controlsQuery} />
+            <SubmitButton pendingLabel="Refreshing odds…">Refresh odds</SubmitButton>
+          </form>
+          {result ? (
+            <small>
+              Last refreshed <LocalDateTime value={result.dataset.fetchedAt} /> ·{" "}
+              {result.cacheStatus}
+            </small>
           ) : null}
         </div>
+      </div>
+      <div className="browse-supporting-context">
+        <p className="muted odds-pricing-note">
+          Provider-priced alternate lines are preferred when available. The Bet Slip’s Adjust line
+          control is a separate simulated estimate.
+        </p>
+        {rankingSnapshot ? (
+          <p className="browse-context-note">
+            Rankings: {rankingSnapshot.label} · updated{" "}
+            {formatBrowseDate(getLocalDateKey(rankingSnapshot.updatedAt, timeZone) ?? "", timeZone)}
+          </p>
+        ) : null}
+        {standingsSnapshot ? (
+          <p className="browse-context-note">
+            Standings: {standingsSnapshot.label} · updated{" "}
+            {formatBrowseDate(
+              getLocalDateKey(standingsSnapshot.updatedAt, timeZone) ?? "",
+              timeZone,
+            )}
+          </p>
+        ) : null}
+      </div>
+      <div className="sportsbook-layout browse-master-detail-layout">
+        <aside className="browse-games-rail" aria-label="Games navigator">
+          <header className="browse-games-rail-header">
+            <div>
+              <p className="eyebrow">Games</p>
+              <h2>{formatBrowseDate(selectedDate, timeZone)}</h2>
+            </div>
+            <span className="browse-games-count">
+              {orderedEvents.length} {orderedEvents.length === 1 ? "game" : "games"}
+            </span>
+          </header>
+          <div className="event-list browse-event-list">
+            {orderedEvents.length ? (
+              groupEventsByKickoff(orderedEvents, timeZone, priorityContext).map((group) => (
+                <section className="kickoff-group" key={group.key}>
+                  <h3 className="kickoff-group-heading">
+                    <span>{group.label}</span>
+                    <span>{group.events.length}</span>
+                  </h3>
+                  <div className="kickoff-group-games">
+                    {group.events.map((event) => {
+                      const isActive = event.id === activeEvent?.id;
+                      const eventHrefParams = new URLSearchParams();
+                      if (selected !== "all") eventHrefParams.set("bookmaker", selected);
+                      if (marketFilter !== "all") eventHrefParams.set("marketFilter", marketFilter);
+                      eventHrefParams.set("date", selectedDate);
+                      eventHrefParams.set("event", event.id);
+                      return (
+                        <BrowseGameCard
+                          key={event.id}
+                          event={event}
+                          href={"/sports/" + id + "?" + eventHrefParams.toString()}
+                          active={isActive}
+                          timeZone={timeZone}
+                          marquee={marqueeEventIds.has(event.id)}
+                          away={{
+                            name: event.awayTeam,
+                            rank: getTeamRanking(event.awayTeam, rankingSnapshot)?.rank ?? null,
+                            record: recordLabel(event.awayTeam),
+                            sport: event.sport,
+                          }}
+                          home={{
+                            name: event.homeTeam,
+                            rank: getTeamRanking(event.homeTeam, rankingSnapshot)?.rank ?? null,
+                            record: recordLabel(event.homeTeam),
+                            sport: event.sport,
+                          }}
+                        >
+                          {isActive ? activeMarketBoard : null}
+                        </BrowseGameCard>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))
+            ) : result ? (
+              <p className="empty-state">
+                <strong>No games on {formatBrowseDate(selectedDate, timeZone)}.</strong>
+                Choose another date or refresh the shared odds cache.
+              </p>
+            ) : null}
+            {!result && !error ? (
+              <p className="empty-state">
+                Odds are loading. The page will update when the shared cache responds.
+              </p>
+            ) : null}
+          </div>
+        </aside>
+        <section
+          className="browse-market-detail"
+          aria-label="Selected game markets"
+          aria-live="polite"
+        >
+          {selectedEvent ? (
+            <>
+              <header className="browse-market-detail-header">
+                <p className="eyebrow">Selected game</p>
+                <h2>
+                  <span>
+                    <TeamMark teamName={selectedEvent.awayTeam} sport={selectedEvent.sport} />
+                    {getTeamRanking(selectedEvent.awayTeam, rankingSnapshot)?.rank
+                      ? `#${getTeamRanking(selectedEvent.awayTeam, rankingSnapshot)?.rank} `
+                      : ""}
+                    {selectedEvent.awayTeam}
+                  </span>
+                  <span className="event-at">at</span>
+                  <span>
+                    <TeamMark teamName={selectedEvent.homeTeam} sport={selectedEvent.sport} />
+                    {getTeamRanking(selectedEvent.homeTeam, rankingSnapshot)?.rank
+                      ? `#${getTeamRanking(selectedEvent.homeTeam, rankingSnapshot)?.rank} `
+                      : ""}
+                    {selectedEvent.homeTeam}
+                  </span>
+                </h2>
+                <p className="browse-detail-meta">
+                  <KickoffTime value={selectedEvent.scheduledStart} timeZone={timeZone} /> ·{" "}
+                  <StatusBadge status={selectedEvent.status} />
+                </p>
+              </header>
+              {activeMarketBoard}
+            </>
+          ) : (
+            <div className="browse-selection-empty">
+              <span className="browse-selection-empty-icon" aria-hidden="true">
+                ◎
+              </span>
+              <h2>Select a game to view markets.</h2>
+              <p>Choose a matchup from the Games list or Jump to Game above.</p>
+            </div>
+          )}
+        </section>
         <BetSlip
           selection={slipSelection}
           groups={groups}

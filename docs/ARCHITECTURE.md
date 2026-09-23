@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-This document turns the governing product specification into architectural boundaries and records the technical foundation selected during Phase 0. Phases 0–8 are implemented; v0.11.0 added private-beta release-readiness surfaces, v0.12.0 launched the private beta, v0.12.1 added the authentication onboarding hotfix, v0.13.0 added hashed group invite codes, v0.14.0 added an Odds Watchlist with shared movement history and moved imported-wager manual settlement into My Bets, and v0.15.0 adds schedule-first Browse Odds navigation and sport-aware prioritization. Product questions left open by the source remain open unless an explicit owner clarification is recorded.
+This document turns the governing product specification into architectural boundaries and records the technical foundation selected during Phase 0. Phases 0–8 are implemented; v0.11.0 added private-beta release-readiness surfaces, v0.12.0 launched the private beta, v0.12.1 added the authentication onboarding hotfix, v0.13.0 added hashed group invite codes, v0.14.0 added an Odds Watchlist with shared movement history and moved imported-wager manual settlement into My Bets, v0.15.0 added schedule-first Browse Odds navigation and sport-aware prioritization, and v0.15.1 corrects Browse timezone normalization, default selection, and desktop master-detail presentation. Product questions left open by the source remain open unless an explicit owner clarification is recorded.
 
 The system must support multiple authenticated users and private groups, server-side odds ingestion, virtual-unit wagering, external-wager tracking, secure screenshots, deterministic settlement, analytics, leaderboards, and quota-aware operation without real-money wagering.
 

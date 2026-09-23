@@ -68,6 +68,10 @@ is introduced. If a future reliable standings or ranking source requires persist
 new forward-only migration with explicit RLS and source/update provenance rather than an edit to
 this release's migration history.
 
+v0.15.1 adds no database migration. The corrective patch changes only shared Browse date/time
+normalization, active-event state, responsive presentation, and release metadata. Existing cache,
+quota, wager, settlement, bankroll, RLS, and authorization boundaries remain unchanged.
+
 The release-candidate UX patch adds `20260920000000_release_candidate_ux_patch_1.sql`. It adds
 configurable hockey/NHL catalog data, enables NFL, introduces immutable synthetic flags for
 administrator settlement tests, filters synthetic rows from ordinary history/analytics/score and

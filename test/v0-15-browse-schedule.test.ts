@@ -11,6 +11,7 @@ import {
 } from "../src/config/sport-context";
 import {
   availableBrowseDates,
+  filterEventsForBrowseDate,
   getDefaultBrowseDate,
   getLocalDateKey,
   getMarqueeEventIds,
@@ -84,6 +85,9 @@ describe("v0.15.0 Browse Odds schedule", () => {
       event("early", "Ole Miss", "Florida", "2026-09-24T00:30:00.000Z"),
     ];
     expect(availableBrowseDates(events, "America/New_York")).toEqual(["2026-09-23", "2026-09-24"]);
+    expect(filterEventsForBrowseDate(events, "2026-09-23", "America/New_York")).toEqual([
+      events[1],
+    ]);
   });
 
   it("defaults to today when relevant, otherwise the nearest upcoming date", () => {
@@ -208,7 +212,9 @@ describe("v0.15.0 Browse Odds schedule", () => {
     expect(page).toContain("BrowseScheduleControls");
     expect(page).toContain("groupEventsByKickoff");
     expect(page).toContain("activeEvent");
-    expect(page.match(/<OddsSelectionGrid/g)?.length).toBe(1);
+    const board = read("../src/components/browse-market-board.tsx");
+    expect(page).toContain("BrowseMarketBoard");
+    expect(board.match(/<OddsSelectionGrid/g)?.length).toBe(1);
     expect(controls).toContain("htmlFor={`browse-date-${competitionId}`}");
     expect(controls).toContain("Jump to game");
     expect(controls).toContain("browse-jump-${competitionId}");

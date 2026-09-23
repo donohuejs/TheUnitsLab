@@ -1007,16 +1007,24 @@ textarea:focus {
   font-weight: 750;
 }
 
-.browse-schedule-controls {
+.browse-filter-bar {
   display: grid;
-  grid-template-columns: minmax(13rem, 0.8fr) minmax(18rem, 1.2fr);
-  gap: 1rem;
+  grid-template-columns: minmax(20rem, 1.2fr) minmax(13rem, 0.8fr) minmax(13rem, 0.8fr) auto;
+  gap: 0.75rem;
   align-items: end;
-  margin: 1.1rem 0 1.25rem;
-  padding: 1rem;
+  margin: 1.1rem 0 0.7rem;
+  padding: 0.8rem;
   border: 1px solid var(--border);
   border-radius: 0.9rem;
-  background: rgba(255, 255, 255, 0.74);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.browse-schedule-controls {
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.8fr) minmax(13rem, 1.2fr);
+  gap: 0.7rem;
+  align-items: end;
+  min-width: 0;
 }
 
 .browse-date-control,
@@ -1042,16 +1050,40 @@ textarea:focus {
   align-items: center;
 }
 
+.browse-date-input-shell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid #b9cfc4;
+  border-radius: 0.55rem;
+  background: #fff;
+}
+
+.browse-date-icon {
+  padding-left: 0.65rem;
+  color: var(--accent);
+  font-size: 0.85rem;
+}
+
 .browse-date-input-row input,
 .browse-jump-control select {
   width: 100%;
   min-width: 0;
   min-height: 2.75rem;
-  border: 1px solid #b9cfc4;
-  border-radius: 0.55rem;
   padding: 0.55rem 0.65rem;
   color: var(--ink);
   background: #fff;
+}
+
+.browse-date-input-row input {
+  border: 0;
+  background: transparent;
+}
+
+.browse-date-input-row input:focus,
+.browse-jump-control select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .browse-date-step {
@@ -1059,8 +1091,46 @@ textarea:focus {
   padding-inline: 0.55rem;
 }
 
-.browse-date-control small {
-  min-height: 1.1rem;
+.browse-filter-group {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.browse-filter-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.browse-filter-options {
+  display: flex;
+  min-width: 0;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding-bottom: 0.1rem;
+  scrollbar-width: thin;
+}
+
+.browse-filter-options .pill {
+  flex: 0 0 auto;
+  min-height: 2.45rem;
+  white-space: nowrap;
+}
+
+.browse-refresh-control {
+  display: grid;
+  justify-items: end;
+  gap: 0.35rem;
+  min-width: max-content;
+}
+
+.browse-refresh-control small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-align: right;
 }
 
 .browse-event-list {
@@ -1194,10 +1264,19 @@ textarea:focus {
   font-weight: 850;
 }
 
-.browse-game-board {
+.browse-game-mobile-board {
   border-top: 1px solid var(--border);
   padding: 0.95rem 1rem 1rem;
   background: #fbfdfc;
+  display: none;
+}
+
+.browse-supporting-context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 1rem;
 }
 
 .competition-switcher {
@@ -1551,13 +1630,119 @@ textarea:focus {
 
 .sportsbook-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(19rem, 24rem);
   gap: 1.25rem;
   align-items: start;
 }
 
 .sportsbook-layout .event-list {
   margin-top: 0;
+}
+
+.browse-games-rail,
+.browse-market-detail {
+  min-width: 0;
+}
+
+.browse-games-rail {
+  display: grid;
+  align-content: start;
+  gap: 0.8rem;
+}
+
+.browse-games-rail-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.1rem 0.2rem;
+}
+
+.browse-games-rail-header h2 {
+  margin: 0.1rem 0 0;
+  font-size: 1.05rem;
+}
+
+.browse-games-count {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.browse-market-detail {
+  min-height: 18rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  background: #fff;
+}
+
+.browse-market-detail-header {
+  display: grid;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.browse-market-detail-header h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.7rem;
+  margin: 0;
+  color: var(--ink-strong);
+  font-size: clamp(1.2rem, 2vw, 1.7rem);
+  line-height: 1.2;
+}
+
+.browse-market-detail-header h2 > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.browse-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+.browse-selection-empty {
+  display: grid;
+  min-height: 16rem;
+  place-items: center;
+  align-content: center;
+  gap: 0.55rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.browse-selection-empty h2,
+.browse-selection-empty p {
+  margin: 0;
+}
+
+.browse-selection-empty h2 {
+  color: var(--ink-strong);
+  font-size: 1.2rem;
+}
+
+.browse-selection-empty-icon {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border: 1px solid #b9cfc4;
+  border-radius: 50%;
+  color: var(--accent);
+  font-size: 1.4rem;
 }
 
 .bet-slip {
@@ -1570,7 +1755,11 @@ textarea:focus {
   align-content: start;
 }
 
-@media (min-width: 761px) {
+@media (min-width: 980px) {
+  .sportsbook-layout {
+    grid-template-columns: minmax(17rem, 20rem) minmax(0, 1fr) minmax(20rem, 23rem);
+  }
+
   .sportsbook-layout > .bet-slip-stack {
     position: sticky;
     top: var(--desktop-header-offset);
@@ -1590,6 +1779,20 @@ textarea:focus {
   .sportsbook-layout > .bet-slip-stack .bet-slip {
     position: static;
     min-width: 0;
+  }
+
+  .browse-game-mobile-board {
+    display: none;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 979px) {
+  .sportsbook-layout {
+    grid-template-columns: minmax(15rem, 19rem) minmax(0, 1fr);
+  }
+
+  .sportsbook-layout > .bet-slip-stack {
+    grid-column: 1 / -1;
   }
 }
 
@@ -2435,11 +2638,16 @@ thead th {
     overscroll-behavior-x: contain;
   }
 
+  .browse-filter-bar {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    margin-inline: -0.25rem;
+    padding: 0.7rem;
+  }
+
   .browse-schedule-controls {
     grid-template-columns: 1fr;
     gap: 0.8rem;
-    margin-inline: -0.25rem;
-    padding: 0.8rem;
   }
 
   .browse-game-row {
@@ -2465,7 +2673,25 @@ thead th {
     justify-self: start;
   }
 
-  .browse-game-board {
+  .browse-game-mobile-board {
+    display: block;
+    padding: 0.8rem;
+  }
+
+  .browse-refresh-control {
+    justify-items: stretch;
+  }
+
+  .browse-refresh-control form,
+  .browse-refresh-control .button {
+    width: 100%;
+  }
+
+  .browse-refresh-control small {
+    text-align: left;
+  }
+
+  .browse-market-detail {
     padding: 0.8rem;
   }
 

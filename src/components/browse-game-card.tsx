@@ -37,6 +37,7 @@ export function BrowseGameCard({
   away,
   home,
   marquee,
+  timeZone,
   children,
 }: {
   event: NormalizedEvent;
@@ -45,6 +46,7 @@ export function BrowseGameCard({
   away: TeamSummary;
   home: TeamSummary;
   marquee?: boolean;
+  timeZone: string;
   children?: ReactNode;
 }) {
   return (
@@ -68,7 +70,7 @@ export function BrowseGameCard({
         <div className="browse-game-meta">
           <span className="event-kickoff">
             <span className="sr-only">Kickoff </span>
-            <KickoffTime value={event.scheduledStart} />
+            <KickoffTime value={event.scheduledStart} timeZone={timeZone} />
           </span>
           <StatusBadge status={event.status} />
           {marquee ? <span className="marquee-badge">Marquee Matchup</span> : null}
@@ -77,7 +79,7 @@ export function BrowseGameCard({
           {active ? "Markets open" : "View markets"} <span>{active ? "⌃" : "⌄"}</span>
         </span>
       </Link>
-      {active && children ? <div className="browse-game-board">{children}</div> : null}
+      {active && children ? <div className="browse-game-mobile-board">{children}</div> : null}
     </article>
   );
 }

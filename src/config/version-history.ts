@@ -6,6 +6,15 @@ export type VersionHistoryEntry = {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = [
   {
+    version: "0.15.1",
+    title: "Browse Odds Corrective Patch",
+    changes: [
+      "Corrected timezone-safe Browse Odds date filtering and kickoff grouping",
+      "Stopped Browse Odds from opening a game automatically on initial load",
+      "Aligned desktop Browse Odds with the Games / selected-game / Bet Slip master-detail layout",
+    ],
+  },
+  {
     version: "0.15.0",
     title: "Schedule-First Browse Odds",
     changes: [
