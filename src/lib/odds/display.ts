@@ -5,7 +5,7 @@ export function hasSelectableOdds(
   selectedBookmaker: string,
   marketFilter: string,
 ) {
-  if (event.status === "live") return false;
+  if (event.status === "live" || event.status === "completed") return false;
   return event.odds.some(
     (odd) =>
       (selectedBookmaker === "all" || odd.bookmakerId === selectedBookmaker) &&

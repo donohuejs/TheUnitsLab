@@ -6,6 +6,15 @@ export type VersionHistoryEntry = {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = [
   {
+    version: "0.15.0",
+    title: "Schedule-First Browse Odds",
+    changes: [
+      "Added date-filtered, kickoff-grouped Browse Odds navigation with Jump to Game selection",
+      "Added deterministic sport-aware matchup prioritization and college ranking context",
+      "Reduced simultaneous market rendering and coordinated the desktop Bet Slip rail for responsive browsing",
+    ],
+  },
+  {
     version: "0.14.0",
     title: "Odds Watchlist and My Bets Management",
     changes: [

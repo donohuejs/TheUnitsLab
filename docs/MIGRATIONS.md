@@ -60,6 +60,14 @@ Phase 7 adds `20260917100000_phase_7_parlay_market_type.sql` and `20260918000000
 
 Phase 8 adds no database migration. The dashboard and presentation changes consume existing rows and RPCs only; the database, RLS, storage, ledger, settlement, and analytics boundaries remain those established through Phase 7.
 
+v0.15.0 adds no database migration. Schedule filtering, kickoff grouping, canonical event
+navigation, ranking snapshots, standings adapters, and sport-aware priority metadata are
+application configuration/presentation concerns. No new exposed table, mutation path, RLS policy,
+provider/cache table, quota ledger purpose, wager field, settlement function, or bankroll boundary
+is introduced. If a future reliable standings or ranking source requires persistence, it must be a
+new forward-only migration with explicit RLS and source/update provenance rather than an edit to
+this release's migration history.
+
 The release-candidate UX patch adds `20260920000000_release_candidate_ux_patch_1.sql`. It adds
 configurable hockey/NHL catalog data, enables NFL, introduces immutable synthetic flags for
 administrator settlement tests, filters synthetic rows from ordinary history/analytics/score and

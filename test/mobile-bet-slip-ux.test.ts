@@ -193,9 +193,10 @@ describe("mobile Bet Slip UX addendum", () => {
     expect(css).toContain(".sportsbook-layout:has(.has-mobile-slip)");
   });
 
-  it("uses compact mobile event accordions while leaving desktop cards expanded", () => {
-    expect(sportsPage).toContain("ResponsiveEventCard");
-    expect(read("../src/components/responsive-event-card.tsx")).toContain("setMobileOpen");
+  it("uses compact mobile schedule rows while leaving only the selected market board expanded", () => {
+    expect(sportsPage).toContain("BrowseGameCard");
+    expect(sportsPage).toContain("groupEventsByKickoff");
+    expect(css).toContain(".browse-game-card");
     expect(css).toContain(".event-card.is-collapsed");
   });
 

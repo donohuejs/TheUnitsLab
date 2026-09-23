@@ -975,9 +975,9 @@ provider or quota behavior, or add a database migration.
 
 ## 30 Post-V1 Product Amendments
 
-The following v0.14.0 requirements amend the original V1 product flow after its initial phased
-implementation. Sections 1 through 29 remain the historical V1 requirements. This release does
-not begin Phase 9 or add real-money wagering, a paid dependency, or a new provider polling path.
+The following v0.14.0 and v0.15.0 requirements amend the original V1 product flow after its initial
+phased implementation. Sections 1 through 29 remain the historical V1 requirements. These releases
+do not begin Phase 9 or add real-money wagering, a paid dependency, or a new provider polling path.
 
 ### 30.1 v0.14.0 Odds Watchlist and Market Movement
 
@@ -1039,3 +1039,34 @@ work must define reliable closing observations, line and price comparisons for s
 and moneylines, bookmaker-specific and possible consensus measures, user-level statistics,
 performance relationships, and behavior when no reliable close was captured. The CLV methodology
 must be defined and tested before exposing CLV numbers to users.
+
+### 30.4 v0.15.0 Schedule-First Browse Odds
+
+- Browse Odds is a schedule-first view. Authenticated users select a supported competition and a
+  display-timezone date, see only that day's games grouped chronologically by kickoff, and select
+  one game to expose its complete supported market board. Compact game rows do not duplicate every
+  bookmaker price for every event.
+- Jump to Game lists only the visible date/competition slate in the same deterministic order as the
+  schedule. It uses canonical event IDs, selects the event, exposes its markets, and may scroll the
+  event into view. Date and active-event query state may survive refresh and browser navigation;
+  slip contents and price objects remain outside the URL.
+- Within an identical kickoff-time group, NCAAF silently prioritizes ranked-vs-ranked, then
+  ranked-vs-unranked, then unranked conference games, then unranked non-conference games. Combined
+  rank and best/second rank order ranked games. Rivalry, Power Four, reliable records, and winning
+  percentage are secondary signals and never override the major hierarchy. The UI does not expose
+  tiers, scores, or algorithm explanations.
+- The prioritization adapter is sport-aware. Domestic soccer can use reliable table positions and
+  rivalry context within the same kickoff time; a qualifying slate may receive at most one subtle
+  Marquee Matchup label. Tournament sports use only reliable context already available, and other
+  sports fall back to stable deterministic ordering when context is missing.
+- Ranked college teams show the active ranking number immediately before the team name. Unranked
+  teams show no `NR` marker. AP Top 25 is the current manually maintained zero-cost snapshot;
+  CFP is supported as a dated source transition when a valid CFP snapshot is supplied. Standings,
+  conference, record, and rivalry metadata are centralized, and missing metadata degrades safely.
+- Date changes, sorting, expansion, Jump to Game, and ranking presentation reuse the existing
+  shared cache/dataset and do not independently request upstream odds. Existing straight/parlay
+  selection state, stale-price checks, Watch Odds, alternate-line simulation, immutable snapshots,
+  bankroll, settlement, analytics, RLS, and provider-secret boundaries remain unchanged.
+- Desktop uses one coordinated sticky Bet Slip rail with controlled internal scrolling. Mobile uses
+  its compact schedule and existing mobile slip controls without inheriting the desktop sticky rail;
+  focused controls remain keyboard and screen-reader accessible.

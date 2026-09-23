@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-This document turns the governing product specification into architectural boundaries and records the technical foundation selected during Phase 0. Phases 0–8 are implemented; v0.11.0 added private-beta release-readiness surfaces, v0.12.0 launched the private beta, v0.12.1 added the authentication onboarding hotfix, v0.13.0 added hashed group invite codes, and v0.14.0 adds an Odds Watchlist with shared movement history and moves imported-wager manual settlement into My Bets. Product questions left open by the source remain open unless an explicit owner clarification is recorded.
+This document turns the governing product specification into architectural boundaries and records the technical foundation selected during Phase 0. Phases 0–8 are implemented; v0.11.0 added private-beta release-readiness surfaces, v0.12.0 launched the private beta, v0.12.1 added the authentication onboarding hotfix, v0.13.0 added hashed group invite codes, v0.14.0 added an Odds Watchlist with shared movement history and moved imported-wager manual settlement into My Bets, and v0.15.0 adds schedule-first Browse Odds navigation and sport-aware prioritization. Product questions left open by the source remain open unless an explicit owner clarification is recorded.
 
 The system must support multiple authenticated users and private groups, server-side odds ingestion, virtual-unit wagering, external-wager tracking, secure screenshots, deterministic settlement, analytics, leaderboards, and quota-aware operation without real-money wagering.
 
@@ -683,3 +683,37 @@ the reviewed external-wager creation/import path. The existing deterministic res
 audit, private screenshot authorization, and complete isolation from the simulated bankroll stay
 authoritative. Closing Line Value is deferred until a reliable methodology is defined and tested;
 the shared history is retained to support that future work.
+
+## v0.15.0 schedule-first Browse Odds boundary
+
+Browse Odds now treats the shared normalized odds dataset as a schedule that can be narrowed before
+market rendering. The server computes a display-timezone date key with `Intl.DateTimeFormat`,
+groups events by local kickoff minute, and selects one active event. Only that event receives the
+full market board; compact rows identify the other games without duplicating bookmaker prices or
+market controls. The selected date and canonical active event ID are query state, while the client
+slip remains in its existing persisted storage and is never serialized into the URL.
+
+`src/lib/browse-schedule.ts` is pure, deterministic browse logic. Kickoff bucket is always the
+primary ordering key, status keeps live games findable without moving later games ahead of earlier
+groups, and canonical event ID is the final tie-breaker. NCAAF priority uses ranked-vs-ranked,
+ranked-vs-unranked, unranked conference, and unranked non-conference levels. Rivalry, Power Four,
+record, and winning-percentage signals are secondary within those levels. EPL and La Liga use the
+same date/time structure and can use a normalized standings snapshot to prioritize top-table
+matchups and select at most one subtle Marquee Matchup label. Other sports use only the context
+available to their adapter; NCAAF rankings are not applied globally.
+
+College team IDs, conference membership, Power Four classification, explicit rivalry pairs, and
+ranking aliases are centralized in `src/config/sport-context.ts`. The AP Top 25 is currently a
+source-controlled snapshot updated manually from the published AP poll; the adapter is ready for a
+CFP snapshot and selects CFP only after a dated, non-empty CFP snapshot is present. No reliable
+zero-cost standings feed is currently integrated, so EPL/La Liga standings remain an empty adapter
+until an approved maintainable snapshot is supplied. Missing ranking, standings, conference, and
+record metadata degrades to stable ID ordering and never blocks browsing. Rankings and standings
+are separate from odds refreshes and are not polled per page view.
+
+The desktop Bet Slip is a single sticky right-rail container with viewport-relative max height and
+controlled internal scrolling. Its child sections remain in normal flow, so alternate-line and
+selected-event content cannot collide with independently sticky slip sections. Mobile keeps the
+existing mobile sheet/tray behavior and does not inherit desktop rail stickiness. This release adds
+no database migration, changes no RLS or wager/settlement boundary, and does not add a provider
+request for date changes, sorting, event navigation, market expansion, or ranking display.

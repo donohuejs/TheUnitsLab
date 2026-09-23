@@ -10,15 +10,17 @@ import { getOdds, getOddsForRequest } from "./service";
 import { createAlternateOddsRequest, createEventCatalogRequest, getCompetition } from "./request";
 import type { CompetitionId } from "./types";
 
-function markStartedEvents<T extends { scheduledStart: string; status: "scheduled" | "live" }>(
-  result: T,
-): T {
+function markStartedEvents<
+  T extends { scheduledStart: string; status: "scheduled" | "live" | "completed" },
+>(result: T): T {
   return {
     ...result,
     status:
-      result.status === "live" || new Date(result.scheduledStart).getTime() <= Date.now()
-        ? "live"
-        : "scheduled",
+      result.status === "completed"
+        ? "completed"
+        : result.status === "live" || new Date(result.scheduledStart).getTime() <= Date.now()
+          ? "live"
+          : "scheduled",
   };
 }
 

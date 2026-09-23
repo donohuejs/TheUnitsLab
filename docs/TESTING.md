@@ -44,6 +44,14 @@
   requests, idempotent clear races, terminal-event cleanup/history retention, and 24 concurrent
   imported-wager creations and owner settlements. It verifies cross-user settlement denial,
   expected economics, settlement audits, and zero simulated-bankroll impact.
+- v0.15.0 adds pure date-key, timezone-boundary, nearest-upcoming-date, kickoff-grouping, stable
+  ordering, NCAAF hierarchy, rivalry/record secondary-signal, rankings-source transition, and
+  domestic-soccer standings/marquee tests. Source contracts verify canonical event/date query
+  navigation, one active market board, rank formatting without `NR`, and the coordinated desktop
+  sticky rail. The existing cache tests remain the provider-call regression boundary: browse filters,
+  sorting, expansion, and ranking presentation consume the already loaded dataset and add no
+  upstream request. Manual responsive review covers 375px and 430px phones, tablet, 1366px and
+  1440px desktop widths, and a short-height laptop.
 - Release-candidate fix patch 4 adds universal straight/parlay import contracts, FanDuel-shaped extraction acceptance, local OCR preprocessing/progress/failure behavior, editable parlay-leg review, optional sportsbook persistence, cached-event-first manual import, exact total-return economics, and leaderboard controls/mobile-card source contracts. Its pgTAP suite verifies nullable sportsbook identity, authenticated unknown-sportsbook creation, stable display fallback, no virtual-bankroll mutation, and anonymous execute denial. Narrow-width review targets 390x844 and 375x812; the four existing concurrency suites remain required.
 - v0.11.0 adds private-beta release contracts for the authenticated Home announcement, canonical
   version/history display, Feedback & Version settings content, the multi-stage Import Betslip

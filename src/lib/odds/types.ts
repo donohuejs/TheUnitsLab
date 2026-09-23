@@ -26,7 +26,7 @@ export type NormalizedEvent = {
   homeTeam: string;
   awayTeam: string;
   scheduledStart: string;
-  status: "scheduled" | "live";
+  status: "scheduled" | "live" | "completed";
   providerSportKey: string;
   odds: NormalizedOdds[];
 };
