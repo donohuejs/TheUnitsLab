@@ -26,6 +26,24 @@
 - Release-candidate fix patch 1 adds local-time formatting tests with no seconds, current-event LIVE normalization, market-grouping and locked-pregame contracts, independent persistent straight-slip coverage, visible screenshot-review/canonical-event contracts, owner-only cancellation source checks, and 14 pgTAP assertions for exact pre-kickoff refund, audit evidence, post-kickoff rejection, and no double refund. The existing concurrency suites remain required because straight placement and settlement continue to use the same authoritative RPC boundaries.
 - Release-candidate fix patch 3 adds direct asset-path and tagline contracts, browser-local OCR adapter/parser coverage with editable review, uncertainty flags, guided fallback, and probable parlay-leg extraction, cached-event search and `Can't find my event` contracts, exact imported economics coverage, and reusable invite UI/source checks. Its pgTAP suite verifies default reusable invites, optional caps, repeated authenticated redemption, expiry/revocation rejection, usage counts, owner/admin listing, token non-disclosure, grants, and anonymous denial. Narrow in-app mobile smoke review covers Home and authentication rendering; authenticated import and leaderboard behavior remains covered by server-action/source contracts and database authorization tests.
 - v0.13.0 adds code-format normalization/unit coverage, migration/source contracts for cryptographic generation, hash-only storage, uniqueness retries, shared redemption, and authenticated attempt throttling, plus pgTAP suites for code creation, lowercase/hyphenated and unhyphenated redemption, already-member behavior, invalid/expired/revoked/consumed/legacy/limited-use states, direct authorization denial, the code rate limit, and a deterministic collision/retry path.
+- v0.14.0 verifies owner-scoped watch creation, duplicate-active-watch prevention, cross-user
+  isolation, anonymous denial, and shared history with trusted writes only. Fresh cache writes
+  must add first and changed line/price observations while avoiding redundant unchanged rows and
+  concurrent duplicates. Watchlist Bet Slip selections must use current odds and preserve
+  server-authoritative stale-price rejection. Watch creation and clearing must leave bankroll,
+  canonical analytics, and leaderboards unchanged. Existing score/settlement processing must
+  clear all active watches for terminal events idempotently while retaining shared history.
+  My Bets tests cover existing imported wagers, authorized Won/Lost/Push/Void entry and
+  correction audits, direct cross-user/API denial, private screenshot access, zero simulated
+  ledger effects, preserved simulated cards, and removal of duplicate Track Bet controls.
+  `supabase/tests/v0_14_odds_watchlist.sql` and `supabase/tests/v0_14_my_bets_settlement.sql`
+  exercise the direct PostgreSQL authorization and lifecycle boundaries. The
+  `npm run test:db:watchlist-history-concurrency` integration test races simultaneous service-role
+  cache writes for first, unchanged, and changed observations without calling a live provider.
+  `npm run test:db:v0-14-stress` runs local-only Watchlist races across 24 users and 124 watch
+  requests, idempotent clear races, terminal-event cleanup/history retention, and 24 concurrent
+  imported-wager creations and owner settlements. It verifies cross-user settlement denial,
+  expected economics, settlement audits, and zero simulated-bankroll impact.
 - Release-candidate fix patch 4 adds universal straight/parlay import contracts, FanDuel-shaped extraction acceptance, local OCR preprocessing/progress/failure behavior, editable parlay-leg review, optional sportsbook persistence, cached-event-first manual import, exact total-return economics, and leaderboard controls/mobile-card source contracts. Its pgTAP suite verifies nullable sportsbook identity, authenticated unknown-sportsbook creation, stable display fallback, no virtual-bankroll mutation, and anonymous execute denial. Narrow-width review targets 390x844 and 375x812; the four existing concurrency suites remain required.
 - v0.11.0 adds private-beta release contracts for the authenticated Home announcement, canonical
   version/history display, Feedback & Version settings content, the multi-stage Import Betslip

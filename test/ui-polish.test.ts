@@ -25,6 +25,7 @@ describe("shared product presentation", () => {
     expect(primaryNavigation.map((item) => item.key)).toEqual([
       "sports",
       "my-bets",
+      "watchlist",
       "import-betslip",
       "performance",
       "leaderboards",

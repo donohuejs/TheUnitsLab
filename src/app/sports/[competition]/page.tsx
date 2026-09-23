@@ -18,6 +18,7 @@ import { hasSelectableOdds } from "@/lib/odds/display";
 import type { CompetitionId } from "@/lib/odds/types";
 import { findStraightSelection } from "@/lib/wagers/selection";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getActiveWatchesForUser } from "@/lib/watchlist/server";
 import { refreshOdds } from "../actions";
 
 type Props = {
@@ -107,6 +108,15 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
         ),
       }
     : null;
+  const activeWatches = dataset
+    ? await getActiveWatchesForUser(dataset.events.map((event) => event.providerEventId))
+    : [];
+  const watchesBySelection = new Map(
+    activeWatches.map((watch) => [
+      [watch.providerEventId, watch.bookmakerId, watch.marketType, watch.selection].join("|"),
+      watch,
+    ]),
+  );
   const selectedEvent = dataset?.events.find((event) => event.id === query.event);
   const selectedEventStarted = selectedEvent?.status === "live";
   const chosen =
@@ -278,7 +288,18 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
                               <OddsSelectionGrid
                                 odds={marketOdds.map((odd) => ({
                                   ...odd,
+                                  providerEventId: event.providerEventId,
+                                  competitionKey: id,
                                   eventId: event.id,
+                                  watch:
+                                    watchesBySelection.get(
+                                      [
+                                        event.providerEventId,
+                                        odd.bookmakerId,
+                                        odd.marketType,
+                                        odd.selection,
+                                      ].join("|"),
+                                    ) ?? null,
                                   href: `/sports/${id}?${new URLSearchParams({
                                     ...(selected === "all" ? {} : { bookmaker: selected }),
                                     event: event.id,

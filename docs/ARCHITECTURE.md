@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-This document turns the governing product specification into architectural boundaries and records the technical foundation selected during Phase 0. Phases 0–8 are implemented; v0.11.0 added private-beta release-readiness surfaces, v0.12.0 launched the private beta, v0.12.1 added the authentication onboarding hotfix, and v0.13.0 adds hashed group invite codes without changing the provider or wager engine. Product questions left open by the source remain open unless an explicit owner clarification is recorded.
+This document turns the governing product specification into architectural boundaries and records the technical foundation selected during Phase 0. Phases 0–8 are implemented; v0.11.0 added private-beta release-readiness surfaces, v0.12.0 launched the private beta, v0.12.1 added the authentication onboarding hotfix, v0.13.0 added hashed group invite codes, and v0.14.0 adds an Odds Watchlist with shared movement history and moves imported-wager manual settlement into My Bets. Product questions left open by the source remain open unless an explicit owner clarification is recorded.
 
 The system must support multiple authenticated users and private groups, server-side odds ingestion, virtual-unit wagering, external-wager tracking, secure screenshots, deterministic settlement, analytics, leaderboards, and quota-aware operation without real-money wagering.
 
@@ -657,3 +657,29 @@ but now resolves that ID against the current canonical collection with its curre
 removing the selection. The same path therefore handles 3→2→1→0 for straight and parlay views.
 No database, provider, cache, quota, bankroll, settlement, or analytics boundary changes are part
 of Patch 10.
+
+## v0.14.0 Odds Watchlist and My Bets boundary
+
+The Watchlist stores user-owned interest in a normalized pregame market outcome. Line and price
+are observed values, not part of a permanent watch identity or reserved wager terms. A separate,
+shared history records genuine market change points from fresh odds already received through the
+existing server-only provider, PostgreSQL cache, refresh lease, TTL/cooldown, and quota-ledger path.
+Watch creation and Watchlist reads cause no provider call. User watches use owner-scoped RLS;
+authoritative shared-history writes are restricted to trusted server operations. Multiple user
+watches refer to one underlying history dataset rather than duplicating observations per user.
+
+The active Watchlist uses current observed market state for presentation and to construct a Bet
+Slip selection. Bet placement still revalidates against the existing authoritative cache and
+rejects stale or changed terms. No watch creates a ticket, stake debit, bankroll credit, analytics
+row, or leaderboard row. When existing event/score processing identifies a terminal game, active
+watches for that event clear idempotently while shared history remains. Missing pregame markets
+are handled without treating a missing price as a guaranteed selection. No separate high-frequency
+scheduler is added for watch cleanup.
+
+My Bets already reads simulated and external wagers separately and displays them in one ledger.
+v0.14.0 places the existing owner-authorized imported manual-result and correction interaction on
+the imported My Bets card and removes its duplicate Track Bet result controls. Track Bet remains
+the reviewed external-wager creation/import path. The existing deterministic result, append-only
+audit, private screenshot authorization, and complete isolation from the simulated bankroll stay
+authoritative. Closing Line Value is deferred until a reliable methodology is defined and tested;
+the shared history is retained to support that future work.

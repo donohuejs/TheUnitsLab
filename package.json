@@ -1,6 +1,6 @@
 {
   "name": "sportsbook-simulator",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "private": true,
   "type": "module",
   "description": "The Units Lab private virtual-unit sports performance and wager tracker foundation.",
@@ -20,6 +20,8 @@
     "test": "vitest run",
     "test:db": "supabase test db",
     "test:db:invite-code-concurrency": "node test/v0-13-invite-code-concurrency.mjs",
+    "test:db:watchlist-history-concurrency": "node test/v0-14-odds-history-concurrency.mjs",
+    "test:db:v0-14-stress": "node test/v0-14-release-stress.mjs",
     "test:db:auth-lifecycle-concurrency": "node test/auth-lifecycle-concurrency.mjs",
     "test:db:concurrency": "node test/phase3-concurrency.mjs",
     "test:db:settlement-concurrency": "node test/phase4-settlement-concurrency.mjs",

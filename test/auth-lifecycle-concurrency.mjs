@@ -88,7 +88,17 @@ try {
   const results = await Promise.all(clients.map((client) => client.rpc("ensure_initial_bankroll")));
   assert(
     results.every((result) => !result.error),
-    "Both concurrent bootstrap calls must succeed",
+    `Both concurrent bootstrap calls must succeed: ${JSON.stringify(
+      results.map((result) => ({
+        data: result.data,
+        error: result.error && {
+          code: result.error.code,
+          message: result.error.message,
+          details: result.error.details,
+          hint: result.error.hint,
+        },
+      })),
+    )}`,
   );
   assert(
     results.every((result) => Number(result.data) === 10000),

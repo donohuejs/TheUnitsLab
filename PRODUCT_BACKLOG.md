@@ -64,7 +64,15 @@ Status: Research
 - Market-type performance
 - Player-prop analytics when supported
 - Additional Study/Lab Notes metrics
-- Possible closing-line-value analysis if historical data becomes available
+- Closing Line Value (CLV) research and methodology. The v0.14.0 shared odds-history architecture
+  intentionally retains observed market changes for later CLV analysis; CLV is not implemented in
+  that release. Future work should define and test:
+  - A reliable closing observation and behavior when no reliable close was captured.
+  - Wagered line versus closing line and wagered price versus closing price as separate measures.
+  - Spread, total, and moneyline CLV, including bookmaker-specific comparisons.
+  - Possible consensus-market CLV where comparable observations exist.
+  - User-level CLV statistics and the relationship between CLV and long-term performance.
+    The CLV methodology must be defined and tested before exposing CLV numbers to users.
 
 ## User Experience
 

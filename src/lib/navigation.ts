@@ -1,6 +1,7 @@
 export const primaryNavigation = [
   { href: "/sports", key: "sports", label: "Browse Odds" },
   { href: "/my-bets", key: "my-bets", label: "My Bets" },
+  { href: "/watchlist", key: "watchlist", label: "Watchlist" },
   { href: "/import-betslip", key: "import-betslip", label: "Import Betslip" },
   { href: "/performance", key: "performance", label: "Analysis" },
   { href: "/leaderboards", key: "leaderboards", label: "Lab Notes" },

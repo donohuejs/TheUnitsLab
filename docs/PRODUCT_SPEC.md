@@ -656,6 +656,12 @@ The source recommends:
 - Group: leaderboard and member activity.
 - Settings: profile, group membership, API status, and preferences.
 
+Post-V1 v0.14.0 navigation amendment: authenticated navigation adds **Watchlist** for watched
+pregame markets. **My Bets** presents and manages both simulated and imported/external wagers,
+including manual results for eligible imported wagers. **Track Bet** remains the create/import
+entry flow. The current interface may label these surfaces Browse Odds, Import Betslip, Analysis,
+and Lab Notes; Settings and authorized Admin navigation remain available.
+
 ## 24 Administrative functions
 
 Initial owner or admin tools are:
@@ -966,3 +972,70 @@ provider or quota behavior, or add a database migration.
   collection before applying the same removal action for every transition through zero selections.
   Empty persisted slip state remains valid. Touch removal controls remain semantic buttons with
   approximately 44px targets.
+
+## 30 Post-V1 Product Amendments
+
+The following v0.14.0 requirements amend the original V1 product flow after its initial phased
+implementation. Sections 1 through 29 remain the historical V1 requirements. This release does
+not begin Phase 9 or add real-money wagering, a paid dependency, or a new provider polling path.
+
+### 30.1 v0.14.0 Odds Watchlist and Market Movement
+
+- The authenticated sportsbook offers **Watch Odds** on supported pregame selections. A watched
+  selection shows **Watching**, and authenticated navigation includes **Watchlist**. Watching
+  records interest in a market; it is not a simulated wager or an external/IRL wager, does not
+  reserve or guarantee a line or price, and creates no bankroll debit or credit.
+- A user's active watch is identified by the provider event, bookmaker, market, and normalized
+  outcome or selection. A moving spread or total line remains the same underlying watched
+  outcome. Duplicate active watches for one user are prevented; multiple users may independently
+  watch the same market.
+- User-owned watch records are separate from one shared market odds-history dataset. Shared
+  observations are captured only when fresh odds already arrive through the normal server-side
+  provider, cache, refresh-lease, cooldown, and quota-ledger architecture. Starting or viewing a
+  watch never triggers an extra provider request or user-specific polling.
+- The shared history records a meaningful first observation or a change in line or price;
+  unchanged refreshes do not add redundant change points. Line movement and price movement are
+  represented independently. Movement history may include observations from before a user
+  started watching when the application genuinely captured them; missing prices are not inferred
+  or backfilled.
+- The active Watchlist displays the event, start time, competition, bookmaker, market, selection,
+  start and current line/price, separate line and price movement, watch time, latest odds refresh,
+  and captured movement history. **Add Current Odds to Bet Slip** uses the current market state and
+  retains server-authoritative fresh-price and stale-price validation. The immutable ticket
+  snapshot begins only when the wager is submitted.
+- Watches never count as wagers and never affect wager totals, Vials, ROI, win percentage,
+  performance analytics, or leaderboards. Watch records are user-authorized under Row Level
+  Security; clients cannot mutate authoritative shared odds history.
+- When an event is known to be final/completed, cancelled, abandoned, void, or otherwise terminal
+  under a supported provider state, its users' watches automatically clear from the active
+  Watchlist through existing event, score, or settlement processing where practical. Repeated
+  cleanup is safe. If a market disappears before game start, the watch is handled safely and the
+  active UI shows only actionable pregame markets. Clearing watches does not delete shared odds
+  history or require a separate high-frequency cleanup scheduler.
+
+### 30.2 v0.14.0 Unified My Bets Management
+
+- **Track Bet** is the entry and import workflow for a wager the user actually placed elsewhere,
+  including its details and optional private screenshot. After creation, **My Bets** is the
+  canonical place to view and manage both simulated and imported/IRL wagers. Source labels keep
+  those separate systems of record clear; existing screenshot access remains authorized.
+- An imported wager requiring manual settlement is settled from its My Bets wager card or a
+  compact interaction opened from that card. The supported existing result states are Won, Lost,
+  Push, and Void, with the application's canonical result vocabulary and unchanged profit/loss
+  meaning. Existing imported wagers remain manageable.
+- The redundant manual-settlement action is removed from the Track Bet/imported-bets page. My
+  Bets retains practical source and open/settled filtering, with a responsive card layout showing
+  relevant wager terms, status, and final profit/loss.
+- Only an authorized owner may settle or correct an imported wager. Result corrections retain
+  append-only audit evidence and deterministic calculations. Imported settlement remains isolated
+  from the simulated virtual bankroll and never creates a simulated bankroll-ledger entry. Direct
+  database/API authorization must be tested, not inferred from hidden UI controls.
+
+### 30.3 Closing Line Value deferred
+
+**Closing Line Value (CLV)** is added to the canonical product backlog and is not implemented in
+v0.14.0. Shared odds history is intentionally retained to support future analysis. Future CLV
+work must define reliable closing observations, line and price comparisons for spreads, totals,
+and moneylines, bookmaker-specific and possible consensus measures, user-level statistics,
+performance relationships, and behavior when no reliable close was captured. The CLV methodology
+must be defined and tested before exposing CLV numbers to users.

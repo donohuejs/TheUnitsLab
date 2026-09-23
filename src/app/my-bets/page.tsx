@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppNav } from "@/components/app-nav";
+import { ExternalParlayResultForm } from "@/components/external-parlay-result-form";
 import { KickoffTime } from "@/components/kickoff-time";
 import { LocalDateTime } from "@/components/local-date-time";
 import { MarketBadge, SourceBadge, StatusBadge, TicketTypeBadge } from "@/components/status-badge";
@@ -13,7 +14,12 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { liveWagerState } from "@/lib/settlement/grading";
 import { slipSelectionKey } from "@/lib/wagers/slip";
 
-import { assignWagerStudy, cancelSimulatedBet, refreshMyOpenScores } from "./actions";
+import {
+  assignWagerStudy,
+  cancelSimulatedBet,
+  refreshMyOpenScores,
+  setImportedStraightResult,
+} from "./actions";
 
 type Filter = "all" | "open" | "settled" | "simulated" | "imported" | "cancelled";
 type Props = {
@@ -69,6 +75,8 @@ type ImportedWager = {
   id: string;
   group_id: string | null;
   sportsbook_name: string;
+  sport_key: string;
+  competition_name: string;
   ticket_type: "straight" | "parlay";
   leg_count: number;
   event_description: string;
@@ -84,6 +92,11 @@ type ImportedWager = {
   raw_return_dollars: number | null;
   status: "open" | "won" | "lost" | "push" | "void";
   profit_loss_units: number;
+  screenshot_path: string | null;
+  user_notes: string | null;
+  effective_settlement_decimal_odds: number | null;
+  effective_settlement_american_odds: number | null;
+  settled_return_units: number | null;
   match_state: "matched" | "partially_matched" | "unmatched" | "needs_review";
   match_reason: string | null;
   settlement_method: "automatic" | "manual";
@@ -91,9 +104,15 @@ type ImportedWager = {
   external_wager_legs: {
     id: string;
     leg_number: number;
+    competition_name: string;
     event_description: string;
+    event_date: string;
     selection: string;
-    result: string;
+    market_type: "moneyline" | "spread" | "total";
+    line: number | null;
+    american_odds: number;
+    decimal_odds: number;
+    result: "open" | "won" | "lost" | "push" | "void";
   }[];
 };
 type Score = {
@@ -133,6 +152,7 @@ export default async function MyBetsPage({ searchParams }: Props) {
   const supabase = await createSupabaseServerClient();
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) redirect("/auth");
+  const reconciliationResult = await supabase.rpc("reconcile_imported_wagers");
 
   const [ticketResult, importedResult, ledgerResult, groupsResult] = await Promise.all([
     supabase
@@ -146,7 +166,7 @@ export default async function MyBetsPage({ searchParams }: Props) {
     supabase
       .from("external_wagers")
       .select(
-        "id,group_id,sportsbook_name,ticket_type,leg_count,event_description,event_date,wager_date,selection,market_type,line,american_odds,decimal_odds,stake_units,raw_stake_dollars,raw_return_dollars,status,profit_loss_units,match_state,match_reason,settlement_method,auto_settlement_ready,external_wager_legs(*)",
+        "id,group_id,sportsbook_name,sport_key,competition_name,ticket_type,leg_count,event_description,event_date,wager_date,selection,market_type,line,american_odds,decimal_odds,stake_units,raw_stake_dollars,raw_return_dollars,status,profit_loss_units,screenshot_path,user_notes,effective_settlement_decimal_odds,effective_settlement_american_odds,settled_return_units,match_state,match_reason,settlement_method,auto_settlement_ready,external_wager_legs(*)",
       )
       .eq("user_id", authData.user.id)
       .order("wager_date", { ascending: false }),
@@ -158,6 +178,7 @@ export default async function MyBetsPage({ searchParams }: Props) {
     ["imported wagers", importedResult.error],
     ["bankroll ledger", ledgerResult.error],
     ["Study selector", groupsResult.error],
+    ["imported reconciliation", reconciliationResult.error],
   ].filter(([, error]) => error);
   if (failedReads.length > 0) {
     console.error("My Bets read failed", {
@@ -241,7 +262,10 @@ export default async function MyBetsPage({ searchParams }: Props) {
           {query.notice}
         </p>
       ) : null}
-      {ticketResult.error || importedResult.error || ledgerResult.error ? (
+      {ticketResult.error ||
+      importedResult.error ||
+      ledgerResult.error ||
+      reconciliationResult.error ? (
         <p className="notice error" role="alert">
           Wager records are temporarily unavailable. Your stored wagers were not changed.
         </p>
@@ -457,6 +481,9 @@ export default async function MyBetsPage({ searchParams }: Props) {
                   Kickoff <LocalDateTime value={wager.event_date} /> · Placed{" "}
                   {wager.wager_date ? <LocalDateTime value={wager.wager_date} /> : "Unknown"}
                 </p>
+                <p className="ticket-time-meta">
+                  {wager.sport_key} · {wager.competition_name} · {wager.sportsbook_name}
+                </p>
               </div>
               <StatusBadge status={wager.status} />
             </div>
@@ -467,15 +494,32 @@ export default async function MyBetsPage({ searchParams }: Props) {
               {Number(wager.decimal_odds).toFixed(4)})
             </p>
             {wager.ticket_type === "parlay" ? (
-              <div className="parlay-ticket-legs">
-                {wager.external_wager_legs
-                  .sort((left, right) => left.leg_number - right.leg_number)
-                  .map((leg) => (
-                    <p className="parlay-ticket-leg" key={leg.id}>
-                      Leg {leg.leg_number}: {leg.event_description} · {leg.selection} · {leg.result}
-                    </p>
-                  ))}
-              </div>
+              <details className="imported-ticket-more">
+                <summary>View {wager.leg_count} legs</summary>
+                <div className="parlay-ticket-legs">
+                  {wager.external_wager_legs
+                    .sort((left, right) => left.leg_number - right.leg_number)
+                    .map((leg) => (
+                      <section className="parlay-ticket-leg" key={leg.id}>
+                        <div className="section-heading">
+                          <h3>
+                            Leg {leg.leg_number}: {leg.event_description}
+                          </h3>
+                          <StatusBadge status={leg.result} />
+                        </div>
+                        <p>
+                          {leg.competition_name} · {leg.selection}
+                          {leg.line === null ? "" : ` ${leg.line > 0 ? "+" : ""}${leg.line}`} ·{" "}
+                          <MarketBadge market={leg.market_type} /> · {price(leg.american_odds)} (
+                          {Number(leg.decimal_odds).toFixed(4)})
+                        </p>
+                        <p className="ticket-time-meta">
+                          Kickoff <LocalDateTime value={leg.event_date} />
+                        </p>
+                      </section>
+                    ))}
+                </div>
+              </details>
             ) : null}
             <dl className="ticket-details compact">
               <div>
@@ -496,8 +540,16 @@ export default async function MyBetsPage({ searchParams }: Props) {
                 </dd>
               </div>
               <div>
-                <dt>Vial profit / loss</dt>
-                <dd>{vials(wager.profit_loss_units)} Vials</dd>
+                <dt>{wager.status === "open" ? "Current profit / loss" : "Final profit / loss"}</dt>
+                <dd>{wager.status === "open" ? "—" : `${vials(wager.profit_loss_units)} Vials`}</dd>
+              </div>
+              <div>
+                <dt>Final return</dt>
+                <dd>
+                  {wager.settled_return_units === null
+                    ? "—"
+                    : `${vials(wager.settled_return_units)} Vials`}
+                </dd>
               </div>
               <div>
                 <dt>Event matching</dt>
@@ -511,6 +563,26 @@ export default async function MyBetsPage({ searchParams }: Props) {
                 </dd>
               </div>
             </dl>
+            {wager.screenshot_path ? (
+              <p className="ticket-time-meta">
+                <Link
+                  href={`/track-bet/screenshot/${wager.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View private screenshot
+                </Link>
+              </p>
+            ) : null}
+            {wager.user_notes ? <p className="muted">Note: {wager.user_notes}</p> : null}
+            {wager.effective_settlement_decimal_odds !== null ? (
+              <p className="ticket-time-meta">
+                Effective settlement odds:{" "}
+                {wager.effective_settlement_american_odds === null
+                  ? Number(wager.effective_settlement_decimal_odds).toFixed(4)
+                  : `${price(wager.effective_settlement_american_odds)} (${Number(wager.effective_settlement_decimal_odds).toFixed(4)})`}
+              </p>
+            ) : null}
             {wager.auto_settlement_ready && wager.status === "open" ? (
               <p className="notice compact-notice" role="status">
                 Auto settlement ready — the canonical final score will settle this imported record
@@ -521,6 +593,48 @@ export default async function MyBetsPage({ searchParams }: Props) {
                 Manual settlement required{wager.match_reason ? `: ${wager.match_reason}` : "."}
               </p>
             ) : null}
+            <details className="imported-result-management">
+              <summary>
+                {wager.status === "open" ? "Settle imported wager" : "Correct imported result"}
+              </summary>
+              {wager.ticket_type === "parlay" ? (
+                <ExternalParlayResultForm
+                  wagerId={wager.id}
+                  status={wager.status}
+                  legs={wager.external_wager_legs.map((leg) => ({
+                    legNumber: leg.leg_number,
+                    result: leg.result,
+                  }))}
+                />
+              ) : (
+                <form action={setImportedStraightResult} className="result-form">
+                  <input type="hidden" name="wagerId" value={wager.id} />
+                  <label>
+                    Result
+                    <select name="status" defaultValue={wager.status}>
+                      <option value="open">Open</option>
+                      <option value="won">Won</option>
+                      <option value="lost">Lost</option>
+                      <option value="push">Push</option>
+                      <option value="void">Void</option>
+                    </select>
+                  </label>
+                  <label>
+                    Manual settlement reason
+                    <input
+                      name="manualReason"
+                      minLength={3}
+                      maxLength={500}
+                      required
+                      placeholder="Why this result needs manual entry"
+                    />
+                  </label>
+                  <SubmitButton className="button secondary" pendingLabel="Saving result…">
+                    Save imported result
+                  </SubmitButton>
+                </form>
+              )}
+            </details>
             {wager.status === "open" &&
             groups.length &&
             new Date(wager.event_date).getTime() > nowMs ? (

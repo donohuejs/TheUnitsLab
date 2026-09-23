@@ -1617,6 +1617,23 @@ textarea:focus {
   padding-top: 1rem;
 }
 
+.imported-ticket-more,
+.imported-result-management {
+  margin-top: 0.9rem;
+}
+
+.imported-ticket-more > summary,
+.imported-result-management > summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.imported-result-management[open] > summary {
+  margin-bottom: 0.35rem;
+}
+
 .study-assignment-form {
   display: flex;
   flex-wrap: wrap;
@@ -2884,4 +2901,154 @@ thead th {
 
 .simulated-alternate .ticket-details {
   margin: 0;
+}
+
+.odd-choice {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.watch-control {
+  display: grid;
+  gap: 0.2rem;
+  padding-inline: 0.25rem;
+  font-size: 0.78rem;
+}
+
+.watch-control a,
+.watch-button {
+  width: fit-content;
+  border: 0;
+  padding: 0.25rem 0.1rem;
+  color: var(--accent);
+  background: transparent;
+  font: inherit;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.watch-control a:hover,
+.watch-button:hover {
+  text-decoration: underline;
+}
+
+.watch-control small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.watchlist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 29rem), 1fr));
+  gap: 1rem;
+}
+
+.watch-card {
+  display: grid;
+  align-content: start;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.watch-card-heading,
+.watch-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.watch-card-heading h2,
+.watch-card-heading p,
+.watch-market {
+  margin-block: 0.15rem;
+}
+
+.watching-badge {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 0.3rem 0.65rem;
+  color: #126343;
+  background: #eaf8f1;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.watch-prices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.watch-prices > div {
+  display: grid;
+  gap: 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  padding: 0.7rem;
+  background: #f8fbf9;
+}
+
+.watch-prices span,
+.watch-movement dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.watch-movement {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem 1rem;
+  margin: 0;
+}
+
+.watch-movement div {
+  min-width: 0;
+}
+
+.watch-movement dd {
+  margin: 0.15rem 0 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.watch-actions form {
+  margin: 0;
+}
+
+.watch-history {
+  border-top: 1px solid var(--border);
+  padding-top: 0.7rem;
+}
+
+.watch-history summary {
+  color: var(--accent);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.watch-history ol {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0;
+  padding-left: 1.4rem;
+}
+
+.watch-history li small {
+  color: var(--muted);
+}
+
+@media (max-width: 560px) {
+  .watch-prices,
+  .watch-movement {
+    grid-template-columns: 1fr;
+  }
+
+  .watch-actions .button,
+  .watch-actions form {
+    width: 100%;
+  }
 }

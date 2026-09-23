@@ -14,6 +14,84 @@ const studyAssignmentSchema = z.object({
   groupId: z.union([z.literal(""), z.uuid()]),
   source: z.enum(["simulated", "imported"]),
 });
+const importedStraightResultSchema = z.object({
+  wagerId: z.uuid(),
+  status: z.enum(["open", "won", "lost", "push", "void"]),
+  manualReason: z.string().trim().min(3).max(500),
+});
+const importedParlayResultSchema = z.object({
+  wagerId: z.uuid(),
+  status: z.enum(["open", "won", "lost", "push", "void"]),
+  legResults: z
+    .array(
+      z.object({
+        legNumber: z.number().int().positive(),
+        result: z.enum(["open", "won", "lost", "push", "void"]),
+      }),
+    )
+    .min(2)
+    .max(12),
+});
+
+function formValue(formData: FormData, name: string) {
+  const candidate = formData.get(name);
+  return typeof candidate === "string" ? candidate : "";
+}
+
+function resultNotice(message: string): never {
+  redirect(`/my-bets?notice=${encodeURIComponent(message)}`);
+}
+
+export async function setImportedStraightResult(formData: FormData) {
+  const parsed = importedStraightResultSchema.safeParse({
+    wagerId: formValue(formData, "wagerId"),
+    status: formValue(formData, "status"),
+    manualReason: formValue(formData, "manualReason"),
+  });
+  if (!parsed.success) resultNotice("Choose a result and enter a reason (3–500 characters).");
+
+  const supabase = await createSupabaseServerClient();
+  const { data: authData } = await supabase.auth.getUser();
+  if (!authData.user) redirect("/auth");
+  const { error } = await supabase.rpc("set_imported_manual_result", {
+    p_external_wager_id: parsed.data.wagerId,
+    p_status: parsed.data.status,
+    p_reason: parsed.data.manualReason,
+  });
+  if (error)
+    resultNotice("This imported wager could not be updated. Check its result and ownership.");
+  resultNotice(
+    "Imported result saved with an audit record. Your simulated Vial balance was not changed.",
+  );
+}
+
+export async function setImportedParlayResult(formData: FormData) {
+  let legResults: unknown;
+  try {
+    legResults = JSON.parse(formValue(formData, "legResults"));
+  } catch {
+    resultNotice("The imported parlay result is invalid.");
+  }
+  const parsed = importedParlayResultSchema.safeParse({
+    wagerId: formValue(formData, "wagerId"),
+    status: formValue(formData, "status"),
+    legResults,
+  });
+  if (!parsed.success) resultNotice("Review the ticket and each leg result.");
+
+  const supabase = await createSupabaseServerClient();
+  const { data: authData } = await supabase.auth.getUser();
+  if (!authData.user) redirect("/auth");
+  const { error } = await supabase.rpc("set_external_parlay_result", {
+    p_external_wager_id: parsed.data.wagerId,
+    p_status: parsed.data.status,
+    p_leg_results: parsed.data.legResults,
+  });
+  if (error) resultNotice("The imported parlay result is inconsistent or could not be updated.");
+  resultNotice(
+    "Imported parlay results saved with an audit record. Your simulated Vial balance was not changed.",
+  );
+}
 
 export async function assignWagerStudy(formData: FormData) {
   const parsed = studyAssignmentSchema.safeParse({

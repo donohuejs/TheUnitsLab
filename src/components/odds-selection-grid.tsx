@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState, useSyncExternalStore } from "react";
 
+import { watchOdds } from "@/app/watchlist/actions";
+import { SubmitButton } from "@/components/submit-button";
 import {
   getEmptyPendingSlipSnapshot,
   getPendingSlipSnapshot,
@@ -12,6 +14,8 @@ import {
 import type { MarketType, SelectionType } from "@/lib/odds/types";
 
 type DisplayOdd = {
+  providerEventId: string;
+  competitionKey: string;
   eventId: string;
   bookmakerId: string;
   bookmakerName: string;
@@ -25,6 +29,10 @@ type DisplayOdd = {
   href: string;
   isSelected: boolean;
   eventStarted: boolean;
+  watch: {
+    initialLine: number | null;
+    initialAmericanOdds: number;
+  } | null;
 };
 
 const price = (value: number) => (value > 0 ? `+${value}` : String(value));
@@ -178,7 +186,7 @@ function OddChoice({ odd }: { odd: DisplayOdd }) {
       )}
     </>
   );
-  return odd.eventStarted ? (
+  const selection = odd.eventStarted ? (
     <div className="odd locked" aria-disabled="true">
       {content}
     </div>
@@ -191,5 +199,40 @@ function OddChoice({ odd }: { odd: DisplayOdd }) {
     >
       {content}
     </Link>
+  );
+  return (
+    <div className="odd-choice">
+      {selection}
+      {!odd.eventStarted && !odd.isAlternate ? (
+        odd.watch ? (
+          <div className="watch-control is-watching">
+            <Link href="/watchlist">★ Watching</Link>
+            <small>
+              Started:{" "}
+              {odd.watch.initialLine === null
+                ? ""
+                : `${odd.watch.initialLine > 0 ? "+" : ""}${odd.watch.initialLine} `}
+              ({price(odd.watch.initialAmericanOdds)}) · Now:{" "}
+              {odd.point === null ? "" : `${odd.point > 0 ? "+" : ""}${odd.point} `}(
+              {price(odd.americanOdds)})
+            </small>
+          </div>
+        ) : (
+          <form action={watchOdds} className="watch-control">
+            <input type="hidden" name="competitionKey" value={odd.competitionKey} />
+            <input type="hidden" name="eventId" value={odd.providerEventId} />
+            <input type="hidden" name="bookmakerId" value={odd.bookmakerId} />
+            <input type="hidden" name="marketType" value={odd.marketType} />
+            <input type="hidden" name="selection" value={odd.selection} />
+            <input type="hidden" name="expectedLine" value={odd.point ?? ""} />
+            <input type="hidden" name="expectedAmericanOdds" value={odd.americanOdds} />
+            <input type="hidden" name="returnTo" value={`/sports/${odd.competitionKey}`} />
+            <SubmitButton className="watch-button" pendingLabel="Watching…">
+              ☆ Watch Odds
+            </SubmitButton>
+          </form>
+        )
+      ) : null}
+    </div>
   );
 }

@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { CanonicalOddsRequest } from "./request";
 import type { CacheRow, OddsStore } from "./service";
+import { oddsObservations } from "@/lib/watchlist/observations";
 
 export class PostgresOddsStore implements OddsStore {
   constructor(private readonly client: SupabaseClient) {}
@@ -44,18 +45,22 @@ export class PostgresOddsStore implements OddsStore {
   }
 
   async write(row: CacheRow, request: CanonicalOddsRequest) {
-    const { error } = await this.client.from("odds_cache").upsert({
-      cache_key: row.cacheKey,
-      provider: request.provider,
-      endpoint: request.endpoint,
-      sport: request.providerSportKey.split("_")[0],
-      competition: request.competitionId,
-      request_parameters: request,
-      normalized_payload: row.dataset,
-      fetched_at: row.fetchedAt,
-      expires_at: row.expiresAt,
-      refresh_not_before: row.refreshNotBefore,
-      updated_at: row.fetchedAt,
+    const { observations, seenEventIds } = oddsObservations(row.dataset);
+    const { error } = await this.client.rpc("record_odds_cache_snapshot", {
+      p_cache: {
+        cache_key: row.cacheKey,
+        provider: request.provider,
+        endpoint: request.endpoint,
+        sport: request.providerSportKey.split("_")[0],
+        competition: request.competitionId,
+        request_parameters: request,
+        normalized_payload: row.dataset,
+        fetched_at: row.fetchedAt,
+        expires_at: row.expiresAt,
+        refresh_not_before: row.refreshNotBefore,
+      },
+      p_observations: observations,
+      p_seen_event_ids: seenEventIds,
     });
     if (error) throw error;
   }

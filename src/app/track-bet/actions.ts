@@ -464,38 +464,6 @@ export async function createExternalWager(formData: FormData) {
   finish("Imported wager saved to My Bets. Your simulated Vial balance was not changed.");
 }
 
-const resultSchema = z.object({
-  wagerId: z.uuid(),
-  status: z.enum(["open", "won", "lost", "push", "void"]),
-});
-
-export async function setExternalWagerResult(formData: FormData) {
-  const parsed = resultSchema.safeParse({
-    wagerId: value(formData, "wagerId"),
-    status: value(formData, "status"),
-  });
-  if (!parsed.success) finish("The result request is invalid.");
-  const manualReason = value(formData, "manualReason").trim();
-
-  const supabase = await createSupabaseServerClient();
-  const { data: authData } = await supabase.auth.getUser();
-  if (!authData.user) redirect("/auth");
-  const { error } = manualReason
-    ? await supabase.rpc("set_imported_manual_result", {
-        p_external_wager_id: parsed.data.wagerId,
-        p_status: parsed.data.status,
-        p_reason: manualReason,
-      })
-    : await supabase.rpc("set_external_wager_result", {
-        p_external_wager_id: parsed.data.wagerId,
-        p_status: parsed.data.status,
-      });
-  if (error) finish("The external wager result could not be updated.");
-  finish(
-    "Imported result updated from stored odds and stake. Your simulated Vial balance was not changed.",
-  );
-}
-
 const externalParlayLegSchema = z.object({
   sportKey: z.enum(["soccer", "football", "basketball", "hockey"]),
   competitionKey: z.string().trim().min(1).max(40),
@@ -752,45 +720,4 @@ export async function createExternalParlay(formData: FormData) {
     if (attachment.error) finish("The parlay was saved, but its screenshot could not be attached.");
   }
   finish("Imported parlay saved to My Bets. Your simulated Vial balance was not changed.");
-}
-
-const externalParlayResultSchema = z.object({
-  wagerId: z.uuid(),
-  status: z.enum(["open", "won", "lost", "push", "void"]),
-  legResults: z
-    .array(
-      z.object({
-        legNumber: z.number().int().positive(),
-        result: z.enum(["open", "won", "lost", "push", "void"]),
-      }),
-    )
-    .min(2)
-    .max(12),
-});
-
-export async function setExternalParlayResult(formData: FormData) {
-  let legResults: unknown;
-  try {
-    legResults = JSON.parse(value(formData, "legResults"));
-  } catch {
-    finish("The external parlay result payload is invalid.");
-  }
-  const parsed = externalParlayResultSchema.safeParse({
-    wagerId: value(formData, "wagerId"),
-    status: value(formData, "status"),
-    legResults,
-  });
-  if (!parsed.success) finish("Review the ticket and leg results.");
-  const supabase = await createSupabaseServerClient();
-  const { data: authData } = await supabase.auth.getUser();
-  if (!authData.user) redirect("/auth");
-  const { error } = await supabase.rpc("set_external_parlay_result", {
-    p_external_wager_id: parsed.data.wagerId,
-    p_status: parsed.data.status,
-    p_leg_results: parsed.data.legResults,
-  });
-  if (error) finish("The external parlay result is inconsistent or could not be updated.");
-  finish(
-    "Imported parlay and leg results updated with an audit record. Your simulated Vial balance was not changed.",
-  );
 }

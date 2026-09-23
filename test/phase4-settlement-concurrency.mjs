@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import process from "node:process";
@@ -23,7 +24,10 @@ function assert(condition, message) {
 
 const environment = localEnvironment();
 assert(
-  environment.API_URL && environment.SERVICE_ROLE_KEY,
+  environment.API_URL &&
+    environment.SERVICE_ROLE_KEY &&
+    environment.ANON_KEY &&
+    environment.JWT_SECRET,
   "Local service credentials are incomplete",
 );
 const admin = createClient(environment.API_URL, environment.SERVICE_ROLE_KEY, {
@@ -41,6 +45,28 @@ const created = await admin.auth.admin.createUser({
 if (created.error || !created.data.user)
   throw created.error ?? new Error("Test user was not created");
 const userId = created.data.user.id;
+const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+const jwtHeader = encode({ alg: "HS256", typ: "JWT" });
+const jwtPayload = encode({
+  aud: "authenticated",
+  exp: Math.floor(Date.now() / 1000) + 300,
+  iat: Math.floor(Date.now() / 1000),
+  iss: "supabase",
+  role: "authenticated",
+  sub: userId,
+});
+const jwtSignature = createHmac("sha256", environment.JWT_SECRET)
+  .update(`${jwtHeader}.${jwtPayload}`)
+  .digest("base64url");
+const owner = createClient(environment.API_URL, environment.ANON_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+  global: {
+    headers: { Authorization: `Bearer ${jwtHeader}.${jwtPayload}.${jwtSignature}` },
+  },
+});
+const initialBankroll = await owner.rpc("ensure_initial_bankroll");
+if (initialBankroll.error) throw initialBankroll.error;
+assert(Number(initialBankroll.data) === 10000, "Test user must bootstrap the canonical balance");
 const betId = crypto.randomUUID();
 const now = new Date().toISOString();
 

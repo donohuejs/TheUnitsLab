@@ -19,6 +19,23 @@ authenticated code attempts and applies a bounded rate limit without adding infr
 paid dependency. `supabase/tests/v0_13_group_invite_codes.sql` covers creation, normalization,
 legacy links, authorization, existing-member behavior, invalid states, and throttling.
 
+v0.14.0 adds `20261008000000_v0_14_terminal_score_states.sql` and
+`20261008010000_v0_14_odds_watchlist.sql`. The first commits terminal score enum values before the
+Watchlist schema references them. The second adds owner-scoped active watches, shared market state
+and change-point history, lookup/uniqueness indexes, forced RLS, and authenticated watch/clear RPCs.
+Only the trusted existing odds-cache write path records shared history; cache state and history are
+committed together, unchanged observations update last-seen metadata, and history rows are never
+duplicated per user. Score processing clears all user watches when it records a terminal state,
+while full odds snapshots safely clear a market that disappears before kickoff.
+`supabase/tests/v0_14_odds_watchlist.sql` covers lifecycle, history, RLS, user isolation, shared data,
+market disappearance, terminal cleanup, and analytics/bankroll exclusion. The local
+`npm run test:db:watchlist-history-concurrency` command races trusted cache snapshots and verifies
+one row per meaningful change. `supabase/tests/v0_14_my_bets_settlement.sql` covers owner-only
+imported-result entry/correction and zero simulated-bankroll effects; existing external-wager and
+screenshot policies remain in force. The owner-scoped Watchlist read boundary also clears that
+user's watches after scheduled kickoff, so active views remain pregame if score refresh is delayed.
+No additional provider polling path or high-frequency cleanup scheduler is introduced.
+
 Phase 4 adds `20260914100000_phase_4_bankroll_void_type.sql` and `20260915000000_phase_4_scores_settlement.sql`. The first commits the PostgreSQL enum addition before later constraints reference it. The second adds normalized shared scores, score refresh state, quota-ledger purposes, append-only settlement audits, forced RLS, final-score protection, deterministic grading, atomic settlement and documented void functions, and the database-enforced one-economic-credit rule.
 
 Phase 5 adds `20260916000000_phase_5_external_wagers.sql`: centralized read-only sport, competition, and external-sportsbook catalogs; the separate external-wager system of record; append-only result-correction audits; deterministic owner-only creation and result functions; a private five-MiB screenshot bucket; and object policies aligned with wager ownership and current group membership. The migration contains no virtual-bankroll mutation.

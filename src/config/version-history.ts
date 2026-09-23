@@ -6,6 +6,15 @@ export type VersionHistoryEntry = {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = [
   {
+    version: "0.14.0",
+    title: "Odds Watchlist and My Bets Management",
+    changes: [
+      "Added a Watchlist with shared captured odds movement for pregame markets",
+      "Moved manual imported-wager settlement and corrections to My Bets cards",
+      "Kept watching separate from wagers, virtual bankroll, analytics, and leaderboards",
+    ],
+  },
+  {
     version: "0.13.0",
     title: "Group Invite Codes",
     changes: [

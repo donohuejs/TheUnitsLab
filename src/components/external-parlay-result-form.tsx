@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { setExternalParlayResult } from "@/app/track-bet/actions";
+import { setImportedParlayResult } from "@/app/my-bets/actions";
 import { SubmitButton } from "@/components/submit-button";
 
 type Result = "open" | "won" | "lost" | "push" | "void";
@@ -19,7 +19,7 @@ export function ExternalParlayResultForm({
   const [ticketResult, setTicketResult] = useState<Result>(status);
   const [results, setResults] = useState(legs);
   return (
-    <form action={setExternalParlayResult} className="result-form parlay-result-form">
+    <form action={setImportedParlayResult} className="result-form parlay-result-form">
       <input type="hidden" name="wagerId" value={wagerId} />
       <input type="hidden" name="legResults" value={JSON.stringify(results)} />
       <label>

@@ -77,13 +77,14 @@ describe("release-candidate fix patch 2 surfaces", () => {
 
   it("makes canonical imports auto-settlement ready and puts invites on Leaderboards", () => {
     const track = read("../src/app/track-bet/page.tsx");
+    const myBets = read("../src/app/my-bets/page.tsx");
     const leaderboard = read("../src/app/leaderboards/page.tsx");
     const account = read("../src/app/account/page.tsx");
     const migration = read(
       "../supabase/migrations/20260924000000_release_candidate_fix_patch_2.sql",
     );
     expect(track).toContain("canonicalEvents");
-    expect(track).toContain("Auto settlement ready");
+    expect(myBets).toContain("Auto settlement ready");
     expect(leaderboard).toContain("createGroup");
     expect(leaderboard).toContain("joinGroup");
     expect(leaderboard).toContain("InviteForm");
