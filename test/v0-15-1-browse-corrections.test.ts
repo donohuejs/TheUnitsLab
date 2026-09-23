@@ -75,6 +75,7 @@ describe("v0.15.1 Browse Odds corrections", () => {
     const page = read("../src/app/sports/[competition]/page.tsx");
     const controls = read("../src/components/browse-schedule-controls.tsx");
     const card = read("../src/components/browse-game-card.tsx");
+    const grid = read("../src/components/odds-selection-grid.tsx");
     const css = read("../src/app/globals.css");
 
     expect(page).toContain("const activeEvent = requestedActiveEvent;");
@@ -84,6 +85,8 @@ describe("v0.15.1 Browse Odds corrections", () => {
     expect(controls).toContain("Select a matchup...");
     expect(controls).toContain("if (value) changes.event = value");
     expect(card).toContain("browse-game-mobile-board");
+    expect(grid).toContain("watchlistAvailable?: boolean");
+    expect(grid).toContain("watchlistAvailable && !odd.eventStarted && !odd.isAlternate");
     expect(css).toContain("minmax(17rem, 20rem) minmax(0, 1fr) minmax(20rem, 23rem)");
     expect(css).toContain(".browse-market-detail");
   });

@@ -52,7 +52,13 @@ function getServerMobileViewportSnapshot() {
   return false;
 }
 
-export function OddsSelectionGrid({ odds }: { odds: DisplayOdd[] }) {
+export function OddsSelectionGrid({
+  odds,
+  watchlistAvailable = true,
+}: {
+  odds: DisplayOdd[];
+  watchlistAvailable?: boolean;
+}) {
   const [expanded, setExpanded] = useState<string[]>([]);
   const isMobileViewport = useSyncExternalStore(
     subscribeToMobileViewport,
@@ -116,7 +122,11 @@ export function OddsSelectionGrid({ odds }: { odds: DisplayOdd[] }) {
     <div className="odds-selection-grid">
       <div className="desktop-odds-items">
         {displayOdds.map((odd, index) => (
-          <OddChoice odd={odd} key={`${odd.bookmakerId}-${odd.selection}-${odd.point}-${index}`} />
+          <OddChoice
+            odd={odd}
+            watchlistAvailable={watchlistAvailable}
+            key={`${odd.bookmakerId}-${odd.selection}-${odd.point}-${index}`}
+          />
         ))}
       </div>
       <div className="mobile-odds-items">
@@ -134,7 +144,7 @@ export function OddsSelectionGrid({ odds }: { odds: DisplayOdd[] }) {
                 <span>
                   Best: {price(best.americanOdds)} · {best.bookmakerName}
                 </span>
-                <OddChoice odd={best} />
+                <OddChoice odd={best} watchlistAvailable={watchlistAvailable} />
               </div>
               {prices.length > 1 ? (
                 <button
@@ -151,6 +161,7 @@ export function OddsSelectionGrid({ odds }: { odds: DisplayOdd[] }) {
                   {prices.map((odd, index) => (
                     <OddChoice
                       odd={odd}
+                      watchlistAvailable={watchlistAvailable}
                       key={`${odd.bookmakerId}-${odd.selection}-${odd.point}-${index}`}
                     />
                   ))}
@@ -164,7 +175,7 @@ export function OddsSelectionGrid({ odds }: { odds: DisplayOdd[] }) {
   );
 }
 
-function OddChoice({ odd }: { odd: DisplayOdd }) {
+function OddChoice({ odd, watchlistAvailable }: { odd: DisplayOdd; watchlistAvailable: boolean }) {
   const content = (
     <>
       <small>
@@ -203,7 +214,7 @@ function OddChoice({ odd }: { odd: DisplayOdd }) {
   return (
     <div className="odd-choice">
       {selection}
-      {!odd.eventStarted && !odd.isAlternate ? (
+      {watchlistAvailable && !odd.eventStarted && !odd.isAlternate ? (
         odd.watch ? (
           <div className="watch-control is-watching">
             <Link href="/watchlist">★ Watching</Link>
