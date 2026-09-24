@@ -97,6 +97,9 @@ export function BrowseScheduleControls({
             <span aria-hidden="true" className="browse-date-icon">
               ▣
             </span>
+            <span aria-hidden="true" className="browse-date-readable">
+              {dateOptions.find((option) => option.value === selectedDate)?.label ?? selectedDate}
+            </span>
             <input
               id={`browse-date-${competitionId}`}
               name="date"

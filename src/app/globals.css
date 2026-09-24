@@ -87,6 +87,10 @@ h4 {
   width: min(92rem, calc(100% - 2rem));
 }
 
+.browse-bet-slip-target {
+  min-width: 0;
+}
+
 .narrow {
   max-width: 58rem;
 }
@@ -1027,7 +1031,7 @@ textarea:focus {
 
 .browse-schedule-controls {
   display: grid;
-  grid-template-columns: minmax(13.75rem, 13.75rem) minmax(16.25rem, 1fr);
+  grid-template-columns: minmax(15.5rem, 15.5rem) minmax(16.25rem, 1fr);
   gap: 0.7rem;
   align-items: end;
   min-width: 0;
@@ -1063,6 +1067,14 @@ textarea:focus {
   border: 1px solid #b9cfc4;
   border-radius: 0.55rem;
   background: #fff;
+}
+
+.browse-date-readable {
+  display: none;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .browse-date-icon {
@@ -1835,7 +1847,7 @@ textarea:focus {
     grid-template-columns: minmax(320px, 350px) minmax(500px, 1fr) minmax(330px, 360px);
   }
 
-  .browse-master-detail-layout > .bet-slip-stack {
+  .browse-master-detail-layout > .browse-bet-slip-target {
     position: sticky;
     top: var(--desktop-header-offset);
     align-self: start;
@@ -1845,14 +1857,40 @@ textarea:focus {
     padding-right: 0.2rem;
   }
 
-  .browse-master-detail-layout > .bet-slip-stack .bet-slip-content {
+  .browse-master-detail-layout > .browse-bet-slip-target .bet-slip-content {
     display: grid;
     gap: 1rem;
   }
 
-  .browse-master-detail-layout > .bet-slip-stack .bet-slip {
+  .browse-master-detail-layout > .browse-bet-slip-target > .bet-slip-stack {
     position: static;
     min-width: 0;
+  }
+
+  .browse-date-input-shell {
+    position: relative;
+    min-height: 2.75rem;
+    padding-right: 0.65rem;
+  }
+
+  .browse-date-readable {
+    display: block;
+    flex: 1 1 auto;
+    color: var(--ink);
+    font-size: 0.88rem;
+    font-weight: 650;
+  }
+
+  .browse-date-input-row input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .browse-date-input-shell:focus-within {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
   }
 
   .browse-game-mobile-board {
@@ -1865,7 +1903,7 @@ textarea:focus {
     grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
   }
 
-  .browse-master-detail-layout > .bet-slip-stack {
+  .browse-master-detail-layout > .browse-bet-slip-target {
     grid-column: 1 / -1;
     position: static;
     max-height: none;
@@ -1879,7 +1917,8 @@ textarea:focus {
     grid-template-columns: minmax(15rem, 19rem) minmax(0, 1fr);
   }
 
-  .sportsbook-layout > .bet-slip-stack {
+  .sportsbook-layout > .bet-slip-stack,
+  .sportsbook-layout > .browse-bet-slip-target {
     grid-column: 1 / -1;
   }
 }
@@ -2735,6 +2774,10 @@ thead th {
 
   .browse-shell {
     width: min(calc(100% - 1rem), 92rem);
+  }
+
+  .browse-bet-slip-target {
+    display: contents;
   }
 
   .desktop-browse-filter-control {

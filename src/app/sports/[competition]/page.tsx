@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppNav } from "@/components/app-nav";
-import { BetSlip } from "@/components/bet-slip";
+import { BROWSE_BET_SLIP_TARGET_ID, BrowseBetSlipBridge } from "@/components/browse-bet-slip-host";
 import { BrowseFilterSelect } from "@/components/browse-filter-select";
 import { BrowseGameCard } from "@/components/browse-game-card";
 import {
@@ -554,10 +554,15 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
             </div>
           )}
         </section>
-        <BetSlip
+        <BrowseBetSlipBridge
           selection={slipSelection}
           groups={groups}
           initialMobileSheetOpen={query.mobileSheet === "1"}
+        />
+        <div
+          id={BROWSE_BET_SLIP_TARGET_ID}
+          className="browse-bet-slip-target"
+          aria-label="Simulated bet slips"
         />
       </div>
     </main>
