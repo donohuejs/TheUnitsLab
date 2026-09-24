@@ -11,12 +11,13 @@ type TeamSummary = {
   rank: number | null;
   record: string | null;
   sport: NormalizedEvent["sport"];
+  competitionId: NormalizedEvent["competitionId"];
 };
 
 function TeamSummaryLine({ team }: { team: TeamSummary }) {
   return (
     <span className="browse-team-line">
-      <TeamMark teamName={team.name} sport={team.sport} />
+      <TeamMark teamName={team.name} sport={team.sport} competitionId={team.competitionId} />
       <span className="browse-team-name">
         {team.rank !== null ? (
           <span className="team-ranking" aria-label={"Rank " + team.rank}>

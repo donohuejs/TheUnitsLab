@@ -58,8 +58,14 @@ export function matchCanonicalImportEvent(
       (!input.sportKey || event.sportKey === input.sportKey) &&
       (!input.competitionKey || event.competitionKey === input.competitionKey) &&
       withinWindow(event, input.eventDate) &&
-      teamNamesMatch(participants.awayTeam, event.awayTeam) &&
-      teamNamesMatch(participants.homeTeam, event.homeTeam),
+      teamNamesMatch(participants.awayTeam, event.awayTeam, {
+        sport: event.sportKey,
+        competitionId: event.competitionKey,
+      }) &&
+      teamNamesMatch(participants.homeTeam, event.homeTeam, {
+        sport: event.sportKey,
+        competitionId: event.competitionKey,
+      }),
   );
   if (candidates.length === 1) return { state: "matched", event: candidates[0] };
   if (candidates.length > 1) {
@@ -79,19 +85,20 @@ export function matchCanonicalImportEvent(
 }
 
 const collegeFootballTeams = new Set([
-  "miami",
-  "wake forest",
+  "miami-fl",
+  "wake-forest",
   "houston",
-  "texas tech",
+  "texas-tech",
   "alabama",
   "clemson",
   "georgia",
   "michigan",
-  "notre dame",
-  "ohio state",
+  "notre-dame",
+  "ohio-state",
   "pittsburgh",
-  "south carolina",
+  "south-carolina",
   "syracuse",
+  "texas",
 ]);
 
 export function inferCompetitionCandidates(eventDescription: string, knownCompetition?: string) {
@@ -99,8 +106,16 @@ export function inferCompetitionCandidates(eventDescription: string, knownCompet
   const participants = parseImportedEventDescription(eventDescription);
   if (!participants) return [];
   const keys = [
-    canonicalTeamKey(participants.awayTeam),
-    canonicalTeamKey(participants.homeTeam),
+    canonicalTeamKey(
+      participants.awayTeam,
+      knownCompetition === "ncaaf" ? "football" : undefined,
+      knownCompetition,
+    ),
+    canonicalTeamKey(
+      participants.homeTeam,
+      knownCompetition === "ncaaf" ? "football" : undefined,
+      knownCompetition,
+    ),
   ].filter((key): key is string => Boolean(key));
   const normalizedText = eventDescription.toLowerCase();
   if (

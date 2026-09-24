@@ -483,12 +483,14 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
                             rank: getTeamRanking(event.awayTeam, rankingSnapshot)?.rank ?? null,
                             record: recordLabel(event.awayTeam),
                             sport: event.sport,
+                            competitionId: event.competitionId,
                           }}
                           home={{
                             name: event.homeTeam,
                             rank: getTeamRanking(event.homeTeam, rankingSnapshot)?.rank ?? null,
                             record: recordLabel(event.homeTeam),
                             sport: event.sport,
+                            competitionId: event.competitionId,
                           }}
                         >
                           {isActive ? activeMarketBoard : null}
@@ -522,7 +524,11 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
                 <p className="eyebrow">Selected game</p>
                 <h2>
                   <span>
-                    <TeamMark teamName={selectedEvent.awayTeam} sport={selectedEvent.sport} />
+                    <TeamMark
+                      teamName={selectedEvent.awayTeam}
+                      sport={selectedEvent.sport}
+                      competitionId={selectedEvent.competitionId}
+                    />
                     {getTeamRanking(selectedEvent.awayTeam, rankingSnapshot)?.rank
                       ? `#${getTeamRanking(selectedEvent.awayTeam, rankingSnapshot)?.rank} `
                       : ""}
@@ -530,7 +536,11 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
                   </span>
                   <span className="event-at">at</span>
                   <span>
-                    <TeamMark teamName={selectedEvent.homeTeam} sport={selectedEvent.sport} />
+                    <TeamMark
+                      teamName={selectedEvent.homeTeam}
+                      sport={selectedEvent.sport}
+                      competitionId={selectedEvent.competitionId}
+                    />
                     {getTeamRanking(selectedEvent.homeTeam, rankingSnapshot)?.rank
                       ? `#${getTeamRanking(selectedEvent.homeTeam, rankingSnapshot)?.rank} `
                       : ""}

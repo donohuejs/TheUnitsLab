@@ -459,6 +459,7 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
                         <TeamMark
                           teamName={activeSelection?.awayTeam ?? ""}
                           sport={activeSelection?.sport ?? ""}
+                          competitionId={activeSelection?.competitionKey}
                         />
                         {activeSelection?.awayTeam}
                       </span>
@@ -467,6 +468,7 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
                         <TeamMark
                           teamName={activeSelection?.homeTeam ?? ""}
                           sport={activeSelection?.sport ?? ""}
+                          competitionId={activeSelection?.competitionKey}
                         />
                         {activeSelection?.homeTeam}
                       </span>
@@ -610,8 +612,17 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
                         </strong>
                         <small className="parlay-leg-context">
                           <span className="team-pair">
-                            <TeamMark teamName={leg.awayTeam} sport={leg.sport} />
-                            {leg.awayTeam} at <TeamMark teamName={leg.homeTeam} sport={leg.sport} />
+                            <TeamMark
+                              teamName={leg.awayTeam}
+                              sport={leg.sport}
+                              competitionId={leg.competitionKey}
+                            />
+                            {leg.awayTeam} at{" "}
+                            <TeamMark
+                              teamName={leg.homeTeam}
+                              sport={leg.sport}
+                              competitionId={leg.competitionKey}
+                            />
                             {leg.homeTeam}
                           </span>
                           <span>
@@ -781,8 +792,17 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
                       </strong>
                       <small className="parlay-leg-context">
                         <span className="team-pair">
-                          <TeamMark teamName={leg.awayTeam} sport={leg.sport} />
-                          {leg.awayTeam} at <TeamMark teamName={leg.homeTeam} sport={leg.sport} />
+                          <TeamMark
+                            teamName={leg.awayTeam}
+                            sport={leg.sport}
+                            competitionId={leg.competitionKey}
+                          />
+                          {leg.awayTeam} at{" "}
+                          <TeamMark
+                            teamName={leg.homeTeam}
+                            sport={leg.sport}
+                            competitionId={leg.competitionKey}
+                          />
                           {leg.homeTeam}
                         </span>
                         <span>

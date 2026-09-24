@@ -321,9 +321,17 @@ export default async function MyBetsPage({ searchParams }: Props) {
                       `${ticket.leg_count}-leg simulated parlay`
                     ) : (
                       <span className="team-pair">
-                        <TeamMark teamName={firstLeg.away_team} sport={firstLeg.sport_key} />
+                        <TeamMark
+                          teamName={firstLeg.away_team}
+                          sport={firstLeg.sport_key}
+                          competitionId={firstLeg.competition_key}
+                        />
                         {firstLeg.away_team} at{" "}
-                        <TeamMark teamName={firstLeg.home_team} sport={firstLeg.sport_key} />
+                        <TeamMark
+                          teamName={firstLeg.home_team}
+                          sport={firstLeg.sport_key}
+                          competitionId={firstLeg.competition_key}
+                        />
                         {firstLeg.home_team}
                       </span>
                     )}
@@ -346,9 +354,17 @@ export default async function MyBetsPage({ searchParams }: Props) {
                           <h3>
                             Leg {index + 1}:{" "}
                             <span className="team-pair">
-                              <TeamMark teamName={leg.away_team} sport={leg.sport_key} />
+                              <TeamMark
+                                teamName={leg.away_team}
+                                sport={leg.sport_key}
+                                competitionId={leg.competition_key}
+                              />
                               {leg.away_team} at{" "}
-                              <TeamMark teamName={leg.home_team} sport={leg.sport_key} />
+                              <TeamMark
+                                teamName={leg.home_team}
+                                sport={leg.sport_key}
+                                competitionId={leg.competition_key}
+                              />
                               {leg.home_team}
                             </span>
                           </h3>

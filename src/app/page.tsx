@@ -37,7 +37,13 @@ type RecentTicket = {
   stake_units: string | number;
   status: "open" | "won" | "lost" | "push" | "void";
   created_at: string;
-  bet_legs: { sport_key: string; away_team: string; home_team: string; selection_name: string }[];
+  bet_legs: {
+    sport_key: string;
+    competition_key: string;
+    away_team: string;
+    home_team: string;
+    selection_name: string;
+  }[];
 };
 
 function mapWager(row: DashboardRpcWager): AnalyticsWager {
@@ -110,7 +116,7 @@ export default async function HomePage() {
       supabase
         .from("bets")
         .select(
-          "id,ticket_type,stake_units,status,created_at,bet_legs(sport_key,away_team,home_team,selection_name)",
+          "id,ticket_type,stake_units,status,created_at,bet_legs(sport_key,competition_key,away_team,home_team,selection_name)",
         )
         .neq("status", "open")
         .eq("is_synthetic", false)
@@ -263,11 +269,13 @@ export default async function HomePage() {
                           <TeamMark
                             teamName={ticket.bet_legs[0].away_team}
                             sport={ticket.bet_legs[0].sport_key}
+                            competitionId={ticket.bet_legs[0].competition_key}
                           />
                           {ticket.bet_legs[0].away_team} at
                           <TeamMark
                             teamName={ticket.bet_legs[0].home_team}
                             sport={ticket.bet_legs[0].sport_key}
+                            competitionId={ticket.bet_legs[0].competition_key}
                           />
                           {ticket.bet_legs[0].home_team}
                         </span>
