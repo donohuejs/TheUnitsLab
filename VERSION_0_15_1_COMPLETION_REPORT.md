@@ -3,13 +3,14 @@
 Date: 2026-09-24
 Previous repository version: **0.15.0**
 Target and completed version: **0.15.1**
-Release recommendation: **CONDITIONAL PASS for implementation and local validation**; authenticated responsive QA and DOCX visual rendering remain pending.
+Release recommendation: **CONDITIONAL PASS for implementation, automated validation, and Preview deployment**; authenticated responsive QA and DOCX visual rendering remain pending.
 
 ## Objective
 
 Version 0.15.1 is a corrective Browse Odds patch for production QA findings. It fixes
 timezone-drifting date/kickoff presentation, prevents an event from opening implicitly,
-and makes the desktop Browse layout match the approved three-region master/detail design.
+makes the desktop Browse layout match the approved three-region master/detail design, and
+keeps the Bet Slip independent from active-event navigation.
 
 ## Version transition
 
@@ -29,6 +30,10 @@ The desktop remediation commit is `486923315a59fb0be4b34ec6798b9d305fc0b6f6`
 (`fix: refine v0.15.1 desktop browse layout`). All are on `release/v0.15.1`; `main` remains
 unchanged. No Git tag, GitHub Release, merge to main, or production deployment was created. The
 historical v0.15.0 report was not rewritten.
+
+The Bet Slip/date-navigation remediation commit is `4933d8a`
+(`fix: preserve bet slip across game navigation`). It is also on `release/v0.15.1`; `main` remains
+unchanged.
 
 ## Vercel Preview correction
 
@@ -60,6 +65,12 @@ successfully in Vercel (`success` / `Deployment has completed`). Its Vercel depl
 is:
 <https://vercel.com/donohuejs-1066s-projects/theunitslab/8Vzek1tK7siVWCuq9xB93UwL6wdo>
 The branch Preview URL remains protected by Vercel Login from this environment.
+
+The Bet Slip/date-navigation remediation commit `4933d8a` also completed successfully in Vercel
+(`success` / `Deployment has completed`). Its deployment dashboard is:
+<https://vercel.com/donohuejs-1066s-projects/theunitslab/HB1bG31H5JAroJBsmun3dZ1CY5j8>
+The branch Preview URL remains:
+<https://theunitslab-git-release-v0151-donohuejs-1066s-projects.vercel.app>
 
 The deployment is protected by Vercel Login from this environment, so Preview environment-variable
 configuration cannot be independently confirmed. No Vercel environment variables were changed.
@@ -109,6 +120,25 @@ configuration cannot be independently confirmed. No Vercel environment variables
   scrolling; mobile does not inherit desktop right-rail stickiness.
 - The new structure preserves bookmaker filters, Watch Odds, alternate-line behavior, straight and
   parlay slip persistence, stale-price validation, and server-authoritative placement.
+- The date control now reserves a 15.5rem desktop track and presents a readable formatted date
+  label over the native picker input. This removes the desktop truncation seen at 1366px, 1440px,
+  and 1920px without changing the compact mobile controls or introducing horizontal overflow.
+
+### Bet Slip navigation correction
+
+The QA failure was that straight/parlay selection state appeared to reset when navigating from
+event A to event B. The durable slip store itself was not cleared by navigation code, but the
+`BetSlip` host lived inside the query-driven Browse page. Changing the active event therefore
+replaced the Bet Slip boundary and coupled active-event/current-selection rendering to the slip
+component lifecycle. That made navigation unsafe for visible and transient slip state, especially
+on mobile.
+
+The correction separates these responsibilities: `BrowseBetSlipProvider` owns a stable Bet Slip
+host at the competition layout boundary, while `BrowseBetSlipBridge` updates only the current
+event selection and bookmaker groups. Straight, parlay, and mobile pending selections remain
+owned by the existing durable slip store. No navigation path clears slip contents, and legitimate
+user clear/removal behavior is unchanged. The regression test covers event A selection, navigation
+to B, adding B, switching back to A, and mobile pending selections.
 
 ## Sorting, rankings, and metadata
 
@@ -152,7 +182,10 @@ added.
 Created:
 
 - `src/components/browse-market-board.tsx`
+- `src/app/sports/[competition]/layout.tsx`
+- `src/components/browse-bet-slip-host.tsx`
 - `test/v0-15-1-browse-corrections.test.ts`
+- `test/v0-15-1-slip-navigation.test.ts`
 - `VERSION_0_15_1_COMPLETION_REPORT.md`
 
 Modified for this patch:
@@ -175,8 +208,10 @@ claimed as part of this patch.
 
 Passed:
 
-- `npm.cmd run validate`: format check, lint, typecheck, 47 test files / 283 tests, secret scan,
-  and production build.
+- Clean exact-remediation validation at `4933d8a`: `npm ci`, `npm.cmd run validate` with format
+  check, lint, typecheck, 47 test files / 280 tests, secret scan, and production build.
+- Focused Bet Slip regression validation: 3 test files / 41 tests passed, including straight,
+  parlay/mobile slip-store behavior and the v0.15.1 event-navigation contracts.
 - `npm.cmd audit --audit-level=high`: 0 vulnerabilities.
 - `npm.cmd run db:lint`: completed against local Supabase; only the two pre-existing settlement-test
   PL/pgSQL shadow/unused-variable warnings were reported.
@@ -192,6 +227,7 @@ Passed:
 - Clean desktop-remediation validation at `486923315a59fb0be4b34ec6798b9d305fc0b6f6`: `npm ci`,
   format check, lint, typecheck, 46 test files / 277 tests, production build, and secret scan all
   passed. The Vercel Preview check also passed.
+- The current pushed Preview for `4933d8a` passed its Vercel deployment check.
 
 Blocked or pending:
 
@@ -199,9 +235,9 @@ Blocked or pending:
   dimensions remains blocked because this checkout has no `.env.local`, public Supabase
   configuration, or authenticated browser/session. The available unauthenticated local smoke
   safely redirected `/sports/ncaaf` to `/auth`; it did not prove the authenticated Browse screen.
-- The pushed desktop Preview is available and its deployment check passed, but an authenticated
-  desktop smoke test at 1920px, 1440px, 1366px, and 1280px, including a short-height laptop,
-  remains pending before final release approval.
+- The pushed desktop Preview is available and its deployment check passed, but authenticated smoke
+  tests at 1920px, 1440px, 1366px, and 1280px, including a short-height laptop and mobile Bet Slip
+  navigation, remain pending before final release approval.
 - DOCX visual rendering and PNG inspection remain blocked because LibreOffice/`soffice.exe` is not
   installed. Structural governing-document editing completed successfully.
 
