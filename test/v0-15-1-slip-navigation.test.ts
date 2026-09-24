@@ -81,12 +81,21 @@ describe("v0.15.1 active-event and Bet Slip separation", () => {
     const layout = read("../src/app/sports/[competition]/layout.tsx");
     const page = read("../src/app/sports/[competition]/page.tsx");
     const controls = read("../src/components/browse-schedule-controls.tsx");
+    const browserSmoke = read("../scripts/check-browse-slip-navigation.mjs");
     const css = read("../src/app/globals.css");
 
     expect(host).toContain("createPortal");
     expect(host).toContain("BROWSE_BET_SLIP_TARGET_ID");
+    expect(host).toContain("BrowseBetSlipTarget");
+    expect(host).toContain("ref={registerTarget}");
+    expect(host).toContain("if (target) context.setTarget(target)");
     expect(layout).toContain("BrowseBetSlipProvider");
     expect(page).toContain("BrowseBetSlipBridge");
+    expect(page).toContain("<BrowseBetSlipTarget />");
+    expect(browserSmoke).toContain("page.goto(`${baseUrl}/sports/${competition}`");
+    expect(browserSmoke).toContain("link.click()");
+    expect(browserSmoke).toContain("selectOption(eventA)");
+    expect(browserSmoke).toContain("Open Bet Slip, 1 pick");
     expect(page).not.toContain("<BetSlip");
     expect(controls).toContain("browse-date-readable");
     expect(css).toContain(".browse-bet-slip-target");

@@ -1,6 +1,14 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 
 import { BetSlip } from "@/components/bet-slip";
@@ -47,12 +55,33 @@ export function BrowseBetSlipBridge(props: BrowseBetSlipProps) {
   }
 
   useEffect(() => {
-    context.setTarget(document.getElementById(BROWSE_BET_SLIP_TARGET_ID));
-  }, [context]);
-
-  useEffect(() => {
+    const target = document.getElementById(BROWSE_BET_SLIP_TARGET_ID);
+    if (target) context.setTarget(target);
     context.setProps(props);
   }, [context, props]);
 
   return null;
+}
+
+export function BrowseBetSlipTarget() {
+  const context = useContext(BrowseBetSlipContext);
+  if (!context) {
+    throw new Error("BrowseBetSlipTarget must be rendered inside BrowseBetSlipProvider.");
+  }
+
+  const registerTarget = useCallback(
+    (target: HTMLDivElement | null) => {
+      if (target) context.setTarget(target);
+    },
+    [context],
+  );
+
+  return (
+    <div
+      ref={registerTarget}
+      id={BROWSE_BET_SLIP_TARGET_ID}
+      className="browse-bet-slip-target"
+      aria-label="Simulated bet slips"
+    />
+  );
 }
