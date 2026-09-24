@@ -35,6 +35,10 @@ The Bet Slip/date-navigation remediation commit is `4933d8a`
 (`fix: preserve bet slip across game navigation`). It is also on `release/v0.15.1`; `main` remains
 unchanged.
 
+The follow-up portal-lifecycle correction is `c19d0f1`
+(`fix: rebind bet slip portal across browse navigation`). It is also on `release/v0.15.1`; `main`
+remains unchanged.
+
 ## Vercel Preview correction
 
 The first Preview for `5ca2a32d16670ab7c14b696b3980b537618371f6` failed during TypeScript
@@ -71,6 +75,12 @@ The Bet Slip/date-navigation remediation commit `4933d8a` also completed success
 <https://vercel.com/donohuejs-1066s-projects/theunitslab/HB1bG31H5JAroJBsmun3dZ1CY5j8>
 The branch Preview URL remains:
 <https://theunitslab-git-release-v0151-donohuejs-1066s-projects.vercel.app>
+
+The portal-lifecycle correction `c19d0f1` completed successfully in Vercel
+(`success` / `Deployment has completed`). Its deployment dashboard is:
+<https://vercel.com/donohuejs-1066s-projects/theunitslab/CbUgqrkeKdM5zk3aNPcDwdcTssPC>
+The Preview remains protected by Vercel Login from this environment, so authenticated behavior
+cannot be independently confirmed here.
 
 The deployment is protected by Vercel Login from this environment, so Preview environment-variable
 configuration cannot be independently confirmed. No Vercel environment variables were changed.
@@ -140,6 +150,22 @@ owned by the existing durable slip store. No navigation path clears slip content
 user clear/removal behavior is unchanged. The regression test covers event A selection, navigation
 to B, adding B, switching back to A, and mobile pending selections.
 
+Authenticated Preview QA then reproduced the failure despite that first correction. The exact
+boundary was the portal target itself: the target `<div>` was still owned by the query-driven page,
+while `BrowseBetSlipProvider` persisted in the competition layout. `BrowseBetSlipBridge` looked up
+that target in an effect that depended only on the persistent context. A soft `router.push` replaced
+the page DOM node but reused the bridge, leaving the portal attached to the detached old node. The
+store did not intentionally clear the selection; the rendered Bet Slip disappeared with its stale
+DOM host.
+
+Commit `c19d0f1` makes the target a client component with a callback ref. Every newly mounted target
+node registers itself with the persistent provider, and the bridge also re-resolves the target when
+its page props change. This preserves the stable provider/store architecture while making the
+portal resilient to real search-parameter navigation. The new Playwright smoke script exercises the
+actual Browse page, Games navigator, Jump to Game control, straight-slip A→B→A+B flow, and mobile
+A→B flow. The earlier unit test appeared correct because it only exercised the durable store and
+static component contracts; it never replaced the portal DOM node through a router transition.
+
 ## Sorting, rankings, and metadata
 
 The v0.15.0 deterministic sport-aware priority engine remains unchanged. Kickoff date and time
@@ -184,6 +210,7 @@ Created:
 - `src/components/browse-market-board.tsx`
 - `src/app/sports/[competition]/layout.tsx`
 - `src/components/browse-bet-slip-host.tsx`
+- `scripts/check-browse-slip-navigation.mjs`
 - `test/v0-15-1-browse-corrections.test.ts`
 - `test/v0-15-1-slip-navigation.test.ts`
 - `VERSION_0_15_1_COMPLETION_REPORT.md`
@@ -208,6 +235,10 @@ claimed as part of this patch.
 
 Passed:
 
+- Clean exact portal-lifecycle validation at `c19d0f1`: `npm ci`, `npm.cmd run validate` with
+  format check, lint, typecheck, 47 test files / 280 tests, secret scan, and production build.
+- `node --check scripts/check-browse-slip-navigation.mjs` passed; the Playwright regression is
+  ready for an authenticated environment.
 - Clean exact-remediation validation at `4933d8a`: `npm ci`, `npm.cmd run validate` with format
   check, lint, typecheck, 47 test files / 280 tests, secret scan, and production build.
 - Focused Bet Slip regression validation: 3 test files / 41 tests passed, including straight,
@@ -227,7 +258,7 @@ Passed:
 - Clean desktop-remediation validation at `486923315a59fb0be4b34ec6798b9d305fc0b6f6`: `npm ci`,
   format check, lint, typecheck, 46 test files / 277 tests, production build, and secret scan all
   passed. The Vercel Preview check also passed.
-- The current pushed Preview for `4933d8a` passed its Vercel deployment check.
+- The current pushed Preview for `c19d0f1` passed its Vercel deployment check.
 
 Blocked or pending:
 
@@ -237,7 +268,11 @@ Blocked or pending:
   safely redirected `/sports/ncaaf` to `/auth`; it did not prove the authenticated Browse screen.
 - The pushed desktop Preview is available and its deployment check passed, but authenticated smoke
   tests at 1920px, 1440px, 1366px, and 1280px, including a short-height laptop and mobile Bet Slip
-  navigation, remain pending before final release approval.
+  navigation, remain pending before final release approval. The available browser session reached
+  Vercel Login rather than the application, so the post-fix A→B→A+B result cannot be claimed here.
+- The new browser-level smoke script could not run against the protected Preview without an
+  authenticated Vercel/application session. The prior authenticated failure remains the reason
+  this release gate is open; this checkout does not independently prove the post-fix result.
 - DOCX visual rendering and PNG inspection remain blocked because LibreOffice/`soffice.exe` is not
   installed. Structural governing-document editing completed successfully.
 
@@ -271,7 +306,8 @@ active slip or select an incompatible event.
 ## Release recommendation
 
 **CONDITIONAL PASS for v0.15.1 implementation.** The timezone/date regressions, neutral event
-selection, desktop master/detail structure, mobile behavior, metadata fallbacks, version metadata,
-and documentation are implemented and covered by passing code/database validation. Final release
-approval should wait for authenticated responsive QA and DOCX visual rendering on an appropriately
-configured environment. No database migration needs to be applied.
+selection, desktop master/detail structure, portal lifecycle correction, mobile behavior, metadata
+fallbacks, version metadata, and documentation are implemented and covered by passing code/database
+validation. Final release approval must wait for an authenticated Preview run of the exact A→B→A+B
+flow, authenticated responsive QA, and DOCX visual rendering on an appropriately configured
+environment. No database migration needs to be applied.
