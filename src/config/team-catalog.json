@@ -1,0 +1,2150 @@
+{
+  "ucl": {
+    "season": "2026",
+    "count": 36,
+    "teams": [
+      {
+        "id": "887",
+        "abbreviation": "AEK",
+        "displayName": "AEK Athens",
+        "location": "AEK Athens",
+        "shortDisplayName": "AEK Athens"
+      },
+      {
+        "id": "104",
+        "abbreviation": "ROMA",
+        "displayName": "AS Roma",
+        "location": "AS Roma",
+        "shortDisplayName": "AS Roma"
+      },
+      {
+        "id": "359",
+        "abbreviation": "ARS",
+        "displayName": "Arsenal",
+        "location": "Arsenal",
+        "shortDisplayName": "Arsenal"
+      },
+      {
+        "id": "362",
+        "abbreviation": "AVL",
+        "displayName": "Aston Villa",
+        "location": "Aston Villa",
+        "shortDisplayName": "Aston Villa"
+      },
+      {
+        "id": "1068",
+        "abbreviation": "ATM",
+        "displayName": "Atlético Madrid",
+        "location": "Atlético Madrid",
+        "shortDisplayName": "Atlético"
+      },
+      {
+        "id": "83",
+        "abbreviation": "BAR",
+        "displayName": "Barcelona",
+        "location": "Barcelona",
+        "shortDisplayName": "Barcelona"
+      },
+      {
+        "id": "132",
+        "abbreviation": "MUN",
+        "displayName": "Bayern Munich",
+        "location": "Bayern Munich",
+        "shortDisplayName": "Bayern"
+      },
+      {
+        "id": "2980",
+        "abbreviation": "BODO",
+        "displayName": "Bodo/Glimt",
+        "location": "Bodo/Glimt",
+        "shortDisplayName": "Bodo/Glimt"
+      },
+      {
+        "id": "124",
+        "abbreviation": "DOR",
+        "displayName": "Borussia Dortmund",
+        "location": "Borussia Dortmund",
+        "shortDisplayName": "Dortmund"
+      },
+      {
+        "id": "570",
+        "abbreviation": "BRU",
+        "displayName": "Club Brugge",
+        "location": "Club Brugge",
+        "shortDisplayName": "Club Brugge"
+      },
+      {
+        "id": "2572",
+        "abbreviation": "COMO",
+        "displayName": "Como",
+        "location": "Como",
+        "shortDisplayName": "Como"
+      },
+      {
+        "id": "437",
+        "abbreviation": "FCP",
+        "displayName": "FC Porto",
+        "location": "FC Porto",
+        "shortDisplayName": "FC Porto"
+      },
+      {
+        "id": "436",
+        "abbreviation": "FEN",
+        "displayName": "Fenerbahce",
+        "location": "Fenerbahce",
+        "shortDisplayName": "Fenerbahce"
+      },
+      {
+        "id": "142",
+        "abbreviation": "FEY",
+        "displayName": "Feyenoord Rotterdam",
+        "location": "Feyenoord Rotterdam",
+        "shortDisplayName": "Feyenoord"
+      },
+      {
+        "id": "432",
+        "abbreviation": "GAL",
+        "displayName": "Galatasaray",
+        "location": "Galatasaray",
+        "shortDisplayName": "Galatasaray"
+      },
+      {
+        "id": "110",
+        "abbreviation": "INT",
+        "displayName": "Internazionale",
+        "location": "Internazionale",
+        "shortDisplayName": "Inter Milan"
+      },
+      {
+        "id": "4411",
+        "abbreviation": "LAS",
+        "displayName": "LASK Linz",
+        "location": "LASK Linz",
+        "shortDisplayName": "LASK Linz"
+      },
+      {
+        "id": "175",
+        "abbreviation": "RCL",
+        "displayName": "Lens",
+        "location": "Lens",
+        "shortDisplayName": "Lens"
+      },
+      {
+        "id": "166",
+        "abbreviation": "LILL",
+        "displayName": "Lille",
+        "location": "Lille",
+        "shortDisplayName": "Lille"
+      },
+      {
+        "id": "364",
+        "abbreviation": "LIV",
+        "displayName": "Liverpool",
+        "location": "Liverpool",
+        "shortDisplayName": "Liverpool"
+      },
+      {
+        "id": "382",
+        "abbreviation": "MNC",
+        "displayName": "Manchester City",
+        "location": "Manchester City",
+        "shortDisplayName": "Man City"
+      },
+      {
+        "id": "360",
+        "abbreviation": "MAN",
+        "displayName": "Manchester United",
+        "location": "Manchester United",
+        "shortDisplayName": "Man United"
+      },
+      {
+        "id": "114",
+        "abbreviation": "NAP",
+        "displayName": "Napoli",
+        "location": "Napoli",
+        "shortDisplayName": "Napoli"
+      },
+      {
+        "id": "148",
+        "abbreviation": "PSV",
+        "displayName": "PSV Eindhoven",
+        "location": "PSV Eindhoven",
+        "shortDisplayName": "PSV"
+      },
+      {
+        "id": "160",
+        "abbreviation": "PSG",
+        "displayName": "Paris Saint-Germain",
+        "location": "Paris Saint-Germain",
+        "shortDisplayName": "PSG"
+      },
+      {
+        "id": "11420",
+        "abbreviation": "RBL",
+        "displayName": "RB Leipzig",
+        "location": "RB Leipzig",
+        "shortDisplayName": "RB Leipzig"
+      },
+      {
+        "id": "244",
+        "abbreviation": "BET",
+        "displayName": "Real Betis",
+        "location": "Real Betis",
+        "shortDisplayName": "Betis"
+      },
+      {
+        "id": "86",
+        "abbreviation": "RMA",
+        "displayName": "Real Madrid",
+        "location": "Real Madrid",
+        "shortDisplayName": "Real Madrid"
+      },
+      {
+        "id": "21922",
+        "abbreviation": "SAB",
+        "displayName": "Sabah FK",
+        "location": "Sabah FK",
+        "shortDisplayName": "Sabah"
+      },
+      {
+        "id": "493",
+        "abbreviation": "SHK",
+        "displayName": "Shakhtar Donetsk",
+        "location": "Shakhtar Donetsk",
+        "shortDisplayName": "Shakhtar"
+      },
+      {
+        "id": "494",
+        "abbreviation": "SLP",
+        "displayName": "Slavia Prague",
+        "location": "Slavia Prague",
+        "shortDisplayName": "Slavia Prague"
+      },
+      {
+        "id": "521",
+        "abbreviation": "SLB",
+        "displayName": "Slovan Bratislava",
+        "location": "Slovan Bratislava",
+        "shortDisplayName": "S Bratislava"
+      },
+      {
+        "id": "2250",
+        "abbreviation": "SCP",
+        "displayName": "Sporting CP",
+        "location": "Sporting CP",
+        "shortDisplayName": "Sporting"
+      },
+      {
+        "id": "134",
+        "abbreviation": "VFB",
+        "displayName": "VfB Stuttgart",
+        "location": "VfB Stuttgart",
+        "shortDisplayName": "Stuttgart"
+      },
+      {
+        "id": "510",
+        "abbreviation": "VIK",
+        "displayName": "Viking FK",
+        "location": "Viking FK",
+        "shortDisplayName": "Viking FK"
+      },
+      {
+        "id": "102",
+        "abbreviation": "VIL",
+        "displayName": "Villarreal",
+        "location": "Villarreal",
+        "shortDisplayName": "Villarreal"
+      }
+    ]
+  },
+  "ncaaf": {
+    "season": "2026",
+    "count": 138,
+    "teams": [
+      {
+        "id": "103",
+        "abbreviation": "BC",
+        "displayName": "Boston College Eagles",
+        "location": "Boston College",
+        "shortDisplayName": "Boston College",
+        "conference": "ACC"
+      },
+      {
+        "id": "25",
+        "abbreviation": "CAL",
+        "displayName": "California Golden Bears",
+        "location": "California",
+        "shortDisplayName": "California",
+        "conference": "ACC"
+      },
+      {
+        "id": "228",
+        "abbreviation": "CLEM",
+        "displayName": "Clemson Tigers",
+        "location": "Clemson",
+        "shortDisplayName": "Clemson",
+        "conference": "ACC"
+      },
+      {
+        "id": "150",
+        "abbreviation": "DUKE",
+        "displayName": "Duke Blue Devils",
+        "location": "Duke",
+        "shortDisplayName": "Duke",
+        "conference": "ACC"
+      },
+      {
+        "id": "52",
+        "abbreviation": "FSU",
+        "displayName": "Florida State Seminoles",
+        "location": "Florida State",
+        "shortDisplayName": "Florida St",
+        "conference": "ACC"
+      },
+      {
+        "id": "59",
+        "abbreviation": "GT",
+        "displayName": "Georgia Tech Yellow Jackets",
+        "location": "Georgia Tech",
+        "shortDisplayName": "Georgia Tech",
+        "conference": "ACC"
+      },
+      {
+        "id": "97",
+        "abbreviation": "LOU",
+        "displayName": "Louisville Cardinals",
+        "location": "Louisville",
+        "shortDisplayName": "Louisville",
+        "conference": "ACC"
+      },
+      {
+        "id": "2390",
+        "abbreviation": "MIA",
+        "displayName": "Miami Hurricanes",
+        "location": "Miami",
+        "shortDisplayName": "Miami",
+        "conference": "ACC"
+      },
+      {
+        "id": "152",
+        "abbreviation": "NCSU",
+        "displayName": "NC State Wolfpack",
+        "location": "NC State",
+        "shortDisplayName": "NC State",
+        "conference": "ACC"
+      },
+      {
+        "id": "153",
+        "abbreviation": "UNC",
+        "displayName": "North Carolina Tar Heels",
+        "location": "North Carolina",
+        "shortDisplayName": "North Carolina",
+        "conference": "ACC"
+      },
+      {
+        "id": "221",
+        "abbreviation": "PITT",
+        "displayName": "Pittsburgh Panthers",
+        "location": "Pittsburgh",
+        "shortDisplayName": "Pitt",
+        "conference": "ACC"
+      },
+      {
+        "id": "2567",
+        "abbreviation": "SMU",
+        "displayName": "SMU Mustangs",
+        "location": "SMU",
+        "shortDisplayName": "SMU",
+        "conference": "ACC"
+      },
+      {
+        "id": "24",
+        "abbreviation": "STAN",
+        "displayName": "Stanford Cardinal",
+        "location": "Stanford",
+        "shortDisplayName": "Stanford",
+        "conference": "ACC"
+      },
+      {
+        "id": "183",
+        "abbreviation": "SYR",
+        "displayName": "Syracuse Orange",
+        "location": "Syracuse",
+        "shortDisplayName": "Syracuse",
+        "conference": "ACC"
+      },
+      {
+        "id": "258",
+        "abbreviation": "UVA",
+        "displayName": "Virginia Cavaliers",
+        "location": "Virginia",
+        "shortDisplayName": "Virginia",
+        "conference": "ACC"
+      },
+      {
+        "id": "259",
+        "abbreviation": "VT",
+        "displayName": "Virginia Tech Hokies",
+        "location": "Virginia Tech",
+        "shortDisplayName": "Virginia Tech",
+        "conference": "ACC"
+      },
+      {
+        "id": "154",
+        "abbreviation": "WAKE",
+        "displayName": "Wake Forest Demon Deacons",
+        "location": "Wake Forest",
+        "shortDisplayName": "Wake Forest",
+        "conference": "ACC"
+      },
+      {
+        "id": "349",
+        "abbreviation": "ARMY",
+        "displayName": "Army Black Knights",
+        "location": "Army",
+        "shortDisplayName": "Army",
+        "conference": "American"
+      },
+      {
+        "id": "2429",
+        "abbreviation": "CLT",
+        "displayName": "Charlotte 49ers",
+        "location": "Charlotte",
+        "shortDisplayName": "Charlotte",
+        "conference": "American"
+      },
+      {
+        "id": "151",
+        "abbreviation": "ECU",
+        "displayName": "East Carolina Pirates",
+        "location": "East Carolina",
+        "shortDisplayName": "East Carolina",
+        "conference": "American"
+      },
+      {
+        "id": "2226",
+        "abbreviation": "FAU",
+        "displayName": "Florida Atlantic Owls",
+        "location": "Florida Atlantic",
+        "shortDisplayName": "FAU",
+        "conference": "American"
+      },
+      {
+        "id": "235",
+        "abbreviation": "MEM",
+        "displayName": "Memphis Tigers",
+        "location": "Memphis",
+        "shortDisplayName": "Memphis",
+        "conference": "American"
+      },
+      {
+        "id": "2426",
+        "abbreviation": "NAVY",
+        "displayName": "Navy Midshipmen",
+        "location": "Navy",
+        "shortDisplayName": "Navy",
+        "conference": "American"
+      },
+      {
+        "id": "249",
+        "abbreviation": "UNT",
+        "displayName": "North Texas Mean Green",
+        "location": "North Texas",
+        "shortDisplayName": "North Texas",
+        "conference": "American"
+      },
+      {
+        "id": "242",
+        "abbreviation": "RICE",
+        "displayName": "Rice Owls",
+        "location": "Rice",
+        "shortDisplayName": "Rice",
+        "conference": "American"
+      },
+      {
+        "id": "58",
+        "abbreviation": "USF",
+        "displayName": "South Florida Bulls",
+        "location": "South Florida",
+        "shortDisplayName": "South Florida",
+        "conference": "American"
+      },
+      {
+        "id": "218",
+        "abbreviation": "TEM",
+        "displayName": "Temple Owls",
+        "location": "Temple",
+        "shortDisplayName": "Temple",
+        "conference": "American"
+      },
+      {
+        "id": "2655",
+        "abbreviation": "TULN",
+        "displayName": "Tulane Green Wave",
+        "location": "Tulane",
+        "shortDisplayName": "Tulane",
+        "conference": "American"
+      },
+      {
+        "id": "202",
+        "abbreviation": "TLSA",
+        "displayName": "Tulsa Golden Hurricane",
+        "location": "Tulsa",
+        "shortDisplayName": "Tulsa",
+        "conference": "American"
+      },
+      {
+        "id": "5",
+        "abbreviation": "UAB",
+        "displayName": "UAB Blazers",
+        "location": "UAB",
+        "shortDisplayName": "UAB",
+        "conference": "American"
+      },
+      {
+        "id": "2636",
+        "abbreviation": "UTSA",
+        "displayName": "UTSA Roadrunners",
+        "location": "UTSA",
+        "shortDisplayName": "UTSA",
+        "conference": "American"
+      },
+      {
+        "id": "9",
+        "abbreviation": "ASU",
+        "displayName": "Arizona State Sun Devils",
+        "location": "Arizona State",
+        "shortDisplayName": "Arizona St",
+        "conference": "Big 12"
+      },
+      {
+        "id": "12",
+        "abbreviation": "ARIZ",
+        "displayName": "Arizona Wildcats",
+        "location": "Arizona",
+        "shortDisplayName": "Arizona",
+        "conference": "Big 12"
+      },
+      {
+        "id": "252",
+        "abbreviation": "BYU",
+        "displayName": "BYU Cougars",
+        "location": "BYU",
+        "shortDisplayName": "BYU",
+        "conference": "Big 12"
+      },
+      {
+        "id": "239",
+        "abbreviation": "BAY",
+        "displayName": "Baylor Bears",
+        "location": "Baylor",
+        "shortDisplayName": "Baylor",
+        "conference": "Big 12"
+      },
+      {
+        "id": "2132",
+        "abbreviation": "CIN",
+        "displayName": "Cincinnati Bearcats",
+        "location": "Cincinnati",
+        "shortDisplayName": "Cincinnati",
+        "conference": "Big 12"
+      },
+      {
+        "id": "38",
+        "abbreviation": "COLO",
+        "displayName": "Colorado Buffaloes",
+        "location": "Colorado",
+        "shortDisplayName": "Colorado",
+        "conference": "Big 12"
+      },
+      {
+        "id": "248",
+        "abbreviation": "HOU",
+        "displayName": "Houston Cougars",
+        "location": "Houston",
+        "shortDisplayName": "Houston",
+        "conference": "Big 12"
+      },
+      {
+        "id": "66",
+        "abbreviation": "ISU",
+        "displayName": "Iowa State Cyclones",
+        "location": "Iowa State",
+        "shortDisplayName": "Iowa State",
+        "conference": "Big 12"
+      },
+      {
+        "id": "2305",
+        "abbreviation": "KU",
+        "displayName": "Kansas Jayhawks",
+        "location": "Kansas",
+        "shortDisplayName": "Kansas",
+        "conference": "Big 12"
+      },
+      {
+        "id": "2306",
+        "abbreviation": "KSU",
+        "displayName": "Kansas State Wildcats",
+        "location": "Kansas State",
+        "shortDisplayName": "Kansas St",
+        "conference": "Big 12"
+      },
+      {
+        "id": "197",
+        "abbreviation": "OKST",
+        "displayName": "Oklahoma State Cowboys",
+        "location": "Oklahoma State",
+        "shortDisplayName": "Oklahoma St",
+        "conference": "Big 12"
+      },
+      {
+        "id": "2628",
+        "abbreviation": "TCU",
+        "displayName": "TCU Horned Frogs",
+        "location": "TCU",
+        "shortDisplayName": "TCU",
+        "conference": "Big 12"
+      },
+      {
+        "id": "2641",
+        "abbreviation": "TTU",
+        "displayName": "Texas Tech Red Raiders",
+        "location": "Texas Tech",
+        "shortDisplayName": "Texas Tech",
+        "conference": "Big 12"
+      },
+      {
+        "id": "2116",
+        "abbreviation": "UCF",
+        "displayName": "UCF Knights",
+        "location": "UCF",
+        "shortDisplayName": "UCF",
+        "conference": "Big 12"
+      },
+      {
+        "id": "254",
+        "abbreviation": "UTAH",
+        "displayName": "Utah Utes",
+        "location": "Utah",
+        "shortDisplayName": "Utah",
+        "conference": "Big 12"
+      },
+      {
+        "id": "277",
+        "abbreviation": "WVU",
+        "displayName": "West Virginia Mountaineers",
+        "location": "West Virginia",
+        "shortDisplayName": "West Virginia",
+        "conference": "Big 12"
+      },
+      {
+        "id": "356",
+        "abbreviation": "ILL",
+        "displayName": "Illinois Fighting Illini",
+        "location": "Illinois",
+        "shortDisplayName": "Illinois",
+        "conference": "Big Ten"
+      },
+      {
+        "id": "84",
+        "abbreviation": "IU",
+        "displayName": "Indiana Hoosiers",
+        "location": "Indiana",
+        "shortDisplayName": "Indiana",
+        "conference": "Big Ten"
+      },
+      {
+        "id": "2294",
+        "abbreviation": "IOWA",
+        "displayName": "Iowa Hawkeyes",
+        "location": "Iowa",
+        "shortDisplayName": "Iowa",
+        "conference": "Big Ten"
+      },
+      {
+        "id": "120",
+        "abbreviation": "MD",
+        "displayName": "Maryland Terrapins",
+        "location": "Maryland",
+        "shortDisplayName": "Maryland",
+        "conference": "Big Ten"
+      },
+      {
+        "id": "127",
+        "abbreviation": "MSU",
+        "displayName": "Michigan State Spartans",
+        "location": "Michigan State",
+        "shortDisplayName": "Michigan St",
+        "conference": "Big Ten"
+      },
+      {
+        "id": "130",
+        "abbreviation": "MICH",
+        "displayName": "Michigan Wolverines",
+        "location": "Michigan",
+        "shortDisplayName": "Michigan",
+        "conference": "Big Ten"
+      },
+      {
+        "id": "135",
+        "abbreviation": "MINN",
+        "displayName": "Minnesota Golden Gophers",
+        "location": "Minnesota",
+        "shortDisplayName": "Minnesota",
+        "conference": "Big Ten"
+      },
+      {
+        "id": "158",
+        "abbreviation": "NEB",
+        "displayName": "Nebraska Cornhuskers",
+        "location": "Nebraska",
+        "shortDisplayName": "Nebraska",
+        "conference": "Big Ten"
+      },
+      {
+        "id": "77",
+        "abbreviation": "NU",
+        "displayName": "Northwestern Wildcats",
+        "location": "Northwestern",
+        "shortDisplayName": "Northwestern",
+        "conference": "Big Ten"
+      },
+      {
+        "id": "194",
+        "abbreviation": "OSU",
+        "displayName": "Ohio State Buckeyes",
+        "location": "Ohio State",
+        "shortDisplayName": "Ohio State",
+        "conference": "Big Ten"
+      },
+      {
+        "id": "2483",
+        "abbreviation": "ORE",
+        "displayName": "Oregon Ducks",
+        "location": "Oregon",
+        "shortDisplayName": "Oregon",
+        "conference": "Big Ten"
+      },
+      {
+        "id": "213",
+        "abbreviation": "PSU",
+        "displayName": "Penn State Nittany Lions",
+        "location": "Penn State",
+        "shortDisplayName": "Penn State",
+        "conference": "Big Ten"
+      },
+      {
+        "id": "2509",
+        "abbreviation": "PUR",
+        "displayName": "Purdue Boilermakers",
+        "location": "Purdue",
+        "shortDisplayName": "Purdue",
+        "conference": "Big Ten"
+      },
+      {
+        "id": "164",
+        "abbreviation": "RUTG",
+        "displayName": "Rutgers Scarlet Knights",
+        "location": "Rutgers",
+        "shortDisplayName": "Rutgers",
+        "conference": "Big Ten"
+      },
+      {
+        "id": "26",
+        "abbreviation": "UCLA",
+        "displayName": "UCLA Bruins",
+        "location": "UCLA",
+        "shortDisplayName": "UCLA",
+        "conference": "Big Ten"
+      },
+      {
+        "id": "30",
+        "abbreviation": "USC",
+        "displayName": "USC Trojans",
+        "location": "USC",
+        "shortDisplayName": "USC",
+        "conference": "Big Ten"
+      },
+      {
+        "id": "264",
+        "abbreviation": "WASH",
+        "displayName": "Washington Huskies",
+        "location": "Washington",
+        "shortDisplayName": "Washington",
+        "conference": "Big Ten"
+      },
+      {
+        "id": "275",
+        "abbreviation": "WIS",
+        "displayName": "Wisconsin Badgers",
+        "location": "Wisconsin",
+        "shortDisplayName": "Wisconsin",
+        "conference": "Big Ten"
+      },
+      {
+        "id": "48",
+        "abbreviation": "DEL",
+        "displayName": "Delaware Blue Hens",
+        "location": "Delaware",
+        "shortDisplayName": "Delaware",
+        "conference": "Conference USA"
+      },
+      {
+        "id": "2229",
+        "abbreviation": "FIU",
+        "displayName": "Florida International Panthers",
+        "location": "Florida International",
+        "shortDisplayName": "FIU",
+        "conference": "Conference USA"
+      },
+      {
+        "id": "55",
+        "abbreviation": "JXST",
+        "displayName": "Jacksonville State Gamecocks",
+        "location": "Jacksonville State",
+        "shortDisplayName": "Jax State",
+        "conference": "Conference USA"
+      },
+      {
+        "id": "338",
+        "abbreviation": "KENN",
+        "displayName": "Kennesaw State Owls",
+        "location": "Kennesaw State",
+        "shortDisplayName": "Kennesaw St",
+        "conference": "Conference USA"
+      },
+      {
+        "id": "2335",
+        "abbreviation": "LIB",
+        "displayName": "Liberty Flames",
+        "location": "Liberty",
+        "shortDisplayName": "Liberty",
+        "conference": "Conference USA"
+      },
+      {
+        "id": "2393",
+        "abbreviation": "MTSU",
+        "displayName": "Middle Tennessee Blue Raiders",
+        "location": "Middle Tennessee",
+        "shortDisplayName": "MTSU",
+        "conference": "Conference USA"
+      },
+      {
+        "id": "2623",
+        "abbreviation": "MOST",
+        "displayName": "Missouri State Bears",
+        "location": "Missouri State",
+        "shortDisplayName": "Missouri St",
+        "conference": "Conference USA"
+      },
+      {
+        "id": "166",
+        "abbreviation": "NMSU",
+        "displayName": "New Mexico State Aggies",
+        "location": "New Mexico State",
+        "shortDisplayName": "New Mexico St",
+        "conference": "Conference USA"
+      },
+      {
+        "id": "2534",
+        "abbreviation": "SHSU",
+        "displayName": "Sam Houston Bearkats",
+        "location": "Sam Houston",
+        "shortDisplayName": "Sam Houston",
+        "conference": "Conference USA"
+      },
+      {
+        "id": "98",
+        "abbreviation": "WKU",
+        "displayName": "Western Kentucky Hilltoppers",
+        "location": "Western Kentucky",
+        "shortDisplayName": "Western KY",
+        "conference": "Conference USA"
+      },
+      {
+        "id": "87",
+        "abbreviation": "ND",
+        "displayName": "Notre Dame Fighting Irish",
+        "location": "Notre Dame",
+        "shortDisplayName": "Notre Dame",
+        "conference": "FBS Independents"
+      },
+      {
+        "id": "41",
+        "abbreviation": "CONN",
+        "displayName": "UConn Huskies",
+        "location": "UConn",
+        "shortDisplayName": "UConn",
+        "conference": "FBS Independents"
+      },
+      {
+        "id": "2006",
+        "abbreviation": "AKR",
+        "displayName": "Akron Zips",
+        "location": "Akron",
+        "shortDisplayName": "Akron",
+        "conference": "Mid-American"
+      },
+      {
+        "id": "2050",
+        "abbreviation": "BALL",
+        "displayName": "Ball State Cardinals",
+        "location": "Ball State",
+        "shortDisplayName": "Ball State",
+        "conference": "Mid-American"
+      },
+      {
+        "id": "189",
+        "abbreviation": "BGSU",
+        "displayName": "Bowling Green Falcons",
+        "location": "Bowling Green",
+        "shortDisplayName": "Bowling Green",
+        "conference": "Mid-American"
+      },
+      {
+        "id": "2084",
+        "abbreviation": "BUF",
+        "displayName": "Buffalo Bulls",
+        "location": "Buffalo",
+        "shortDisplayName": "Buffalo",
+        "conference": "Mid-American"
+      },
+      {
+        "id": "2117",
+        "abbreviation": "CMU",
+        "displayName": "Central Michigan Chippewas",
+        "location": "Central Michigan",
+        "shortDisplayName": "C Michigan",
+        "conference": "Mid-American"
+      },
+      {
+        "id": "2199",
+        "abbreviation": "EMU",
+        "displayName": "Eastern Michigan Eagles",
+        "location": "Eastern Michigan",
+        "shortDisplayName": "E Michigan",
+        "conference": "Mid-American"
+      },
+      {
+        "id": "2309",
+        "abbreviation": "KENT",
+        "displayName": "Kent State Golden Flashes",
+        "location": "Kent State",
+        "shortDisplayName": "Kent State",
+        "conference": "Mid-American"
+      },
+      {
+        "id": "113",
+        "abbreviation": "MASS",
+        "displayName": "Massachusetts Minutemen",
+        "location": "Massachusetts",
+        "shortDisplayName": "UMass",
+        "conference": "Mid-American"
+      },
+      {
+        "id": "193",
+        "abbreviation": "M-OH",
+        "displayName": "Miami (OH) RedHawks",
+        "location": "Miami (OH)",
+        "shortDisplayName": "Miami OH",
+        "conference": "Mid-American"
+      },
+      {
+        "id": "195",
+        "abbreviation": "OHIO",
+        "displayName": "Ohio Bobcats",
+        "location": "Ohio",
+        "shortDisplayName": "Ohio",
+        "conference": "Mid-American"
+      },
+      {
+        "id": "16",
+        "abbreviation": "SAC",
+        "displayName": "Sacramento State Hornets",
+        "location": "Sacramento State",
+        "shortDisplayName": "Sacramento St",
+        "conference": "Mid-American"
+      },
+      {
+        "id": "2649",
+        "abbreviation": "TOL",
+        "displayName": "Toledo Rockets",
+        "location": "Toledo",
+        "shortDisplayName": "Toledo",
+        "conference": "Mid-American"
+      },
+      {
+        "id": "2711",
+        "abbreviation": "WMU",
+        "displayName": "Western Michigan Broncos",
+        "location": "Western Michigan",
+        "shortDisplayName": "W Michigan",
+        "conference": "Mid-American"
+      },
+      {
+        "id": "2005",
+        "abbreviation": "AF",
+        "displayName": "Air Force Falcons",
+        "location": "Air Force",
+        "shortDisplayName": "Air Force",
+        "conference": "Mountain West"
+      },
+      {
+        "id": "62",
+        "abbreviation": "HAW",
+        "displayName": "Hawai'i Rainbow Warriors",
+        "location": "Hawai'i",
+        "shortDisplayName": "Hawai'i",
+        "conference": "Mountain West"
+      },
+      {
+        "id": "2440",
+        "abbreviation": "NEV",
+        "displayName": "Nevada Wolf Pack",
+        "location": "Nevada",
+        "shortDisplayName": "Nevada",
+        "conference": "Mountain West"
+      },
+      {
+        "id": "167",
+        "abbreviation": "UNM",
+        "displayName": "New Mexico Lobos",
+        "location": "New Mexico",
+        "shortDisplayName": "New Mexico",
+        "conference": "Mountain West"
+      },
+      {
+        "id": "2449",
+        "abbreviation": "NDSU",
+        "displayName": "North Dakota State Bison",
+        "location": "North Dakota State",
+        "shortDisplayName": "N Dakota St",
+        "conference": "Mountain West"
+      },
+      {
+        "id": "2459",
+        "abbreviation": "NIU",
+        "displayName": "Northern Illinois Huskies",
+        "location": "Northern Illinois",
+        "shortDisplayName": "N Illinois",
+        "conference": "Mountain West"
+      },
+      {
+        "id": "23",
+        "abbreviation": "SJSU",
+        "displayName": "San José State Spartans",
+        "location": "San José State",
+        "shortDisplayName": "San José St",
+        "conference": "Mountain West"
+      },
+      {
+        "id": "2439",
+        "abbreviation": "UNLV",
+        "displayName": "UNLV Rebels",
+        "location": "UNLV",
+        "shortDisplayName": "UNLV",
+        "conference": "Mountain West"
+      },
+      {
+        "id": "2638",
+        "abbreviation": "UTEP",
+        "displayName": "UTEP Miners",
+        "location": "UTEP",
+        "shortDisplayName": "UTEP",
+        "conference": "Mountain West"
+      },
+      {
+        "id": "2751",
+        "abbreviation": "WYO",
+        "displayName": "Wyoming Cowboys",
+        "location": "Wyoming",
+        "shortDisplayName": "Wyoming",
+        "conference": "Mountain West"
+      },
+      {
+        "id": "68",
+        "abbreviation": "BOIS",
+        "displayName": "Boise State Broncos",
+        "location": "Boise State",
+        "shortDisplayName": "Boise St",
+        "conference": "Pac-12"
+      },
+      {
+        "id": "36",
+        "abbreviation": "CSU",
+        "displayName": "Colorado State Rams",
+        "location": "Colorado State",
+        "shortDisplayName": "Colorado St",
+        "conference": "Pac-12"
+      },
+      {
+        "id": "278",
+        "abbreviation": "FRES",
+        "displayName": "Fresno State Bulldogs",
+        "location": "Fresno State",
+        "shortDisplayName": "Fresno St",
+        "conference": "Pac-12"
+      },
+      {
+        "id": "204",
+        "abbreviation": "ORST",
+        "displayName": "Oregon State Beavers",
+        "location": "Oregon State",
+        "shortDisplayName": "Oregon St",
+        "conference": "Pac-12"
+      },
+      {
+        "id": "21",
+        "abbreviation": "SDSU",
+        "displayName": "San Diego State Aztecs",
+        "location": "San Diego State",
+        "shortDisplayName": "San Diego St",
+        "conference": "Pac-12"
+      },
+      {
+        "id": "326",
+        "abbreviation": "TXST",
+        "displayName": "Texas State Bobcats",
+        "location": "Texas State",
+        "shortDisplayName": "Texas St",
+        "conference": "Pac-12"
+      },
+      {
+        "id": "328",
+        "abbreviation": "USU",
+        "displayName": "Utah State Aggies",
+        "location": "Utah State",
+        "shortDisplayName": "Utah State",
+        "conference": "Pac-12"
+      },
+      {
+        "id": "265",
+        "abbreviation": "WSU",
+        "displayName": "Washington State Cougars",
+        "location": "Washington State",
+        "shortDisplayName": "Washington St",
+        "conference": "Pac-12"
+      },
+      {
+        "id": "333",
+        "abbreviation": "ALA",
+        "displayName": "Alabama Crimson Tide",
+        "location": "Alabama",
+        "shortDisplayName": "Alabama",
+        "conference": "SEC"
+      },
+      {
+        "id": "8",
+        "abbreviation": "ARK",
+        "displayName": "Arkansas Razorbacks",
+        "location": "Arkansas",
+        "shortDisplayName": "Arkansas",
+        "conference": "SEC"
+      },
+      {
+        "id": "2",
+        "abbreviation": "AUB",
+        "displayName": "Auburn Tigers",
+        "location": "Auburn",
+        "shortDisplayName": "Auburn",
+        "conference": "SEC"
+      },
+      {
+        "id": "57",
+        "abbreviation": "FLA",
+        "displayName": "Florida Gators",
+        "location": "Florida",
+        "shortDisplayName": "Florida",
+        "conference": "SEC"
+      },
+      {
+        "id": "61",
+        "abbreviation": "UGA",
+        "displayName": "Georgia Bulldogs",
+        "location": "Georgia",
+        "shortDisplayName": "Georgia",
+        "conference": "SEC"
+      },
+      {
+        "id": "96",
+        "abbreviation": "UK",
+        "displayName": "Kentucky Wildcats",
+        "location": "Kentucky",
+        "shortDisplayName": "Kentucky",
+        "conference": "SEC"
+      },
+      {
+        "id": "99",
+        "abbreviation": "LSU",
+        "displayName": "LSU Tigers",
+        "location": "LSU",
+        "shortDisplayName": "LSU",
+        "conference": "SEC"
+      },
+      {
+        "id": "344",
+        "abbreviation": "MSST",
+        "displayName": "Mississippi State Bulldogs",
+        "location": "Mississippi State",
+        "shortDisplayName": "Mississippi St",
+        "conference": "SEC"
+      },
+      {
+        "id": "142",
+        "abbreviation": "MIZ",
+        "displayName": "Missouri Tigers",
+        "location": "Missouri",
+        "shortDisplayName": "Missouri",
+        "conference": "SEC"
+      },
+      {
+        "id": "201",
+        "abbreviation": "OU",
+        "displayName": "Oklahoma Sooners",
+        "location": "Oklahoma",
+        "shortDisplayName": "Oklahoma",
+        "conference": "SEC"
+      },
+      {
+        "id": "145",
+        "abbreviation": "MISS",
+        "displayName": "Ole Miss Rebels",
+        "location": "Ole Miss",
+        "shortDisplayName": "Ole Miss",
+        "conference": "SEC"
+      },
+      {
+        "id": "2579",
+        "abbreviation": "SC",
+        "displayName": "South Carolina Gamecocks",
+        "location": "South Carolina",
+        "shortDisplayName": "South Carolina",
+        "conference": "SEC"
+      },
+      {
+        "id": "2633",
+        "abbreviation": "TENN",
+        "displayName": "Tennessee Volunteers",
+        "location": "Tennessee",
+        "shortDisplayName": "Tennessee",
+        "conference": "SEC"
+      },
+      {
+        "id": "245",
+        "abbreviation": "TA&M",
+        "displayName": "Texas A&M Aggies",
+        "location": "Texas A&M",
+        "shortDisplayName": "Texas A&M",
+        "conference": "SEC"
+      },
+      {
+        "id": "251",
+        "abbreviation": "TEX",
+        "displayName": "Texas Longhorns",
+        "location": "Texas",
+        "shortDisplayName": "Texas",
+        "conference": "SEC"
+      },
+      {
+        "id": "238",
+        "abbreviation": "VAN",
+        "displayName": "Vanderbilt Commodores",
+        "location": "Vanderbilt",
+        "shortDisplayName": "Vanderbilt",
+        "conference": "SEC"
+      },
+      {
+        "id": "2026",
+        "abbreviation": "APP",
+        "displayName": "App State Mountaineers",
+        "location": "App State",
+        "shortDisplayName": "App State",
+        "conference": "Sun Belt"
+      },
+      {
+        "id": "2032",
+        "abbreviation": "ARST",
+        "displayName": "Arkansas State Red Wolves",
+        "location": "Arkansas State",
+        "shortDisplayName": "Arkansas St",
+        "conference": "Sun Belt"
+      },
+      {
+        "id": "324",
+        "abbreviation": "CCU",
+        "displayName": "Coastal Carolina Chanticleers",
+        "location": "Coastal Carolina",
+        "shortDisplayName": "Coastal",
+        "conference": "Sun Belt"
+      },
+      {
+        "id": "290",
+        "abbreviation": "GASO",
+        "displayName": "Georgia Southern Eagles",
+        "location": "Georgia Southern",
+        "shortDisplayName": "GA Southern",
+        "conference": "Sun Belt"
+      },
+      {
+        "id": "2247",
+        "abbreviation": "GAST",
+        "displayName": "Georgia State Panthers",
+        "location": "Georgia State",
+        "shortDisplayName": "Georgia St",
+        "conference": "Sun Belt"
+      },
+      {
+        "id": "256",
+        "abbreviation": "JMU",
+        "displayName": "James Madison Dukes",
+        "location": "James Madison",
+        "shortDisplayName": "James Madison",
+        "conference": "Sun Belt"
+      },
+      {
+        "id": "309",
+        "abbreviation": "UL",
+        "displayName": "Louisiana Ragin' Cajuns",
+        "location": "Louisiana",
+        "shortDisplayName": "Louisiana",
+        "conference": "Sun Belt"
+      },
+      {
+        "id": "2348",
+        "abbreviation": "LT",
+        "displayName": "Louisiana Tech Bulldogs",
+        "location": "Louisiana Tech",
+        "shortDisplayName": "Louisiana Tech",
+        "conference": "Sun Belt"
+      },
+      {
+        "id": "276",
+        "abbreviation": "MRSH",
+        "displayName": "Marshall Thundering Herd",
+        "location": "Marshall",
+        "shortDisplayName": "Marshall",
+        "conference": "Sun Belt"
+      },
+      {
+        "id": "295",
+        "abbreviation": "ODU",
+        "displayName": "Old Dominion Monarchs",
+        "location": "Old Dominion",
+        "shortDisplayName": "Old Dominion",
+        "conference": "Sun Belt"
+      },
+      {
+        "id": "6",
+        "abbreviation": "USA",
+        "displayName": "South Alabama Jaguars",
+        "location": "South Alabama",
+        "shortDisplayName": "South Alabama",
+        "conference": "Sun Belt"
+      },
+      {
+        "id": "2572",
+        "abbreviation": "USM",
+        "displayName": "Southern Miss Golden Eagles",
+        "location": "Southern Miss",
+        "shortDisplayName": "Southern Miss",
+        "conference": "Sun Belt"
+      },
+      {
+        "id": "2653",
+        "abbreviation": "TROY",
+        "displayName": "Troy Trojans",
+        "location": "Troy",
+        "shortDisplayName": "Troy",
+        "conference": "Sun Belt"
+      },
+      {
+        "id": "2433",
+        "abbreviation": "ULM",
+        "displayName": "UL Monroe Warhawks",
+        "location": "UL Monroe",
+        "shortDisplayName": "UL Monroe",
+        "conference": "Sun Belt"
+      }
+    ]
+  },
+  "epl": {
+    "season": "2026",
+    "count": 20,
+    "teams": [
+      {
+        "id": "349",
+        "abbreviation": "BOU",
+        "displayName": "AFC Bournemouth",
+        "location": "AFC Bournemouth",
+        "shortDisplayName": "Bournemouth"
+      },
+      {
+        "id": "359",
+        "abbreviation": "ARS",
+        "displayName": "Arsenal",
+        "location": "Arsenal",
+        "shortDisplayName": "Arsenal"
+      },
+      {
+        "id": "362",
+        "abbreviation": "AVL",
+        "displayName": "Aston Villa",
+        "location": "Aston Villa",
+        "shortDisplayName": "Aston Villa"
+      },
+      {
+        "id": "337",
+        "abbreviation": "BRE",
+        "displayName": "Brentford",
+        "location": "Brentford",
+        "shortDisplayName": "Brentford"
+      },
+      {
+        "id": "331",
+        "abbreviation": "BHA",
+        "displayName": "Brighton & Hove Albion",
+        "location": "Brighton & Hove Albion",
+        "shortDisplayName": "Brighton"
+      },
+      {
+        "id": "363",
+        "abbreviation": "CHE",
+        "displayName": "Chelsea",
+        "location": "Chelsea",
+        "shortDisplayName": "Chelsea"
+      },
+      {
+        "id": "388",
+        "abbreviation": "COV",
+        "displayName": "Coventry City",
+        "location": "Coventry City",
+        "shortDisplayName": "Coventry"
+      },
+      {
+        "id": "384",
+        "abbreviation": "CRY",
+        "displayName": "Crystal Palace",
+        "location": "Crystal Palace",
+        "shortDisplayName": "C Palace"
+      },
+      {
+        "id": "368",
+        "abbreviation": "EVE",
+        "displayName": "Everton",
+        "location": "Everton",
+        "shortDisplayName": "Everton"
+      },
+      {
+        "id": "370",
+        "abbreviation": "FUL",
+        "displayName": "Fulham",
+        "location": "Fulham",
+        "shortDisplayName": "Fulham"
+      },
+      {
+        "id": "306",
+        "abbreviation": "HUL",
+        "displayName": "Hull City",
+        "location": "Hull City",
+        "shortDisplayName": "Hull"
+      },
+      {
+        "id": "373",
+        "abbreviation": "IPS",
+        "displayName": "Ipswich Town",
+        "location": "Ipswich Town",
+        "shortDisplayName": "Ipswich"
+      },
+      {
+        "id": "357",
+        "abbreviation": "LEE",
+        "displayName": "Leeds United",
+        "location": "Leeds United",
+        "shortDisplayName": "Leeds"
+      },
+      {
+        "id": "364",
+        "abbreviation": "LIV",
+        "displayName": "Liverpool",
+        "location": "Liverpool",
+        "shortDisplayName": "Liverpool"
+      },
+      {
+        "id": "382",
+        "abbreviation": "MNC",
+        "displayName": "Manchester City",
+        "location": "Manchester City",
+        "shortDisplayName": "Man City"
+      },
+      {
+        "id": "360",
+        "abbreviation": "MAN",
+        "displayName": "Manchester United",
+        "location": "Manchester United",
+        "shortDisplayName": "Man United"
+      },
+      {
+        "id": "361",
+        "abbreviation": "NEW",
+        "displayName": "Newcastle United",
+        "location": "Newcastle United",
+        "shortDisplayName": "Newcastle"
+      },
+      {
+        "id": "393",
+        "abbreviation": "NFO",
+        "displayName": "Nottingham Forest",
+        "location": "Nottingham Forest",
+        "shortDisplayName": "Nottm Forest"
+      },
+      {
+        "id": "366",
+        "abbreviation": "SUN",
+        "displayName": "Sunderland",
+        "location": "Sunderland",
+        "shortDisplayName": "Sunderland"
+      },
+      {
+        "id": "367",
+        "abbreviation": "TOT",
+        "displayName": "Tottenham Hotspur",
+        "location": "Tottenham Hotspur",
+        "shortDisplayName": "Spurs"
+      }
+    ]
+  },
+  "laliga": {
+    "season": "2026",
+    "count": 20,
+    "teams": [
+      {
+        "id": "96",
+        "abbreviation": "ALA",
+        "displayName": "Alavés",
+        "location": "Alavés",
+        "shortDisplayName": "Alavés"
+      },
+      {
+        "id": "93",
+        "abbreviation": "ATH",
+        "displayName": "Athletic Club",
+        "location": "Athletic Club",
+        "shortDisplayName": "Athletic"
+      },
+      {
+        "id": "1068",
+        "abbreviation": "ATM",
+        "displayName": "Atlético Madrid",
+        "location": "Atlético Madrid",
+        "shortDisplayName": "Atlético"
+      },
+      {
+        "id": "83",
+        "abbreviation": "BAR",
+        "displayName": "Barcelona",
+        "location": "Barcelona",
+        "shortDisplayName": "Barcelona"
+      },
+      {
+        "id": "85",
+        "abbreviation": "CEL",
+        "displayName": "Celta Vigo",
+        "location": "Celta Vigo",
+        "shortDisplayName": "Celta Vigo"
+      },
+      {
+        "id": "90",
+        "abbreviation": "DEP",
+        "displayName": "Deportivo",
+        "location": "Deportivo",
+        "shortDisplayName": "Deportivo"
+      },
+      {
+        "id": "3751",
+        "abbreviation": "ELC",
+        "displayName": "Elche",
+        "location": "Elche",
+        "shortDisplayName": "Elche"
+      },
+      {
+        "id": "88",
+        "abbreviation": "ESP",
+        "displayName": "Espanyol",
+        "location": "Espanyol",
+        "shortDisplayName": "Espanyol"
+      },
+      {
+        "id": "2922",
+        "abbreviation": "GET",
+        "displayName": "Getafe",
+        "location": "Getafe",
+        "shortDisplayName": "Getafe"
+      },
+      {
+        "id": "1538",
+        "abbreviation": "LEV",
+        "displayName": "Levante",
+        "location": "Levante",
+        "shortDisplayName": "Levante"
+      },
+      {
+        "id": "99",
+        "abbreviation": "MCF",
+        "displayName": "Málaga",
+        "location": "Málaga",
+        "shortDisplayName": "Málaga"
+      },
+      {
+        "id": "97",
+        "abbreviation": "OSA",
+        "displayName": "Osasuna",
+        "location": "Osasuna",
+        "shortDisplayName": "Osasuna"
+      },
+      {
+        "id": "87",
+        "abbreviation": "RAC",
+        "displayName": "Racing Santander",
+        "location": "Racing Santander",
+        "shortDisplayName": "Racing"
+      },
+      {
+        "id": "101",
+        "abbreviation": "RAY",
+        "displayName": "Rayo Vallecano",
+        "location": "Rayo Vallecano",
+        "shortDisplayName": "Rayo"
+      },
+      {
+        "id": "244",
+        "abbreviation": "BET",
+        "displayName": "Real Betis",
+        "location": "Real Betis",
+        "shortDisplayName": "Betis"
+      },
+      {
+        "id": "86",
+        "abbreviation": "RMA",
+        "displayName": "Real Madrid",
+        "location": "Real Madrid",
+        "shortDisplayName": "Real Madrid"
+      },
+      {
+        "id": "89",
+        "abbreviation": "RSO",
+        "displayName": "Real Sociedad",
+        "location": "Real Sociedad",
+        "shortDisplayName": "Real Sociedad"
+      },
+      {
+        "id": "243",
+        "abbreviation": "SEV",
+        "displayName": "Sevilla",
+        "location": "Sevilla",
+        "shortDisplayName": "Sevilla"
+      },
+      {
+        "id": "94",
+        "abbreviation": "VAL",
+        "displayName": "Valencia",
+        "location": "Valencia",
+        "shortDisplayName": "Valencia"
+      },
+      {
+        "id": "102",
+        "abbreviation": "VIL",
+        "displayName": "Villarreal",
+        "location": "Villarreal",
+        "shortDisplayName": "Villarreal"
+      }
+    ]
+  },
+  "nhl": {
+    "season": "2026-27",
+    "count": 32,
+    "teams": [
+      {
+        "id": "25",
+        "abbreviation": "ANA",
+        "displayName": "Anaheim Ducks",
+        "location": "Anaheim",
+        "shortDisplayName": "Ducks"
+      },
+      {
+        "id": "1",
+        "abbreviation": "BOS",
+        "displayName": "Boston Bruins",
+        "location": "Boston",
+        "shortDisplayName": "Bruins"
+      },
+      {
+        "id": "2",
+        "abbreviation": "BUF",
+        "displayName": "Buffalo Sabres",
+        "location": "Buffalo",
+        "shortDisplayName": "Sabres"
+      },
+      {
+        "id": "3",
+        "abbreviation": "CGY",
+        "displayName": "Calgary Flames",
+        "location": "Calgary",
+        "shortDisplayName": "Flames"
+      },
+      {
+        "id": "7",
+        "abbreviation": "CAR",
+        "displayName": "Carolina Hurricanes",
+        "location": "Carolina",
+        "shortDisplayName": "Hurricanes"
+      },
+      {
+        "id": "4",
+        "abbreviation": "CHI",
+        "displayName": "Chicago Blackhawks",
+        "location": "Chicago",
+        "shortDisplayName": "Blackhawks"
+      },
+      {
+        "id": "17",
+        "abbreviation": "COL",
+        "displayName": "Colorado Avalanche",
+        "location": "Colorado",
+        "shortDisplayName": "Avalanche"
+      },
+      {
+        "id": "29",
+        "abbreviation": "CBJ",
+        "displayName": "Columbus Blue Jackets",
+        "location": "Columbus",
+        "shortDisplayName": "Blue Jackets"
+      },
+      {
+        "id": "9",
+        "abbreviation": "DAL",
+        "displayName": "Dallas Stars",
+        "location": "Dallas",
+        "shortDisplayName": "Stars"
+      },
+      {
+        "id": "5",
+        "abbreviation": "DET",
+        "displayName": "Detroit Red Wings",
+        "location": "Detroit",
+        "shortDisplayName": "Red Wings"
+      },
+      {
+        "id": "6",
+        "abbreviation": "EDM",
+        "displayName": "Edmonton Oilers",
+        "location": "Edmonton",
+        "shortDisplayName": "Oilers"
+      },
+      {
+        "id": "26",
+        "abbreviation": "FLA",
+        "displayName": "Florida Panthers",
+        "location": "Florida",
+        "shortDisplayName": "Panthers"
+      },
+      {
+        "id": "8",
+        "abbreviation": "LA",
+        "displayName": "Los Angeles Kings",
+        "location": "Los Angeles",
+        "shortDisplayName": "Kings"
+      },
+      {
+        "id": "30",
+        "abbreviation": "MIN",
+        "displayName": "Minnesota Wild",
+        "location": "Minnesota",
+        "shortDisplayName": "Wild"
+      },
+      {
+        "id": "10",
+        "abbreviation": "MTL",
+        "displayName": "Montreal Canadiens",
+        "location": "Montreal",
+        "shortDisplayName": "Canadiens"
+      },
+      {
+        "id": "27",
+        "abbreviation": "NSH",
+        "displayName": "Nashville Predators",
+        "location": "Nashville",
+        "shortDisplayName": "Predators"
+      },
+      {
+        "id": "11",
+        "abbreviation": "NJ",
+        "displayName": "New Jersey Devils",
+        "location": "New Jersey",
+        "shortDisplayName": "Devils"
+      },
+      {
+        "id": "12",
+        "abbreviation": "NYI",
+        "displayName": "New York Islanders",
+        "location": "New York",
+        "shortDisplayName": "Islanders"
+      },
+      {
+        "id": "13",
+        "abbreviation": "NYR",
+        "displayName": "New York Rangers",
+        "location": "New York",
+        "shortDisplayName": "Rangers"
+      },
+      {
+        "id": "14",
+        "abbreviation": "OTT",
+        "displayName": "Ottawa Senators",
+        "location": "Ottawa",
+        "shortDisplayName": "Senators"
+      },
+      {
+        "id": "15",
+        "abbreviation": "PHI",
+        "displayName": "Philadelphia Flyers",
+        "location": "Philadelphia",
+        "shortDisplayName": "Flyers"
+      },
+      {
+        "id": "16",
+        "abbreviation": "PIT",
+        "displayName": "Pittsburgh Penguins",
+        "location": "Pittsburgh",
+        "shortDisplayName": "Penguins"
+      },
+      {
+        "id": "18",
+        "abbreviation": "SJ",
+        "displayName": "San Jose Sharks",
+        "location": "San Jose",
+        "shortDisplayName": "Sharks"
+      },
+      {
+        "id": "124292",
+        "abbreviation": "SEA",
+        "displayName": "Seattle Kraken",
+        "location": "Seattle",
+        "shortDisplayName": "Kraken"
+      },
+      {
+        "id": "19",
+        "abbreviation": "STL",
+        "displayName": "St. Louis Blues",
+        "location": "St. Louis",
+        "shortDisplayName": "Blues"
+      },
+      {
+        "id": "20",
+        "abbreviation": "TB",
+        "displayName": "Tampa Bay Lightning",
+        "location": "Tampa Bay",
+        "shortDisplayName": "Lightning"
+      },
+      {
+        "id": "21",
+        "abbreviation": "TOR",
+        "displayName": "Toronto Maple Leafs",
+        "location": "Toronto",
+        "shortDisplayName": "Maple Leafs"
+      },
+      {
+        "id": "129764",
+        "abbreviation": "UTAH",
+        "displayName": "Utah Mammoth",
+        "location": "Utah",
+        "shortDisplayName": "Mammoth"
+      },
+      {
+        "id": "22",
+        "abbreviation": "VAN",
+        "displayName": "Vancouver Canucks",
+        "location": "Vancouver",
+        "shortDisplayName": "Canucks"
+      },
+      {
+        "id": "37",
+        "abbreviation": "VGK",
+        "displayName": "Vegas Golden Knights",
+        "location": "Vegas",
+        "shortDisplayName": "Golden Knights"
+      },
+      {
+        "id": "23",
+        "abbreviation": "WSH",
+        "displayName": "Washington Capitals",
+        "location": "Washington",
+        "shortDisplayName": "Capitals"
+      },
+      {
+        "id": "28",
+        "abbreviation": "WPG",
+        "displayName": "Winnipeg Jets",
+        "location": "Winnipeg",
+        "shortDisplayName": "Jets"
+      }
+    ]
+  },
+  "uel": {
+    "season": "2026",
+    "count": 36,
+    "teams": [
+      {
+        "id": "103",
+        "abbreviation": "MIL",
+        "displayName": "AC Milan",
+        "location": "AC Milan",
+        "shortDisplayName": "Milan"
+      },
+      {
+        "id": "349",
+        "abbreviation": "BOU",
+        "displayName": "AFC Bournemouth",
+        "location": "AFC Bournemouth",
+        "shortDisplayName": "Bournemouth"
+      },
+      {
+        "id": "20024",
+        "abbreviation": "Ararat",
+        "displayName": "ARARAT-ARMENIA",
+        "location": "ARARAT-ARMENIA",
+        "shortDisplayName": "ARARAT-ARM"
+      },
+      {
+        "id": "140",
+        "abbreviation": "AZ",
+        "displayName": "AZ Alkmaar",
+        "location": "AZ Alkmaar",
+        "shortDisplayName": "AZ Alkmaar"
+      },
+      {
+        "id": "441",
+        "abbreviation": "AND",
+        "displayName": "Anderlecht",
+        "location": "Anderlecht",
+        "shortDisplayName": "Anderlecht"
+      },
+      {
+        "id": "131",
+        "abbreviation": "B04",
+        "displayName": "Bayer Leverkusen",
+        "location": "Bayer Leverkusen",
+        "shortDisplayName": "Leverkusen"
+      },
+      {
+        "id": "1929",
+        "abbreviation": "SLB",
+        "displayName": "Benfica",
+        "location": "Benfica",
+        "shortDisplayName": "Benfica"
+      },
+      {
+        "id": "1895",
+        "abbreviation": "BES",
+        "displayName": "Besiktas",
+        "location": "Besiktas",
+        "shortDisplayName": "Besiktas"
+      },
+      {
+        "id": "85",
+        "abbreviation": "CEL",
+        "displayName": "Celta Vigo",
+        "location": "Celta Vigo",
+        "shortDisplayName": "Celta Vigo"
+      },
+      {
+        "id": "256",
+        "abbreviation": "CEL",
+        "displayName": "Celtic",
+        "location": "Celtic",
+        "shortDisplayName": "Celtic"
+      },
+      {
+        "id": "384",
+        "abbreviation": "CRY",
+        "displayName": "Crystal Palace",
+        "location": "Crystal Palace",
+        "shortDisplayName": "C Palace"
+      },
+      {
+        "id": "597",
+        "abbreviation": "DZG",
+        "displayName": "Dinamo Zagreb",
+        "location": "Dinamo Zagreb",
+        "shortDisplayName": "Dinamo Zagreb"
+      },
+      {
+        "id": "622",
+        "abbreviation": "FER",
+        "displayName": "Ferencvaros",
+        "location": "Ferencvaros",
+        "shortDisplayName": "Ferencvaros"
+      },
+      {
+        "id": "13083",
+        "abbreviation": "HBE",
+        "displayName": "Hapoel Be'er",
+        "location": "Hapoel Be'er",
+        "shortDisplayName": "Hapoel Be'er"
+      },
+      {
+        "id": "11505",
+        "abbreviation": "JAG",
+        "displayName": "Jagiellonia Bialystok",
+        "location": "Jagiellonia Bialystok",
+        "shortDisplayName": "Jagiellonia "
+      },
+      {
+        "id": "111",
+        "abbreviation": "JUV",
+        "displayName": "Juventus",
+        "location": "Juventus",
+        "shortDisplayName": "Juventus"
+      },
+      {
+        "id": "2990",
+        "abbreviation": "LECH",
+        "displayName": "Lech Poznan",
+        "location": "Lech Poznan",
+        "shortDisplayName": "Lech Poznan"
+      },
+      {
+        "id": "490",
+        "abbreviation": "LEV",
+        "displayName": "Levski Sofia",
+        "location": "Levski Sofia",
+        "shortDisplayName": "Levski Sofia"
+      },
+      {
+        "id": "987",
+        "abbreviation": "LSK",
+        "displayName": "Lillestrom",
+        "location": "Lillestrom",
+        "shortDisplayName": "Lillestrom"
+      },
+      {
+        "id": "167",
+        "abbreviation": "LYON",
+        "displayName": "Lyon",
+        "location": "Lyon",
+        "shortDisplayName": "Lyon"
+      },
+      {
+        "id": "176",
+        "abbreviation": "OLM",
+        "displayName": "Marseille",
+        "location": "Marseille",
+        "shortDisplayName": "Marseille"
+      },
+      {
+        "id": "147",
+        "abbreviation": "NEC",
+        "displayName": "NEC Nijmegen",
+        "location": "NEC Nijmegen",
+        "shortDisplayName": "NEC"
+      },
+      {
+        "id": "3362",
+        "abbreviation": "NKC",
+        "displayName": "NK Celje",
+        "location": "NK Celje",
+        "shortDisplayName": "NK Celje"
+      },
+      {
+        "id": "1010",
+        "abbreviation": "OFI Crete",
+        "displayName": "OFI CRETE",
+        "location": "OFI CRETE",
+        "shortDisplayName": "OFI CRETE"
+      },
+      {
+        "id": "435",
+        "abbreviation": "OLY",
+        "displayName": "Olympiacos",
+        "location": "Olympiacos",
+        "shortDisplayName": "Olympiacos"
+      },
+      {
+        "id": "617",
+        "abbreviation": "OMON",
+        "displayName": "Omonia Nicosia",
+        "location": "Omonia Nicosia",
+        "shortDisplayName": "Omonia"
+      },
+      {
+        "id": "2790",
+        "abbreviation": "SLZ",
+        "displayName": "RB Salzburg",
+        "location": "RB Salzburg",
+        "shortDisplayName": "RB Salzburg"
+      },
+      {
+        "id": "89",
+        "abbreviation": "RSO",
+        "displayName": "Real Sociedad",
+        "location": "Real Sociedad",
+        "shortDisplayName": "Real Sociedad"
+      },
+      {
+        "id": "3746",
+        "abbreviation": "STG",
+        "displayName": "SK Sturm Graz",
+        "location": "SK Sturm Graz",
+        "shortDisplayName": "Sturm Graz"
+      },
+      {
+        "id": "433",
+        "abbreviation": "SPP",
+        "displayName": "Sparta Prague",
+        "location": "Sparta Prague",
+        "shortDisplayName": "Sparta"
+      },
+      {
+        "id": "169",
+        "abbreviation": "REN",
+        "displayName": "Stade Rennais",
+        "location": "Stade Rennais",
+        "shortDisplayName": "Rennes"
+      },
+      {
+        "id": "366",
+        "abbreviation": "SUN",
+        "displayName": "Sunderland",
+        "location": "Sunderland",
+        "shortDisplayName": "Sunderland"
+      },
+      {
+        "id": "7911",
+        "abbreviation": "TSG",
+        "displayName": "TSG Hoffenheim",
+        "location": "TSG Hoffenheim",
+        "shortDisplayName": "Hoffenheim"
+      },
+      {
+        "id": "21615",
+        "abbreviation": "TOR",
+        "displayName": "Torreense",
+        "location": "Torreense",
+        "shortDisplayName": "Torreense"
+      },
+      {
+        "id": "5807",
+        "abbreviation": "USG",
+        "displayName": "Union St.-Gilloise",
+        "location": "Union St.-Gilloise",
+        "shortDisplayName": "Union SG"
+      },
+      {
+        "id": "11706",
+        "abbreviation": "PLZ",
+        "displayName": "Viktoria Plzen",
+        "location": "Viktoria Plzen",
+        "shortDisplayName": "Viktoria Plzen"
+      }
+    ]
+  }
+}

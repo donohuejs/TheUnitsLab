@@ -484,6 +484,7 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
                             record: recordLabel(event.awayTeam),
                             sport: event.sport,
                             competitionId: event.competitionId,
+                            identity: event.awayTeamIdentity,
                           }}
                           home={{
                             name: event.homeTeam,
@@ -491,6 +492,7 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
                             record: recordLabel(event.homeTeam),
                             sport: event.sport,
                             competitionId: event.competitionId,
+                            identity: event.homeTeamIdentity,
                           }}
                         >
                           {isActive ? activeMarketBoard : null}
@@ -528,6 +530,7 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
                       teamName={selectedEvent.awayTeam}
                       sport={selectedEvent.sport}
                       competitionId={selectedEvent.competitionId}
+                      identity={selectedEvent.awayTeamIdentity}
                     />
                     {getTeamRanking(selectedEvent.awayTeam, rankingSnapshot)?.rank
                       ? `#${getTeamRanking(selectedEvent.awayTeam, rankingSnapshot)?.rank} `
@@ -540,6 +543,7 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
                       teamName={selectedEvent.homeTeam}
                       sport={selectedEvent.sport}
                       competitionId={selectedEvent.competitionId}
+                      identity={selectedEvent.homeTeamIdentity}
                     />
                     {getTeamRanking(selectedEvent.homeTeam, rankingSnapshot)?.rank
                       ? `#${getTeamRanking(selectedEvent.homeTeam, rankingSnapshot)?.rank} `

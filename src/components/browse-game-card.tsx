@@ -5,6 +5,7 @@ import { KickoffTime } from "@/components/kickoff-time";
 import { StatusBadge } from "@/components/status-badge";
 import { TeamMark } from "@/components/team-mark";
 import type { NormalizedEvent } from "@/lib/odds/types";
+import type { TeamResolution } from "@/lib/teams/logos";
 
 type TeamSummary = {
   name: string;
@@ -12,12 +13,18 @@ type TeamSummary = {
   record: string | null;
   sport: NormalizedEvent["sport"];
   competitionId: NormalizedEvent["competitionId"];
+  identity?: TeamResolution;
 };
 
 function TeamSummaryLine({ team }: { team: TeamSummary }) {
   return (
     <span className="browse-team-line">
-      <TeamMark teamName={team.name} sport={team.sport} competitionId={team.competitionId} />
+      <TeamMark
+        teamName={team.name}
+        sport={team.sport}
+        competitionId={team.competitionId}
+        identity={team.identity}
+      />
       <span className="browse-team-name">
         {team.rank !== null ? (
           <span className="team-ranking" aria-label={"Rank " + team.rank}>

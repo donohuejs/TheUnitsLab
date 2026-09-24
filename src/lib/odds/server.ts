@@ -8,7 +8,28 @@ import { PostgresOddsStore } from "./postgres-store";
 import { fetchOddsProvider } from "./provider";
 import { getOdds, getOddsForRequest } from "./service";
 import { createAlternateOddsRequest, createEventCatalogRequest, getCompetition } from "./request";
-import type { CompetitionId } from "./types";
+import type { CompetitionId, NormalizedEvent } from "./types";
+import { resolveTeamRecord } from "../teams/logos";
+
+function hydrateTeamIdentity(event: NormalizedEvent): NormalizedEvent {
+  return {
+    ...event,
+    homeTeamIdentity:
+      event.homeTeamIdentity ?? resolveTeamRecord(event.homeTeam, event.sport, event.competitionId),
+    awayTeamIdentity:
+      event.awayTeamIdentity ?? resolveTeamRecord(event.awayTeam, event.sport, event.competitionId),
+  };
+}
+
+function hydrateDataset<T extends { dataset: { events: NormalizedEvent[] } }>(result: T): T {
+  return {
+    ...result,
+    dataset: {
+      ...result.dataset,
+      events: result.dataset.events.map(hydrateTeamIdentity),
+    },
+  };
+}
 
 function markStartedEvents<
   T extends { scheduledStart: string; status: "scheduled" | "live" | "completed" },
@@ -44,11 +65,12 @@ export async function getCompetitionOdds(competitionId: CompetitionId, manual = 
     competitionId,
     { manual },
   );
+  const hydrated = hydrateDataset(result);
   return {
-    ...result,
+    ...hydrated,
     dataset: {
-      ...result.dataset,
-      events: result.dataset.events.map(markStartedEvents),
+      ...hydrated.dataset,
+      events: hydrated.dataset.events.map(markStartedEvents),
     },
   };
 }
@@ -56,7 +78,7 @@ export async function getCompetitionOdds(competitionId: CompetitionId, manual = 
 export async function getEventAlternateOdds(competitionId: CompetitionId, providerEventId: string) {
   const environment = readServerEnvironment(process.env);
   const store = new PostgresOddsStore(createSupabaseAdminClient());
-  return getOddsForRequest(
+  const result = await getOddsForRequest(
     {
       store,
       allowance: environment.ODDS_API_MONTHLY_ALLOWANCE,
@@ -72,6 +94,7 @@ export async function getEventAlternateOdds(competitionId: CompetitionId, provid
     createAlternateOddsRequest(competitionId, providerEventId),
     competitionId,
   );
+  return hydrateDataset(result);
 }
 
 export async function getCompetitionEventCatalog(competitionId: CompetitionId) {
@@ -79,7 +102,7 @@ export async function getCompetitionEventCatalog(competitionId: CompetitionId) {
   const competition = getCompetition(competitionId);
   if (!competition) throw new Error("Unsupported competition");
   const store = new PostgresOddsStore(createSupabaseAdminClient());
-  return getOddsForRequest(
+  const result = await getOddsForRequest(
     {
       store,
       allowance: environment.ODDS_API_MONTHLY_ALLOWANCE,
@@ -100,4 +123,5 @@ export async function getCompetitionEventCatalog(competitionId: CompetitionId) {
       cacheTtlSeconds: competition.cache.scheduleSeconds,
     },
   );
+  return hydrateDataset(result);
 }

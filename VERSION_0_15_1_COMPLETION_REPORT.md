@@ -12,6 +12,31 @@ timezone-drifting date/kickoff presentation, prevents an event from opening impl
 makes the desktop Browse layout match the approved three-region master/detail design, and
 keeps the Bet Slip independent from active-event navigation.
 
+## v0.15.1 logo coverage correction
+
+The follow-up logo QA found a systemic NHL failure rather than isolated missing
+aliases. The previous NHL registry used stale numeric team IDs as numeric NHL CDN
+asset references. Current ESPN NHL assets use abbreviation references, so the
+registry now separates canonical provider identity from the asset reference and
+uses the correct `/nhl/500/{abbreviation}.png` namespace. The same source-controlled
+catalog architecture now covers the current supported EPL, UCL, and NCAAF FBS team
+sets.
+
+Coverage hard gates are now 32/32 NFL, 32/32 NHL, 20/20 EPL, 36/36 UCL, and 138/138
+current FBS teams, all with valid namespace-correct references. The public ESPN team
+catalog is captured in `src/config/team-catalog.json`; updates are manual and
+reviewed, rankings/standings are not involved, and no odds or provider calls are
+triggered by logo resolution. `npm run audit:team-logos` is the deterministic
+developer audit; `--check-assets` performs a bounded CDN reference check.
+The external CDN check passed for every unique snapshot URL, with no broken logo
+references. Runtime CDN failure still degrades to initials without changing identity.
+
+Generic NCAA inputs (`Miami`, `Miami (OH)`, `USC`, `UT`, and `Tigers`) remain
+unresolved rather than receiving a guessed identity. Fully qualified catalog names
+resolve, including `Miami (OH) RedHawks`. NHL, EPL, UCL, and FBS registry resolution
+is exact and competition-scoped, and shared soccer clubs retain one canonical ID
+across domestic and European scopes. No database migration was required.
+
 ## Version transition
 
 Repository inspection confirmed the current release was v0.15.0 before this patch. The
@@ -225,6 +250,11 @@ Modified for this patch:
 - `src/lib/browse-schedule.ts`
 - `test/private-beta-release.test.ts`, `test/release-candidate-fix-patch-1.test.ts`,
   `test/release-candidate-fix-patch-2.test.ts`, `test/v0-15-browse-schedule.test.ts`
+- Logo-coverage correction: `src/config/team-catalog.json`, `src/lib/teams/logos.ts`,
+  `src/lib/odds/types.ts`, `src/lib/odds/normalize.ts`, `src/components/team-mark.tsx`,
+  `src/components/browse-game-card.tsx`, `src/app/sports/[competition]/page.tsx`,
+  `src/lib/betslip/event-matching.ts`, `src/lib/odds/server.ts`, `scripts/audit-team-logos.mjs`,
+  `test/team-logos.test.ts`, and `TEAM_LOGO_IDENTITY_AUDIT.md`
 - `README.md`, `docs/ARCHITECTURE.md`, `docs/MIGRATIONS.md`, `docs/PRODUCT_SPEC.md`,
   `docs/TESTING.md`, `docs/Virtual Sportsbook - Governing Specification V1.docx`
 
@@ -259,6 +289,13 @@ Passed:
   format check, lint, typecheck, 46 test files / 277 tests, production build, and secret scan all
   passed. The Vercel Preview check also passed.
 - The current pushed Preview for `c19d0f1` passed its Vercel deployment check.
+- The logo-coverage correction is source-control-ready after its focused audit and
+  full validation run; authenticated visual QA remains subject to the existing
+  protected-Preview limitation below.
+- Logo-correction validation: formatting, lint, typecheck, secret scan, production
+  build, and 51 test files / 309 tests passed; the structural team audit and bounded
+  external asset check passed for NFL 32/32, NHL 32/32, EPL 20/20, UCL 36/36, and
+  NCAAF FBS 138/138. `npm audit --audit-level=high` reported 0 vulnerabilities.
 
 Blocked or pending:
 

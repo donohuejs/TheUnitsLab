@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import teamCatalog from "../src/config/team-catalog.json";
 import {
   TEAM_REGISTRY,
   auditTeamCoverage,
@@ -98,8 +99,13 @@ describe("team logo resolver", () => {
   });
 
   it("does not cross-resolve same-name teams between sports or competitions", () => {
-    expect(resolveTeamRecord("Carolina Panthers", "football", "nfl").canonicalId).toBe("nfl:29");
-    expect(resolveTeamRecord("Florida Panthers", "hockey", "nhl").canonicalId).toBe("nhl:13");
+    expect(resolveTeamRecord("Carolina Panthers", "football", "nfl").canonicalId).toBe(
+      "espn:nfl:29",
+    );
+    expect(resolveTeamRecord("Florida Panthers", "hockey", "nhl").canonicalId).toBe("espn:nhl:26");
+    expect(resolveTeamRecord("Florida Panthers", "hockey", "nhl").logoUrl).toBe(
+      "https://a.espncdn.com/i/teamlogos/nhl/500/fla.png",
+    );
     expect(resolveTeamRecord("New York Giants", "hockey", "nhl").resolution).toBe(
       "TEAM_UNRESOLVED",
     );
@@ -107,7 +113,66 @@ describe("team logo resolver", () => {
       "TEAM_UNRESOLVED",
     );
     expect(resolveTeamRecord("Miami Hurricanes", "football", "ncaaf").canonicalId).toBe(
-      "ncaa:2390",
+      "espn:ncaaf:2390",
+    );
+  });
+
+  it("resolves every current NHL team with the abbreviation asset namespace", () => {
+    const teams = teamCatalog.nhl.teams;
+    const resolved = teams.map((team) => resolveTeamRecord(team.displayName, "hockey", "nhl"));
+    expect(resolved.every((team) => team.resolution === "RESOLVED")).toBe(true);
+    expect(new Set(resolved.map((team) => team.canonicalId)).size).toBe(32);
+    expect(resolved.map((team) => team.logoUrl)).toEqual(
+      teams.map(
+        (team) =>
+          `https://a.espncdn.com/i/teamlogos/nhl/500/${team.abbreviation.toLowerCase().replace(/[^a-z0-9]/g, "")}.png`,
+      ),
+    );
+    expect(resolveTeamRecord("Boston Bruins", "hockey", "nhl").logoUrl).toContain(
+      "/nhl/500/bos.png",
+    );
+    expect(resolveTeamRecord("Philadelphia Flyers", "hockey", "nhl").logoUrl).toContain(
+      "/nhl/500/phi.png",
+    );
+  });
+
+  it("covers every current EPL club, including the previously missing teams", () => {
+    const teams = teamCatalog.epl.teams;
+    const resolved = teams.map((team) => resolveTeamRecord(team.displayName, "soccer", "epl"));
+    expect(resolved.every((team) => team.resolution === "RESOLVED")).toBe(true);
+    expect(new Set(resolved.map((team) => team.canonicalId)).size).toBe(20);
+    for (const name of ["Ipswich Town", "AFC Bournemouth", "Hull City", "Coventry City"]) {
+      expect(resolveTeamRecord(name, "soccer", "epl").logoUrl).toMatch(
+        /https:\/\/a\.espncdn\.com\/i\/teamlogos\/soccer\/500\/\d+\.png/,
+      );
+    }
+    expect(resolveTeamRecord("AFC Bournemouth", "soccer", "epl").canonicalId).toBe(
+      "espn:soccer:349",
+    );
+  });
+
+  it("covers every current UCL club and shares overlapping identities with domestic soccer", () => {
+    const teams = teamCatalog.ucl.teams;
+    const resolved = teams.map((team) => resolveTeamRecord(team.displayName, "soccer", "ucl"));
+    expect(resolved.every((team) => team.resolution === "RESOLVED")).toBe(true);
+    expect(new Set(resolved.map((team) => team.canonicalId)).size).toBe(36);
+    const eplArsenal = resolveTeamRecord("Arsenal", "soccer", "epl");
+    const uclArsenal = resolveTeamRecord("Arsenal", "soccer", "ucl");
+    expect(uclArsenal.canonicalId).toBe(eplArsenal.canonicalId);
+    expect(uclArsenal.logoUrl).toBe(eplArsenal.logoUrl);
+  });
+
+  it("covers every current FBS catalog team without fuzzy or partial-name guessing", () => {
+    const teams = teamCatalog.ncaaf.teams;
+    const resolved = teams.map((team) => resolveTeamRecord(team.displayName, "football", "ncaaf"));
+    expect(resolved.every((team) => team.resolution === "RESOLVED")).toBe(true);
+    expect(new Set(resolved.map((team) => team.canonicalId)).size).toBe(138);
+    expect(resolved.every((team) => team.logoUrl?.includes("/ncaa/500/") === true)).toBe(true);
+    expect(resolveTeamRecord("Miami (FL)", "football", "ncaaf").canonicalId).toBe(
+      "espn:ncaaf:2390",
+    );
+    expect(resolveTeamRecord("Miami (OH) RedHawks", "football", "ncaaf").resolution).toBe(
+      "RESOLVED",
     );
   });
 
@@ -117,14 +182,14 @@ describe("team logo resolver", () => {
       expect(result.resolution, name).toBe("TEAM_UNRESOLVED");
       expect(result.logoUrl, name).toBeNull();
     }
-    expect(resolveTeamRecord("Houston", "football", "ncaaf").canonicalId).toBe("ncaa:248");
-    expect(resolveTeamRecord("Houston Texans", "football", "nfl").canonicalId).toBe("nfl:34");
+    expect(resolveTeamRecord("Houston", "football", "ncaaf").canonicalId).toBe("espn:ncaaf:248");
+    expect(resolveTeamRecord("Houston Texans", "football", "nfl").canonicalId).toBe("espn:nfl:34");
   });
 
   it("shares one canonical soccer identity across domestic and European scopes", () => {
     const epl = resolveTeamRecord("Arsenal", "soccer", "epl");
-    const ucl = resolveTeamRecord("Arsenal FC", "soccer", "ucl");
-    expect(epl.canonicalId).toBe("soccer:359");
+    const ucl = resolveTeamRecord("Arsenal", "soccer", "ucl");
+    expect(epl.canonicalId).toBe("espn:soccer:359");
     expect(ucl.canonicalId).toBe(epl.canonicalId);
     expect(ucl.logoUrl).toBe(epl.logoUrl);
     expect(resolveTeamRecord("Brighton and Hove Albion", "soccer", "epl").resolution).toBe(

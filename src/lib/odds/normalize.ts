@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { sportsProviderConfiguration } from "../../config/sports";
 import { americanToDecimalString } from "../wagers/calculations";
+import { resolveTeamRecord } from "../teams/logos";
 
 import { getCompetition } from "./request";
 import type { CompetitionId, NormalizedEvent, SelectionType } from "./types";
@@ -67,6 +68,8 @@ export function normalizeOddsResponse(
     competitionName: competition.name,
     homeTeam: event.home_team,
     awayTeam: event.away_team,
+    homeTeamIdentity: resolveTeamRecord(event.home_team, competition.sport, competitionId),
+    awayTeamIdentity: resolveTeamRecord(event.away_team, competition.sport, competitionId),
     scheduledStart: event.commence_time,
     status: new Date(event.commence_time) <= new Date(fetchedAt) ? "live" : "scheduled",
     providerSportKey: event.sport_key,

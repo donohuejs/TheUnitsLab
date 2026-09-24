@@ -1,4 +1,4 @@
-import { canonicalTeamKey, teamNamesMatch } from "../teams/logos";
+import { isTeamInCompetition, teamNamesMatch } from "../teams/logos";
 
 export type CanonicalImportEvent = {
   providerEventId: string;
@@ -84,44 +84,16 @@ export function matchCanonicalImportEvent(
   };
 }
 
-const collegeFootballTeams = new Set([
-  "miami-fl",
-  "wake-forest",
-  "houston",
-  "texas-tech",
-  "alabama",
-  "clemson",
-  "georgia",
-  "michigan",
-  "notre-dame",
-  "ohio-state",
-  "pittsburgh",
-  "south-carolina",
-  "syracuse",
-  "texas",
-]);
-
 export function inferCompetitionCandidates(eventDescription: string, knownCompetition?: string) {
   if (knownCompetition) return [knownCompetition];
   const participants = parseImportedEventDescription(eventDescription);
   if (!participants) return [];
-  const keys = [
-    canonicalTeamKey(
-      participants.awayTeam,
-      knownCompetition === "ncaaf" ? "football" : undefined,
-      knownCompetition,
-    ),
-    canonicalTeamKey(
-      participants.homeTeam,
-      knownCompetition === "ncaaf" ? "football" : undefined,
-      knownCompetition,
-    ),
-  ].filter((key): key is string => Boolean(key));
   const normalizedText = eventDescription.toLowerCase();
   if (
     normalizedText.includes("college football") ||
     normalizedText.includes("ncaaf") ||
-    keys.some((key) => collegeFootballTeams.has(key))
+    isTeamInCompetition(participants.awayTeam, "ncaaf") ||
+    isTeamInCompetition(participants.homeTeam, "ncaaf")
   ) {
     return ["ncaaf"];
   }

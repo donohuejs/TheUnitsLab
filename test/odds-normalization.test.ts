@@ -23,6 +23,14 @@ describe("Odds API normalization", () => {
       homeTeam: "Arsenal",
       awayTeam: "Chelsea",
       status: "scheduled",
+      homeTeamIdentity: expect.objectContaining({
+        canonicalId: "espn:soccer:359",
+        resolution: "RESOLVED",
+      }),
+      awayTeamIdentity: expect.objectContaining({
+        canonicalId: "espn:soccer:363",
+        resolution: "RESOLVED",
+      }),
     });
     expect(event.odds).toHaveLength(7);
     expect(event.odds.map((odd) => odd.marketType)).toEqual(

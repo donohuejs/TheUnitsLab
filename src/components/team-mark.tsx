@@ -5,40 +5,44 @@
 
 import { useState } from "react";
 
-import { resolveTeamRecord, teamLogoStatus } from "@/lib/teams/logos";
+import { resolveTeamRecord, teamLogoStatus, type TeamResolution } from "@/lib/teams/logos";
 
 export function TeamMark({
   teamName,
   sport,
   competitionId,
+  identity,
 }: {
   teamName: string;
   sport: string;
   competitionId?: string;
+  identity?: TeamResolution;
 }) {
-  const identity = resolveTeamRecord(teamName, sport, competitionId);
+  const resolvedIdentity = identity ?? resolveTeamRecord(teamName, sport, competitionId);
   const [failedLogoUrl, setFailedLogoUrl] = useState<string | null>(null);
-  const imageAvailable = Boolean(identity.logoUrl && identity.logoUrl !== failedLogoUrl);
-  const logoStatus = teamLogoStatus(identity, failedLogoUrl);
+  const imageAvailable = Boolean(
+    resolvedIdentity.logoUrl && resolvedIdentity.logoUrl !== failedLogoUrl,
+  );
+  const logoStatus = teamLogoStatus(resolvedIdentity, failedLogoUrl);
 
   return (
     <span
       className="team-identity"
       title={teamName}
       aria-label={teamName}
-      data-team-resolution={identity.resolution}
+      data-team-resolution={resolvedIdentity.resolution}
       data-logo-status={logoStatus}
     >
       <span className="team-mark-fallback" aria-hidden="true">
-        {identity.initials}
+        {resolvedIdentity.initials}
       </span>
-      {identity.logoUrl && imageAvailable ? (
+      {resolvedIdentity.logoUrl && imageAvailable ? (
         <img
           className="team-mark-image"
-          src={identity.logoUrl}
+          src={resolvedIdentity.logoUrl}
           alt=""
           aria-hidden="true"
-          onError={() => setFailedLogoUrl(identity.logoUrl)}
+          onError={() => setFailedLogoUrl(resolvedIdentity.logoUrl)}
         />
       ) : null}
     </span>

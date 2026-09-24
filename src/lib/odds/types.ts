@@ -1,3 +1,5 @@
+import type { TeamResolution } from "../teams/logos";
+
 export type CompetitionId =
   "epl" | "ucl" | "uel" | "laliga" | "ncaaf" | "ncaab" | "nfl" | "nba" | "nhl";
 export type MarketType = "moneyline" | "spread" | "total";
@@ -25,6 +27,8 @@ export type NormalizedEvent = {
   competitionName: string;
   homeTeam: string;
   awayTeam: string;
+  homeTeamIdentity?: TeamResolution;
+  awayTeamIdentity?: TeamResolution;
   scheduledStart: string;
   status: "scheduled" | "live" | "completed";
   providerSportKey: string;

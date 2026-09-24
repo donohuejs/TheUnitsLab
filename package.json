@@ -38,6 +38,7 @@
     "check:release:browse-slip-navigation": "node scripts/check-browse-slip-navigation.mjs",
     "check:release:ux": "node scripts/check-patch-10-release-ux.mjs",
     "check:release:ux:hotfix": "node scripts/check-patch-10-hotfix.mjs",
+    "audit:team-logos": "node scripts/audit-team-logos.mjs",
     "test:coverage": "vitest run --coverage",
     "security:scan": "node test/secret-scan.mjs",
     "validate": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run security:scan && npm run build",
