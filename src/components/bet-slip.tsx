@@ -38,13 +38,11 @@ import {
 } from "@/lib/wagers/slip";
 import { calculatePotential } from "@/lib/wagers/calculations";
 import { acquireBodyScrollLock } from "@/lib/ui/scroll-lock";
-import { recordSlipDebugNavigation, recordSlipDebugRendered } from "@/lib/wagers/slip-debug";
 
 type Props = {
   selection: SlipSelection | null;
   groups: { id: string; name: string }[];
   initialMobileSheetOpen?: boolean;
-  debugEnabled?: boolean;
 };
 
 const americanPrice = (value: number) => (value > 0 ? `+${value}` : String(value));
@@ -81,12 +79,7 @@ function attachPlacementAttemptKey(form: HTMLFormElement, keyRef: { current: str
   if (input instanceof HTMLInputElement) input.value = keyRef.current;
 }
 
-export function BetSlip({
-  selection,
-  groups,
-  initialMobileSheetOpen = false,
-  debugEnabled = false,
-}: Props) {
+export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: Props) {
   const router = useRouter();
   const [stake, setStake] = useState("10.00");
   const [parlayStake, setParlayStake] = useState("10.00");
@@ -126,16 +119,6 @@ export function BetSlip({
   const mobileSelectionCount = mobileSelections.length;
   const mobileSheetSelection = mobileSelectionCount === 1 ? (mobileSelections[0] ?? null) : null;
   const mobileModalOpen = mobileSheetOpen && isMobileViewport && mobileSelectionCount > 0;
-
-  useEffect(() => {
-    if (!debugEnabled) return;
-    recordSlipDebugRendered(straightSelections);
-  }, [debugEnabled, straightSelections]);
-
-  useEffect(() => {
-    if (!debugEnabled) return;
-    return () => recordSlipDebugRendered([]);
-  }, [debugEnabled]);
 
   useEffect(() => {
     const updateReturnPath = () => {
@@ -406,11 +389,6 @@ export function BetSlip({
     const next = new URL(window.location.href);
     ["event", "book", "market", "selection", "point", "alternates", "mobileSheet"].forEach((key) =>
       next.searchParams.delete(key),
-    );
-    recordSlipDebugNavigation(
-      new URL(window.location.href).searchParams.get("event"),
-      next.searchParams.get("event"),
-      "router.replace",
     );
     router.replace(`${next.pathname}${next.search}${next.hash}`, { scroll: false });
   };

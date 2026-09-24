@@ -5,7 +5,6 @@ import { KickoffTime } from "@/components/kickoff-time";
 import { StatusBadge } from "@/components/status-badge";
 import { TeamMark } from "@/components/team-mark";
 import type { NormalizedEvent } from "@/lib/odds/types";
-import { recordSlipDebugNavigation } from "@/lib/wagers/slip-debug";
 
 type TeamSummary = {
   name: string;
@@ -62,11 +61,6 @@ export function BrowseGameCard({
         scroll={false}
         aria-current={active ? "true" : undefined}
         aria-expanded={active}
-        onClick={() => {
-          const previousEventId = new URL(window.location.href).searchParams.get("event");
-          const nextEventId = new URL(href, window.location.href).searchParams.get("event");
-          recordSlipDebugNavigation(previousEventId, nextEventId, "Link");
-        }}
       >
         <div className="browse-game-teams">
           <TeamSummaryLine team={away} />

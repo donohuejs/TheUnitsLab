@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppNav } from "@/components/app-nav";
-import { BrowseBetSlipDebug } from "@/components/browse-bet-slip-debug";
 import { BrowseBetSlipBridge, BrowseBetSlipTarget } from "@/components/browse-bet-slip-host";
 import { BrowseFilterSelect } from "@/components/browse-filter-select";
 import { BrowseGameCard } from "@/components/browse-game-card";
@@ -64,7 +63,6 @@ type Props = {
     alternates?: string;
     book?: string;
     mobileSheet?: string;
-    debugSlip?: string;
   }>;
 };
 
@@ -95,14 +93,12 @@ function queryStringForFilters(
   marketFilter: BrowseMarketFilter,
   date: string,
   eventId?: string,
-  debugSlip?: string,
 ) {
   const params = new URLSearchParams();
   if (selectedBookmaker !== "all") params.set("bookmaker", selectedBookmaker);
   if (marketFilter !== "all") params.set("marketFilter", marketFilter);
   if (date) params.set("date", date);
   if (eventId) params.set("event", eventId);
-  if (debugSlip === "1") params.set("debugSlip", "1");
   return params.toString();
 }
 
@@ -111,9 +107,8 @@ function filterHref(
   selectedBookmaker: string,
   marketFilter: BrowseMarketFilter,
   date: string,
-  debugSlip?: string,
 ) {
-  const query = queryStringForFilters(selectedBookmaker, marketFilter, date, undefined, debugSlip);
+  const query = queryStringForFilters(selectedBookmaker, marketFilter, date);
   return "/sports/" + id + (query ? "?" + query : "");
 }
 
@@ -123,9 +118,6 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
   const query = await searchParams;
   const competition = getCompetition(id);
   if (!competition) redirect("/sports");
-  const debugSlipEnabled = query.debugSlip === "1" && process.env.VERCEL_ENV === "preview";
-  const deployedCommit = process.env.VERCEL_GIT_COMMIT_SHA ?? "unknown";
-  const deployedBranch = process.env.VERCEL_GIT_COMMIT_REF ?? "unknown";
 
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase.auth.getUser();
@@ -301,25 +293,24 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
     {
       value: "all",
       label: "All bookmakers",
-      href: filterHref(id, "all", marketFilter, selectedDate, query.debugSlip),
+      href: filterHref(id, "all", marketFilter, selectedDate),
     },
     ...books.map((book) => ({
       value: book.id,
       label: book.name,
-      href: filterHref(id, book.id, marketFilter, selectedDate, query.debugSlip),
+      href: filterHref(id, book.id, marketFilter, selectedDate),
     })),
   ];
   const marketFilterOptions = BROWSE_MARKET_FILTERS.map(([value, label]) => ({
     value,
     label,
-    href: filterHref(id, selected, value, selectedDate, query.debugSlip),
+    href: filterHref(id, selected, value, selectedDate),
   }));
   const controlsQuery = queryStringForFilters(
     selected,
     marketFilter,
     selectedDate,
     activeEvent?.id,
-    query.debugSlip,
   );
 
   return (
@@ -380,14 +371,14 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
           <div className="browse-filter-options">
             <Link
               className={selected === "all" ? "pill active" : "pill"}
-              href={filterHref(id, "all", marketFilter, selectedDate, query.debugSlip)}
+              href={filterHref(id, "all", marketFilter, selectedDate)}
             >
               All
             </Link>
             {books.map((book) => (
               <Link
                 className={selected === book.id ? "pill active" : "pill"}
-                href={filterHref(id, book.id, marketFilter, selectedDate, query.debugSlip)}
+                href={filterHref(id, book.id, marketFilter, selectedDate)}
                 key={book.id}
               >
                 {book.name}
@@ -409,7 +400,7 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
             {BROWSE_MARKET_FILTERS.map(([value, label]) => (
               <Link
                 className={marketFilter === value ? "pill active" : "pill"}
-                href={filterHref(id, selected, value, selectedDate, query.debugSlip)}
+                href={filterHref(id, selected, value, selectedDate)}
                 key={value}
               >
                 {label}
@@ -479,7 +470,6 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
                       if (marketFilter !== "all") eventHrefParams.set("marketFilter", marketFilter);
                       eventHrefParams.set("date", selectedDate);
                       eventHrefParams.set("event", event.id);
-                      if (debugSlipEnabled) eventHrefParams.set("debugSlip", "1");
                       return (
                         <BrowseGameCard
                           key={event.id}
@@ -568,20 +558,9 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
           selection={slipSelection}
           groups={groups}
           initialMobileSheetOpen={query.mobileSheet === "1"}
-          debugEnabled={debugSlipEnabled}
         />
         <BrowseBetSlipTarget />
       </div>
-      {debugSlipEnabled ? (
-        <BrowseBetSlipDebug
-          activeEventId={activeEvent?.id ?? null}
-          activeEventName={
-            activeEvent ? activeEvent.awayTeam + " at " + activeEvent.homeTeam : null
-          }
-          deployedCommit={deployedCommit}
-          branch={deployedBranch}
-        />
-      ) : null}
     </main>
   );
 }

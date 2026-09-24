@@ -3,8 +3,6 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-import { recordSlipDebugNavigation } from "@/lib/wagers/slip-debug";
-
 type DateOption = { value: string; label: string };
 type EventOption = { id: string; label: string };
 
@@ -67,11 +65,7 @@ export function BrowseScheduleControls({
   }, [activeEventId, shouldScrollToActiveEvent]);
 
   function navigate(changes: Record<string, string | null>) {
-    const href = buildHref(pathname, baseQuery, changes);
-    const previousEventId = new URL(window.location.href).searchParams.get("event");
-    const nextEventId = new URL(href, window.location.href).searchParams.get("event");
-    recordSlipDebugNavigation(previousEventId, nextEventId, "router.push");
-    router.push(href, { scroll: false });
+    router.push(buildHref(pathname, baseQuery, changes), { scroll: false });
   }
 
   function changeDate(value: string) {
