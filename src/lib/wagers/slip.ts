@@ -41,9 +41,47 @@ type StoredSlip = {
   straightKeys: string[];
 };
 
+export type SlipDiagnosticAction =
+  | "ADD"
+  | "REMOVE"
+  | "CLEAR"
+  | "REPLACE"
+  | "SET"
+  | "RECONCILE"
+  | "INITIALIZE"
+  | "HYDRATE"
+  | "SUBMIT_CLEAR";
+
+export type SlipDiagnosticSelection = {
+  id: string;
+  eventId: string;
+};
+
+export type SlipDiagnosticMutation = {
+  timestamp: string;
+  action: SlipDiagnosticAction;
+  beforeCount: number;
+  afterCount: number;
+  beforeSelectionIds: string[];
+  afterSelectionIds: string[];
+  beforeEventIds: string[];
+  afterEventIds: string[];
+  reason: string;
+};
+
+export type SlipDiagnosticSnapshot = {
+  enabled: boolean;
+  storeInstanceId: string;
+  mountCount: number;
+  durableStraight: SlipDiagnosticSelection[];
+  recentMutations: SlipDiagnosticMutation[];
+};
+
 const EMPTY_SLIP: SlipSelection[] = [];
 const EMPTY_STATE: StoredSlip = { version: 1, selections: [], parlayKeys: [], straightKeys: [] };
 const MAX_PENDING_SELECTIONS = 24;
+const MAX_SLIP_DIAGNOSTIC_MUTATIONS = 20;
+const slipStoreInstanceId = `store-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
 function isSlipSelection(value: unknown): value is SlipSelection {
   if (!value || typeof value !== "object") return false;
@@ -273,6 +311,95 @@ let modeSnapshotState: StoredSlip | null = null;
 let parlayViewSnapshot = EMPTY_SLIP;
 let straightViewSnapshot = EMPTY_SLIP;
 const listeners = new Set<() => void>();
+let slipDiagnosticsEnabled = false;
+let slipDiagnosticMountCount = 0;
+let slipDiagnosticMutations: SlipDiagnosticMutation[] = [];
+
+function notifyListeners() {
+  listeners.forEach((listener) => listener());
+}
+
+function straightSelectionsForState(state: StoredSlip) {
+  return state.selections.filter((selection) =>
+    state.straightKeys.includes(slipSelectionKey(selection)),
+  );
+}
+
+function describeDiagnosticSelections(selections: readonly SlipSelection[]) {
+  return selections.map((selection, index) => ({
+    id: getClientSelectionId(selection, index),
+    eventId: selection.eventId,
+  }));
+}
+
+function classifyStraightMutation(
+  before: SlipSelection[],
+  after: SlipSelection[],
+): SlipDiagnosticAction {
+  if (!before.length && after.length) return "ADD";
+  if (before.length && !after.length) return "CLEAR";
+  if (after.length > before.length) return "ADD";
+  if (after.length < before.length) return "REMOVE";
+  if (
+    before.some(
+      (selection, index) =>
+        slipSelectionKey(selection) !== slipSelectionKey(after[index] ?? selection),
+    )
+  ) {
+    return "REPLACE";
+  }
+  return "SET";
+}
+
+function appendSlipDiagnosticMutation(
+  action: SlipDiagnosticAction,
+  reason: string,
+  before: readonly SlipSelection[],
+  after: readonly SlipSelection[],
+) {
+  if (!slipDiagnosticsEnabled) return;
+  const beforeDescribed = describeDiagnosticSelections(before);
+  const afterDescribed = describeDiagnosticSelections(after);
+  slipDiagnosticMutations = [
+    ...slipDiagnosticMutations,
+    {
+      timestamp: new Date().toISOString(),
+      action,
+      beforeCount: beforeDescribed.length,
+      afterCount: afterDescribed.length,
+      beforeSelectionIds: beforeDescribed.map((selection) => selection.id),
+      afterSelectionIds: afterDescribed.map((selection) => selection.id),
+      beforeEventIds: beforeDescribed.map((selection) => selection.eventId),
+      afterEventIds: afterDescribed.map((selection) => selection.eventId),
+      reason,
+    },
+  ].slice(-MAX_SLIP_DIAGNOSTIC_MUTATIONS);
+}
+
+export function setSlipDiagnosticsEnabled(enabled: boolean) {
+  if (slipDiagnosticsEnabled === enabled) return;
+  const current = enabled ? straightSelectionsForState(readState()) : [];
+  slipDiagnosticsEnabled = enabled;
+  if (enabled) appendSlipDiagnosticMutation("INITIALIZE", "diagnostics enabled", [], current);
+  notifyListeners();
+}
+
+export function registerSlipDiagnosticsMount() {
+  slipDiagnosticMountCount += 1;
+  if (slipDiagnosticsEnabled) notifyListeners();
+  return () => undefined;
+}
+
+export function getSlipDiagnosticsSnapshot(): SlipDiagnosticSnapshot {
+  const durableStraight = straightSelectionsForState(readState());
+  return {
+    enabled: slipDiagnosticsEnabled,
+    storeInstanceId: slipStoreInstanceId,
+    mountCount: slipDiagnosticMountCount,
+    durableStraight: describeDiagnosticSelections(durableStraight),
+    recentMutations: slipDiagnosticMutations.slice(),
+  };
+}
 
 function readState() {
   if (stateSnapshot) return stateSnapshot;
@@ -292,11 +419,19 @@ function readState() {
     legacyParlay.map(slipSelectionKey),
     legacyStraight.map(slipSelectionKey),
   );
-  if (stateSnapshot.selections.length) writeState(stateSnapshot);
+  if (stateSnapshot.selections.length) {
+    writeState(stateSnapshot, "INITIALIZE", "legacy slip migration");
+  }
   return stateSnapshot;
 }
 
-function writeState(next: StoredSlip) {
+function writeState(
+  next: StoredSlip,
+  diagnosticAction?: SlipDiagnosticAction,
+  diagnosticReason = "writeState",
+) {
+  const before = stateSnapshot ? straightSelectionsForState(stateSnapshot) : [];
+  const after = straightSelectionsForState(next);
   stateSnapshot = next;
   modeSnapshotState = null;
   if (typeof window !== "undefined") {
@@ -308,7 +443,10 @@ function writeState(next: StoredSlip) {
       // The in-memory snapshot still keeps the slip usable when storage is blocked.
     }
   }
-  listeners.forEach((listener) => listener());
+  if (diagnosticAction) {
+    appendSlipDiagnosticMutation(diagnosticAction, diagnosticReason, before, after);
+  }
+  notifyListeners();
 }
 
 function selectionsForMode(state: StoredSlip, mode: "parlay" | "straight") {
@@ -335,9 +473,16 @@ function subscribe(listener: () => void) {
     ) {
       return;
     }
+    const before = stateSnapshot ? straightSelectionsForState(stateSnapshot) : [];
     stateSnapshot = event.key === SLIP_STORAGE_KEY ? parseStoredSlip(event.newValue) : null;
     if (!stateSnapshot) readState();
-    listeners.forEach((candidate) => candidate());
+    appendSlipDiagnosticMutation(
+      "HYDRATE",
+      "storage event",
+      before,
+      straightSelectionsForState(stateSnapshot ?? EMPTY_STATE),
+    );
+    notifyListeners();
   };
   window.addEventListener("storage", handleStorage);
   return () => {
@@ -387,7 +532,13 @@ export function setSlipSelections(selections: SlipSelection[]) {
 }
 
 export function setStraightSlipSelections(selections: SlipSelection[]) {
-  writeState(setViewState(readState(), selections.slice(0, 12), "straight"));
+  const current = readState();
+  const next = setViewState(current, selections.slice(0, 12), "straight");
+  writeState(
+    next,
+    classifyStraightMutation(straightSelectionsForState(current), straightSelectionsForState(next)),
+    "setStraightSlipSelections",
+  );
 }
 
 /** Mobile uses one selection collection; straight placement and parlay eligibility are derived. */
@@ -407,7 +558,12 @@ export function setPendingSlipSelections(selections: SlipSelection[]) {
     })
     .slice(0, MAX_PENDING_SELECTIONS);
   const keys = normalized.map(slipSelectionKey);
-  writeState(stateFromSelections(normalized, keys, keys));
+  const next = stateFromSelections(normalized, keys, keys);
+  writeState(
+    next,
+    classifyStraightMutation(straightSelectionsForState(current), straightSelectionsForState(next)),
+    "setPendingSlipSelections",
+  );
 }
 
 export function clearSlip() {
@@ -417,7 +573,8 @@ export function clearSlip() {
 
 export function clearStraightSlip() {
   const state = readState();
-  writeState(stateFromSelections(state.selections, state.parlayKeys, []));
+  const next = stateFromSelections(state.selections, state.parlayKeys, []);
+  writeState(next, "CLEAR", "clearStraightSlip");
 }
 
 export function removeSlipSelectionKeysAndPersist(keys: string[]) {
@@ -433,26 +590,24 @@ export function removeSlipSelectionKeysAndPersist(keys: string[]) {
 
 export function removeStraightSlipSelectionKeysAndPersist(keys: string[]) {
   const state = readState();
-  writeState(
-    stateFromSelections(
-      state.selections,
-      state.parlayKeys,
-      state.straightKeys.filter((key) => !keys.includes(key)),
-    ),
+  const next = stateFromSelections(
+    state.selections,
+    state.parlayKeys,
+    state.straightKeys.filter((key) => !keys.includes(key)),
   );
+  writeState(next, "REMOVE", "removeStraightSlipSelectionKeysAndPersist");
 }
 
 /** Used by cancellation/void cleanup: neither slip view may retain the cancelled ticket. */
 export function removePendingSlipSelectionKeysAndPersist(keys: string[]) {
   const keySet = new Set(keys);
   const state = readState();
-  writeState(
-    stateFromSelections(
-      state.selections,
-      state.parlayKeys.filter((key) => !keySet.has(key)),
-      state.straightKeys.filter((key) => !keySet.has(key)),
-    ),
+  const next = stateFromSelections(
+    state.selections,
+    state.parlayKeys.filter((key) => !keySet.has(key)),
+    state.straightKeys.filter((key) => !keySet.has(key)),
   );
+  writeState(next, "REMOVE", "removePendingSlipSelectionKeysAndPersist");
 }
 
 function removeSelectionIdsAndPersist(ids: string[], mode: "parlay" | "straight" | "both") {
@@ -463,16 +618,19 @@ function removeSelectionIdsAndPersist(ids: string[], mode: "parlay" | "straight"
       .filter((selection, index) => idSet.has(getClientSelectionId(selection, index)))
       .map(slipSelectionKey),
   );
+  const next = stateFromSelections(
+    state.selections,
+    mode === "parlay" || mode === "both"
+      ? state.parlayKeys.filter((key) => !removedKeys.has(key))
+      : state.parlayKeys,
+    mode === "straight" || mode === "both"
+      ? state.straightKeys.filter((key) => !removedKeys.has(key))
+      : state.straightKeys,
+  );
   writeState(
-    stateFromSelections(
-      state.selections,
-      mode === "parlay" || mode === "both"
-        ? state.parlayKeys.filter((key) => !removedKeys.has(key))
-        : state.parlayKeys,
-      mode === "straight" || mode === "both"
-        ? state.straightKeys.filter((key) => !removedKeys.has(key))
-        : state.straightKeys,
-    ),
+    next,
+    mode === "parlay" ? undefined : "REMOVE",
+    `removeSelectionIdsAndPersist:${mode}`,
   );
 }
 

@@ -20,15 +20,18 @@ import {
   getEmptyStraightSlipSnapshot,
   getEmptySlipSnapshot,
   getEmptyPendingSlipSnapshot,
+  getSlipDiagnosticsSnapshot,
   getPendingSlipSnapshot,
   getClientSelectionId,
   getStraightSlipSnapshot,
   getSlipSnapshot,
+  registerSlipDiagnosticsMount,
   removePendingSlipSelectionIdsAndPersist,
   removeSlipSelectionIdsAndPersist,
   removeStraightSlipSelectionIdsAndPersist,
   replaceMutuallyExclusiveSelection,
   setPendingSlipSelections,
+  setSlipDiagnosticsEnabled,
   setStraightSlipSelections,
   setSlipSelections,
   subscribeToStraightSlip,
@@ -119,6 +122,30 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
   const mobileSelectionCount = mobileSelections.length;
   const mobileSheetSelection = mobileSelectionCount === 1 ? (mobileSelections[0] ?? null) : null;
   const mobileModalOpen = mobileSheetOpen && isMobileViewport && mobileSelectionCount > 0;
+
+  useEffect(() => {
+    const cleanup = registerSlipDiagnosticsMount();
+    let requested = false;
+    try {
+      requested = new URLSearchParams(window.location.search).get("debugSlip") === "1";
+      setSlipDiagnosticsEnabled(requested);
+    } catch {
+      requested = false;
+    }
+    return () => {
+      cleanup();
+      setSlipDiagnosticsEnabled(false);
+    };
+  }, []);
+
+  let slipDiagnostics: ReturnType<typeof getSlipDiagnosticsSnapshot> | null;
+  try {
+    slipDiagnostics = getSlipDiagnosticsSnapshot();
+  } catch {
+    slipDiagnostics = null;
+  }
+  const diagnosticsEnabled = slipDiagnostics?.enabled ?? false;
+  const lastDiagnosticMutation = slipDiagnostics?.recentMutations.at(-1) ?? null;
 
   useEffect(() => {
     const updateReturnPath = () => {
@@ -1058,6 +1085,67 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
           </div>
         </div>
       </section>
+      {diagnosticsEnabled && slipDiagnostics ? (
+        <details className="card bet-slip" data-testid="bet-slip-diagnostics" open>
+          <summary>Bet Slip diagnostics</summary>
+          <dl className="ticket-details compact">
+            <div>
+              <dt>STORE INSTANCE</dt>
+              <dd>
+                <code>{slipDiagnostics.storeInstanceId}</code> · mounts {slipDiagnostics.mountCount}
+              </dd>
+            </div>
+            <div>
+              <dt>STORE SELECTIONS</dt>
+              <dd>{slipDiagnostics.durableStraight.length}</dd>
+            </div>
+            <div>
+              <dt>STORED EVENT IDS</dt>
+              <dd>
+                {slipDiagnostics.durableStraight.map(({ eventId }) => eventId).join(", ") || "none"}
+              </dd>
+            </div>
+            <div>
+              <dt>VISIBLE BET SLIP SELECTIONS</dt>
+              <dd>{straightSelections.length}</dd>
+            </div>
+            <div>
+              <dt>VISIBLE EVENT IDS</dt>
+              <dd>{straightSelections.map(({ eventId }) => eventId).join(", ") || "none"}</dd>
+            </div>
+            <div>
+              <dt>LAST MUTATION</dt>
+              <dd>
+                {lastDiagnosticMutation ? (
+                  <>
+                    <code>{lastDiagnosticMutation.action}</code> ·{" "}
+                    {lastDiagnosticMutation.beforeCount} → {lastDiagnosticMutation.afterCount} ·{" "}
+                    {lastDiagnosticMutation.reason}
+                  </>
+                ) : (
+                  "none"
+                )}
+              </dd>
+            </div>
+          </dl>
+          <div>
+            <strong>RECENT MUTATIONS</strong>
+            {slipDiagnostics.recentMutations.length ? (
+              <ol>
+                {slipDiagnostics.recentMutations.slice(-5).map((mutation) => (
+                  <li key={mutation.timestamp + mutation.action + mutation.reason}>
+                    <code>{mutation.action}</code> {mutation.beforeCount} → {mutation.afterCount} ·{" "}
+                    {mutation.reason} · {mutation.beforeEventIds.join(", ") || "none"} →{" "}
+                    {mutation.afterEventIds.join(", ") || "none"}
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="muted">none</p>
+            )}
+          </div>
+        </details>
+      ) : null}
     </aside>
   );
 }
