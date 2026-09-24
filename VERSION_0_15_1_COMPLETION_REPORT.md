@@ -1,6 +1,6 @@
 # Version 0.15.1 Completion Report
 
-Date: 2026-09-23
+Date: 2026-09-24
 Previous repository version: **0.15.0**
 Target and completed version: **0.15.1**
 Release recommendation: **CONDITIONAL PASS for implementation and local validation**; authenticated responsive QA and DOCX visual rendering remain pending.
@@ -25,8 +25,10 @@ version now agrees across the application metadata and release documentation:
 The initial v0.15.0 source-preservation commit was `5ca2a32d16670ab7c14b696b3980b537618371f6`.
 The corrective preview commit is `ddeb96bf41ea4484f4bd98bbe5eae4d24737ffd7`
 (`fix: correct browse market board prop contract`).
-Both are on `release/v0.15.1`; `main` remains unchanged. No Git tag, GitHub Release, merge to
-main, or production deployment was created. The historical v0.15.0 report was not rewritten.
+The desktop remediation commit is `486923315a59fb0be4b34ec6798b9d305fc0b6f6`
+(`fix: refine v0.15.1 desktop browse layout`). All are on `release/v0.15.1`; `main` remains
+unchanged. No Git tag, GitHub Release, merge to main, or production deployment was created. The
+historical v0.15.0 report was not rewritten.
 
 ## Vercel Preview correction
 
@@ -52,6 +54,12 @@ artifacts without changing the committed source, after which all required gates 
 Vercel Preview for `ddeb96bf41ea4484f4bd98bbe5eae4d24737ffd7` completed successfully (`success` / `Deployment has completed`). The
 Preview URL is:
 <https://theunitslab-git-release-v0151-donohuejs-1066s-projects.vercel.app>
+
+The desktop remediation commit `486923315a59fb0be4b34ec6798b9d305fc0b6f6` also completed
+successfully in Vercel (`success` / `Deployment has completed`). Its Vercel deployment dashboard
+is:
+<https://vercel.com/donohuejs-1066s-projects/theunitslab/8Vzek1tK7siVWCuq9xB93UwL6wdo>
+The branch Preview URL remains protected by Vercel Login from this environment.
 
 The deployment is protected by Vercel Login from this environment, so Preview environment-variable
 configuration cannot be independently confirmed. No Vercel environment variables were changed.
@@ -85,8 +93,15 @@ configuration cannot be independently confirmed. No Vercel environment variables
 
 ### Desktop and mobile presentation
 
-- Desktop/tablet-landscape Browse now has a compact left Games navigator, one center selected-game
-  market detail region, and the coordinated right Bet Slip rail.
+- Desktop Browse now uses an expanded shell and a deliberate three-region layout: a 320–350px
+  Games navigator, a center selected-game market detail region with a 500px minimum, and a
+  330–360px coordinated right Bet Slip rail. The layout switches to a two-column/tablet form
+  before those minimums can squeeze the page.
+- Desktop bookmaker and market filters are compact native selects; the existing horizontal mobile
+  filter chips remain mobile-only.
+- Desktop game cards use vertical compact navigation rows, word-boundary team wrapping, accessible
+  logos/rankings/names/kickoff/status text, and a subtle selected-state chevron without redundant
+  visible “View markets” text. The mobile label remains available below the mobile breakpoint.
 - The full market board is rendered only for the selected event in the desktop detail region;
   mobile retains an inline selected-game expansion for the compact single-column flow.
 - The filter bar places Date, Jump to Game, Bookmakers, Market, and Refresh Odds together.
@@ -144,7 +159,8 @@ Modified for this patch:
 
 - `package.json`, `package-lock.json`, `src/config/version-history.ts`
 - `src/app/globals.css`, `src/app/sports/[competition]/page.tsx`
-- `src/components/browse-game-card.tsx`, `src/components/browse-schedule-controls.tsx`,
+- `src/components/browse-filter-select.tsx`, `src/components/browse-game-card.tsx`,
+  `src/components/browse-schedule-controls.tsx`,
   `src/components/kickoff-time.tsx`
 - `src/lib/browse-schedule.ts`
 - `test/private-beta-release.test.ts`, `test/release-candidate-fix-patch-1.test.ts`,
@@ -173,6 +189,9 @@ Passed:
 - `git diff --check` and source-level responsive/master-detail contracts passed.
 - Clean corrective-commit validation at `ddeb96bf41ea4484f4bd98bbe5eae4d24737ffd7`: `npm ci`, lint, typecheck, 46 test files / 277
   tests, production build, and secret scan all passed.
+- Clean desktop-remediation validation at `486923315a59fb0be4b34ec6798b9d305fc0b6f6`: `npm ci`,
+  format check, lint, typecheck, 46 test files / 277 tests, production build, and secret scan all
+  passed. The Vercel Preview check also passed.
 
 Blocked or pending:
 
@@ -180,6 +199,9 @@ Blocked or pending:
   dimensions remains blocked because this checkout has no `.env.local`, public Supabase
   configuration, or authenticated browser/session. The available unauthenticated local smoke
   safely redirected `/sports/ncaaf` to `/auth`; it did not prove the authenticated Browse screen.
+- The pushed desktop Preview is available and its deployment check passed, but an authenticated
+  desktop smoke test at 1920px, 1440px, 1366px, and 1280px, including a short-height laptop,
+  remains pending before final release approval.
 - DOCX visual rendering and PNG inspection remain blocked because LibreOffice/`soffice.exe` is not
   installed. Structural governing-document editing completed successfully.
 
