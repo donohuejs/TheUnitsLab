@@ -20,10 +20,13 @@ export function SlipPlacementCleanup({
   voidedSlipKeys?: string[];
 }) {
   useEffect(() => {
-    if (slipKeys.length) removeSlipSelectionKeysAndPersist(slipKeys);
-    if (straightSlipKeys?.length) removeStraightSlipSelectionKeysAndPersist(straightSlipKeys);
-    if (pendingSlipKeys?.length) removePendingSlipSelectionKeysAndPersist(pendingSlipKeys);
-    if (voidedSlipKeys?.length) removePendingSlipSelectionKeysAndPersist(voidedSlipKeys);
+    if (slipKeys.length) removeSlipSelectionKeysAndPersist(slipKeys, "submission cleanup: parlay");
+    if (straightSlipKeys?.length)
+      removeStraightSlipSelectionKeysAndPersist(straightSlipKeys, "submission cleanup: straight");
+    if (pendingSlipKeys?.length)
+      removePendingSlipSelectionKeysAndPersist(pendingSlipKeys, "submission cleanup: pending");
+    if (voidedSlipKeys?.length)
+      removePendingSlipSelectionKeysAndPersist(voidedSlipKeys, "stale/void cleanup");
   }, [slipKeys, straightSlipKeys, pendingSlipKeys, voidedSlipKeys]);
 
   return null;

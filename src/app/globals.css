@@ -1815,6 +1815,68 @@ textarea:focus {
   align-content: start;
 }
 
+.bet-slip-debug-panel {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 90;
+  width: min(32rem, calc(100vw - 2rem));
+  max-height: min(80vh, 44rem);
+  overflow: auto;
+  padding: 0.75rem;
+  border: 2px solid #a22b2b;
+  border-radius: 0.55rem;
+  background: #fff7f7;
+  color: #3a1010;
+  box-shadow: 0 0.75rem 2rem rgb(35 10 10 / 22%);
+  font:
+    0.75rem/1.45 ui-monospace,
+    SFMono-Regular,
+    Consolas,
+    monospace;
+}
+
+.bet-slip-debug-panel summary {
+  cursor: pointer;
+  color: #8f1d1d;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.bet-slip-debug-panel dl {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.7rem 0 0;
+}
+
+.bet-slip-debug-panel dl > div {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.bet-slip-debug-panel dt {
+  color: #6b2d2d;
+  font-weight: 800;
+}
+
+.bet-slip-debug-panel dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.bet-slip-debug-panel code {
+  color: #4d1111;
+  font: inherit;
+  font-weight: 800;
+}
+
+.bet-slip-debug-list {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0.2rem 0 0;
+  padding-left: 1.1rem;
+}
+
 @media (min-width: 761px) and (max-width: 1239px) {
   .browse-filter-bar {
     grid-template-columns: minmax(0, 1fr) minmax(11.25rem, 13.75rem);
@@ -3323,6 +3385,13 @@ thead th {
 
   .nav-links {
     gap: 0.3rem;
+  }
+
+  .bet-slip-debug-panel {
+    right: 0.5rem;
+    bottom: 0.5rem;
+    width: calc(100vw - 1rem);
+    max-height: 70vh;
   }
 }
 

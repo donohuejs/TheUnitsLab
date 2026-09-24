@@ -1,4 +1,5 @@
 import type { MarketType, SelectionType } from "@/lib/odds/types";
+import { recordSlipDebugMutation, type SlipDebugAction } from "@/lib/wagers/slip-debug";
 
 export type SlipSelection = {
   /** Stable UI identity. It is persisted with the slip and is not a market key. */
@@ -292,11 +293,40 @@ function readState() {
     legacyParlay.map(slipSelectionKey),
     legacyStraight.map(slipSelectionKey),
   );
-  if (stateSnapshot.selections.length) writeState(stateSnapshot);
+  if (stateSnapshot.selections.length) {
+    writeState(stateSnapshot, "INITIALIZE", "legacy slip migration");
+  }
   return stateSnapshot;
 }
 
-function writeState(next: StoredSlip) {
+function straightSelectionsForState(state: StoredSlip) {
+  return state.selections.filter((selection) =>
+    state.straightKeys.includes(slipSelectionKey(selection)),
+  );
+}
+
+function classifyStraightMutation(
+  before: SlipSelection[],
+  after: SlipSelection[],
+): SlipDebugAction {
+  if (!before.length && after.length) return "ADD";
+  if (before.length && !after.length) return "CLEAR";
+  if (after.length > before.length) return "ADD";
+  if (after.length < before.length) return "REMOVE";
+  if (
+    before.some(
+      (selection, index) =>
+        slipSelectionKey(selection) !== slipSelectionKey(after[index] ?? selection),
+    )
+  ) {
+    return "REPLACE";
+  }
+  return "SET";
+}
+
+function writeState(next: StoredSlip, action: SlipDebugAction = "SET", reason = "writeState") {
+  const before = stateSnapshot ? straightSelectionsForState(stateSnapshot) : [];
+  const after = straightSelectionsForState(next);
   stateSnapshot = next;
   modeSnapshotState = null;
   if (typeof window !== "undefined") {
@@ -308,6 +338,7 @@ function writeState(next: StoredSlip) {
       // The in-memory snapshot still keeps the slip usable when storage is blocked.
     }
   }
+  recordSlipDebugMutation(action, reason, before, after);
   listeners.forEach((listener) => listener());
 }
 
@@ -335,8 +366,15 @@ function subscribe(listener: () => void) {
     ) {
       return;
     }
+    const before = stateSnapshot ? straightSelectionsForState(stateSnapshot) : [];
     stateSnapshot = event.key === SLIP_STORAGE_KEY ? parseStoredSlip(event.newValue) : null;
     if (!stateSnapshot) readState();
+    recordSlipDebugMutation(
+      "HYDRATE",
+      "storage event",
+      before,
+      straightSelectionsForState(stateSnapshot ?? EMPTY_STATE),
+    );
     listeners.forEach((candidate) => candidate());
   };
   window.addEventListener("storage", handleStorage);
@@ -383,11 +421,21 @@ export function getEmptyStraightSlipSnapshot() {
 }
 
 export function setSlipSelections(selections: SlipSelection[]) {
-  writeState(setViewState(readState(), selections.slice(0, 12), "parlay"));
+  writeState(
+    setViewState(readState(), selections.slice(0, 12), "parlay"),
+    "SET",
+    "setSlipSelections",
+  );
 }
 
 export function setStraightSlipSelections(selections: SlipSelection[]) {
-  writeState(setViewState(readState(), selections.slice(0, 12), "straight"));
+  const current = readState();
+  const next = setViewState(current, selections.slice(0, 12), "straight");
+  writeState(
+    next,
+    classifyStraightMutation(straightSelectionsForState(current), straightSelectionsForState(next)),
+    "setStraightSlipSelections",
+  );
 }
 
 /** Mobile uses one selection collection; straight placement and parlay eligibility are derived. */
@@ -407,20 +455,32 @@ export function setPendingSlipSelections(selections: SlipSelection[]) {
     })
     .slice(0, MAX_PENDING_SELECTIONS);
   const keys = normalized.map(slipSelectionKey);
-  writeState(stateFromSelections(normalized, keys, keys));
+  const next = stateFromSelections(normalized, keys, keys);
+  writeState(
+    next,
+    classifyStraightMutation(straightSelectionsForState(current), straightSelectionsForState(next)),
+    "setPendingSlipSelections",
+  );
 }
 
 export function clearSlip() {
   const state = readState();
-  writeState(stateFromSelections(state.selections, [], state.straightKeys));
+  writeState(stateFromSelections(state.selections, [], state.straightKeys), "CLEAR", "clearSlip");
 }
 
 export function clearStraightSlip() {
   const state = readState();
-  writeState(stateFromSelections(state.selections, state.parlayKeys, []));
+  writeState(
+    stateFromSelections(state.selections, state.parlayKeys, []),
+    "CLEAR",
+    "clearStraightSlip",
+  );
 }
 
-export function removeSlipSelectionKeysAndPersist(keys: string[]) {
+export function removeSlipSelectionKeysAndPersist(
+  keys: string[],
+  reason = "removeSlipSelectionKeysAndPersist",
+) {
   const state = readState();
   writeState(
     stateFromSelections(
@@ -428,10 +488,15 @@ export function removeSlipSelectionKeysAndPersist(keys: string[]) {
       state.parlayKeys.filter((key) => !keys.includes(key)),
       state.straightKeys,
     ),
+    "REMOVE",
+    reason,
   );
 }
 
-export function removeStraightSlipSelectionKeysAndPersist(keys: string[]) {
+export function removeStraightSlipSelectionKeysAndPersist(
+  keys: string[],
+  reason = "removeStraightSlipSelectionKeysAndPersist",
+) {
   const state = readState();
   writeState(
     stateFromSelections(
@@ -439,11 +504,16 @@ export function removeStraightSlipSelectionKeysAndPersist(keys: string[]) {
       state.parlayKeys,
       state.straightKeys.filter((key) => !keys.includes(key)),
     ),
+    "REMOVE",
+    reason,
   );
 }
 
 /** Used by cancellation/void cleanup: neither slip view may retain the cancelled ticket. */
-export function removePendingSlipSelectionKeysAndPersist(keys: string[]) {
+export function removePendingSlipSelectionKeysAndPersist(
+  keys: string[],
+  reason = "removePendingSlipSelectionKeysAndPersist",
+) {
   const keySet = new Set(keys);
   const state = readState();
   writeState(
@@ -452,6 +522,8 @@ export function removePendingSlipSelectionKeysAndPersist(keys: string[]) {
       state.parlayKeys.filter((key) => !keySet.has(key)),
       state.straightKeys.filter((key) => !keySet.has(key)),
     ),
+    "REMOVE",
+    reason,
   );
 }
 
@@ -473,6 +545,8 @@ function removeSelectionIdsAndPersist(ids: string[], mode: "parlay" | "straight"
         ? state.straightKeys.filter((key) => !removedKeys.has(key))
         : state.straightKeys,
     ),
+    "REMOVE",
+    `removeSelectionIdsAndPersist:${mode}`,
   );
 }
 
