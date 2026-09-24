@@ -3075,7 +3075,6 @@ thead th {
   }
 
   .mobile-slip-sheet .mobile-empty-slip,
-  .mobile-slip-sheet.mobile-single-mode .mobile-straight-slip,
   .mobile-slip-sheet.mobile-single-mode .mobile-parlay-slip,
   .mobile-slip-sheet.mobile-parlay-mode .mobile-current-slip {
     display: none;

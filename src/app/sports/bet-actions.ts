@@ -78,6 +78,13 @@ const straightBatchSchema = z.object({
   slipKeys: z.string().trim().max(4096).optional().default(""),
   pendingSlipKeys: z.string().trim().max(4096).optional().default(""),
   idempotencyKey: z.string().trim().min(16).max(160),
+  returnTo: z
+    .string()
+    .trim()
+    .max(2048)
+    .refine((value) => value === "" || value.startsWith("/sports"))
+    .optional()
+    .default(""),
 });
 
 function formValue(formData: FormData, field: string) {
@@ -214,15 +221,19 @@ export async function placeStraightBets(formData: FormData) {
     slipKeys: formValue(formData, "slipKeys"),
     pendingSlipKeys: formValue(formData, "pendingSlipKeys"),
     idempotencyKey: formValue(formData, "idempotencyKey"),
+    returnTo: formValue(formData, "returnTo"),
   });
   if (!parsed.success || parsed.data.legs.some((leg) => !getCompetition(leg.competitionKey))) {
-    notice("/sports", "The straight-bet list is invalid.");
+    notice(parsed.data?.returnTo || "/sports", "The straight-bet list is invalid.");
   }
   let stake: string;
   try {
     stake = formatUnits(parseStakeToMinorUnits(parsed.data.stake));
   } catch {
-    notice("/sports", "Enter a positive straight-bet stake using at most two decimals.");
+    notice(
+      parsed.data.returnTo || "/sports",
+      "Enter a positive straight-bet stake using at most two decimals.",
+    );
   }
 
   const supabase = await createSupabaseServerClient();
@@ -275,7 +286,7 @@ export async function placeStraightBets(formData: FormData) {
     if (submittedSlipKeys[index]) placedSlipKeys.push(submittedSlipKeys[index]);
   }
 
-  if (!placed) notice("/sports", placementMessage(firstError));
+  if (!placed) notice(parsed.data.returnTo || "/sports", placementMessage(firstError));
   const path = placedSlipKeys.length
     ? parsed.data.pendingSlipKeys
       ? `/my-bets?pending=${encodeURIComponent(placedSlipKeys.join(","))}`

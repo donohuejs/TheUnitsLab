@@ -6,10 +6,10 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import { watchOdds } from "@/app/watchlist/actions";
 import { SubmitButton } from "@/components/submit-button";
 import {
-  getEmptyPendingSlipSnapshot,
-  getPendingSlipSnapshot,
+  getEmptyStraightSlipSnapshot,
+  getStraightSlipSnapshot,
   slipSelectionKey,
-  subscribeToSlip,
+  subscribeToStraightSlip,
 } from "@/lib/wagers/slip";
 import type { MarketType, SelectionType } from "@/lib/odds/types";
 
@@ -37,21 +37,6 @@ type DisplayOdd = {
 
 const price = (value: number) => (value > 0 ? `+${value}` : String(value));
 
-function subscribeToMobileViewport(listener: () => void) {
-  if (typeof window === "undefined") return () => undefined;
-  const media = window.matchMedia("(max-width: 760px)");
-  media.addEventListener("change", listener);
-  return () => media.removeEventListener("change", listener);
-}
-
-function getMobileViewportSnapshot() {
-  return typeof window !== "undefined" && window.matchMedia("(max-width: 760px)").matches;
-}
-
-function getServerMobileViewportSnapshot() {
-  return false;
-}
-
 export function OddsSelectionGrid({
   odds,
   watchlistAvailable = true,
@@ -60,26 +45,21 @@ export function OddsSelectionGrid({
   watchlistAvailable?: boolean;
 }) {
   const [expanded, setExpanded] = useState<string[]>([]);
-  const isMobileViewport = useSyncExternalStore(
-    subscribeToMobileViewport,
-    getMobileViewportSnapshot,
-    getServerMobileViewportSnapshot,
+  const straightSelections = useSyncExternalStore(
+    subscribeToStraightSlip,
+    getStraightSlipSnapshot,
+    getEmptyStraightSlipSnapshot,
   );
-  const pendingSelections = useSyncExternalStore(
-    subscribeToSlip,
-    getPendingSlipSnapshot,
-    getEmptyPendingSlipSnapshot,
-  );
-  const pendingSelectionKeys = useMemo(
-    () => new Set(pendingSelections.map(slipSelectionKey)),
-    [pendingSelections],
+  const straightSelectionKeys = useMemo(
+    () => new Set(straightSelections.map(slipSelectionKey)),
+    [straightSelections],
   );
   const displayOdds = useMemo(
     () =>
       odds.map((odd) => ({
         ...odd,
         isSelected: (() => {
-          const inSlip = pendingSelectionKeys.has(
+          const inSlip = straightSelectionKeys.has(
             slipSelectionKey({
               eventId: odd.eventId,
               bookmakerId: odd.bookmakerId,
@@ -88,10 +68,10 @@ export function OddsSelectionGrid({
               line: odd.point,
             }),
           );
-          return isMobileViewport ? inSlip : odd.isSelected || inSlip;
+          return odd.isSelected || inSlip;
         })(),
       })),
-    [isMobileViewport, odds, pendingSelectionKeys],
+    [odds, straightSelectionKeys],
   );
   const groups = useMemo(() => {
     const bySelection = new Map<string, DisplayOdd[]>();
@@ -190,10 +170,10 @@ function OddChoice({ odd, watchlistAvailable }: { odd: DisplayOdd; watchlistAvai
       </span>
       {odd.isSelected ? (
         <span className="odd-selected-indicator">
-          <span aria-hidden="true">✓</span> Selected for simulated slip
+          <span aria-hidden="true">✓</span> Added to Bet Slip
         </span>
       ) : (
-        <small>Select for simulated slip</small>
+        <small>Add to Bet Slip</small>
       )}
     </>
   );

@@ -4,11 +4,12 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   clearSlip,
   clearStraightSlip,
-  getPendingSlipSnapshot,
   getSlipSnapshot,
-  removePendingSlipSelectionKeysAndPersist,
+  getStraightSlipSnapshot,
   removeSlipSelectionKeysAndPersist,
+  removeStraightSlipSelectionKeysAndPersist,
   setSlipSelections,
+  setStraightSlipSelections,
   slipSelectionKey,
   type SlipSelection,
 } from "../src/lib/wagers/slip";
@@ -53,19 +54,21 @@ describe("mobile Bet Slip UX addendum", () => {
 
   it("visibly marks a selected odds outcome and keeps it linked to the persistent slip", () => {
     expect(oddsGrid).toContain("odd-selected-indicator");
-    expect(oddsGrid).toContain("getPendingSlipSnapshot");
-    expect(oddsGrid).toContain("return isMobileViewport ? inSlip : odd.isSelected || inSlip;");
+    expect(oddsGrid).toContain("getStraightSlipSnapshot");
+    expect(oddsGrid).toContain("return odd.isSelected || inSlip;");
+    expect(oddsGrid).toContain("Added to Bet Slip");
+    expect(oddsGrid).toContain("Add to Bet Slip");
   });
 
   it("causes the first stored selection to render a mobile tray", () => {
-    setSlipSelections([leg("Georgia")]);
-    expect(getPendingSlipSnapshot()).toHaveLength(1);
+    setStraightSlipSelections([leg("Georgia")]);
+    expect(getStraightSlipSnapshot()).toHaveLength(1);
     expect(betSlip).toContain("mobile-slip-tray-wrap");
     expect(betSlip).toContain("mobileSelectionCount ?");
   });
 
   it("shows the correct pick count in the tray", () => {
-    setSlipSelections([leg("Georgia"), leg("Texas")]);
+    setStraightSlipSelections([leg("Georgia"), leg("Texas")]);
     expect(betSlip).toContain('mobileSelectionCount === 1 ? "Pick" : "Picks"');
     expect(betSlip).toContain("{mobileSelectionCount}");
   });
@@ -85,10 +88,10 @@ describe("mobile Bet Slip UX addendum", () => {
 
   it("removing a leg updates the persistent selection collection", () => {
     const selections = [leg("Georgia"), leg("Texas")];
-    setSlipSelections(selections);
-    removePendingSlipSelectionKeysAndPersist([slipSelectionKey(selections[0])]);
-    expect(getSlipSnapshot()).toEqual([selections[1]]);
-    expect(betSlip).toContain("removePendingSlipSelectionIdsAndPersist");
+    setStraightSlipSelections(selections);
+    removeStraightSlipSelectionKeysAndPersist([slipSelectionKey(selections[0])]);
+    expect(getStraightSlipSnapshot()).toEqual([selections[1]]);
+    expect(betSlip).toContain("removeStraightSlipSelectionIdsAndPersist");
   });
 
   it("removes the first and second legs by canonical key, including the former second leg", () => {
@@ -99,7 +102,7 @@ describe("mobile Bet Slip UX addendum", () => {
     removeSlipSelectionKeysAndPersist([slipSelectionKey(selections[1])]);
     expect(getSlipSnapshot()).toEqual([]);
     expect(betSlip).toContain("removeParlayLeg(leg, index)");
-    expect(betSlip).toContain("removePendingSlipSelectionIdsAndPersist");
+    expect(betSlip).toContain("removeStraightSlipSelectionIdsAndPersist");
     expect(betSlip).not.toContain("removeParlayLeg(index)");
   });
 
@@ -127,9 +130,9 @@ describe("mobile Bet Slip UX addendum", () => {
 
   it("hides the tray when the final selection is removed", () => {
     const selection = leg("Georgia");
-    setSlipSelections([selection]);
-    removePendingSlipSelectionKeysAndPersist([slipSelectionKey(selection)]);
-    expect(getPendingSlipSnapshot()).toEqual([]);
+    setStraightSlipSelections([selection]);
+    removeStraightSlipSelectionKeysAndPersist([slipSelectionKey(selection)]);
+    expect(getStraightSlipSnapshot()).toEqual([]);
     expect(betSlip).toContain(
       "const mobileModalOpen = mobileSheetOpen && isMobileViewport && mobileSelectionCount > 0",
     );
@@ -142,10 +145,12 @@ describe("mobile Bet Slip UX addendum", () => {
   });
 
   it("keeps picks-first mobile selections together when a parlay is unavailable", () => {
-    expect(betSlip).toContain("setPendingSlipSelections([...mobileSelections, selection])");
-    expect(betSlip).toContain("Straight bet");
+    expect(betSlip).toContain(
+      "setStraightSlipSelections(replacement ?? [...straightSelections, selection])",
+    );
+    expect(betSlip).toContain("mobile-straight-slip");
     expect(betSlip).toContain("Parlay unavailable");
-    expect(betSlip).toContain("mobileParlayAvailability.eligible");
+    expect(betSlip).toContain("parlayAvailability.eligible");
     expect(betSlip).not.toContain(
       'setMobileAcknowledgement("Same-game parlay picks are not supported.")',
     );
@@ -154,8 +159,8 @@ describe("mobile Bet Slip UX addendum", () => {
     );
   });
 
-  it("derives tray count from the same pending snapshot used by the sheet", () => {
-    expect(betSlip).toContain("getPendingSlipSnapshot");
+  it("derives tray count from the same straight snapshot used by the sheet", () => {
+    expect(betSlip).toContain("const mobileSelections = straightSelections");
     expect(betSlip).toContain("const mobileSelectionCount = mobileSelections.length");
     expect(betSlip).not.toContain("const [mobileSelectionCount");
   });
@@ -164,13 +169,14 @@ describe("mobile Bet Slip UX addendum", () => {
     expect(betSlip).toContain("MarketBadge");
     expect(betSlip).toContain('currentSelection.marketType === "spread"');
     expect(betSlip).toContain("activeSelection?.line === null");
-    expect(betSlip).toContain("activeSelection?.americanOdds");
+    expect(betSlip).toContain("activeSelection.americanOdds");
   });
 
   it("cleans successfully placed mobile selections through the existing cleanup path", () => {
-    expect(betSlip).toContain('name="slipKey"');
+    expect(betSlip).toContain('name="slipKeys"');
+    expect(betSlip).toContain('name="pendingSlipKeys"');
     expect(cleanup).toContain("removeSlipSelectionKeysAndPersist");
-    expect(actions).toContain("parsed.data.slipKey");
+    expect(actions).toContain("parsed.data.pendingSlipKeys");
   });
 
   it("returns placement failures to the open sheet without clearing selections", () => {
