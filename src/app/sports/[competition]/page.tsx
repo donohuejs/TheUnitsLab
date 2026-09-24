@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { AppNav } from "@/components/app-nav";
 import { BetSlip } from "@/components/bet-slip";
+import { BrowseFilterSelect } from "@/components/browse-filter-select";
 import { BrowseGameCard } from "@/components/browse-game-card";
 import {
   BROWSE_MARKET_FILTERS,
@@ -288,6 +289,23 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
       formatBrowseTime(event.scheduledStart, timeZone),
   }));
   const marqueeEventIds = getMarqueeEventIds(orderedEvents, priorityContext);
+  const bookmakerFilterOptions = [
+    {
+      value: "all",
+      label: "All bookmakers",
+      href: filterHref(id, "all", marketFilter, selectedDate),
+    },
+    ...books.map((book) => ({
+      value: book.id,
+      label: book.name,
+      href: filterHref(id, book.id, marketFilter, selectedDate),
+    })),
+  ];
+  const marketFilterOptions = BROWSE_MARKET_FILTERS.map(([value, label]) => ({
+    value,
+    label,
+    href: filterHref(id, selected, value, selectedDate),
+  }));
   const controlsQuery = queryStringForFilters(
     selected,
     marketFilter,
@@ -296,7 +314,7 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
   );
 
   return (
-    <main className="shell">
+    <main className="shell browse-shell">
       <AppNav active="sports" userId={data.user.id} />
       <CompetitionSwitcher currentCompetition={id} />
       <header className="account-header">
@@ -340,7 +358,15 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
           activeEventId={activeEvent?.id ?? null}
           shouldScrollToActiveEvent={shouldScrollToActiveEvent}
         />
-        <div className="browse-filter-group browse-bookmaker-control">
+        <div className="browse-filter-group browse-bookmaker-control desktop-browse-filter-control">
+          <BrowseFilterSelect
+            id={`browse-bookmaker-${id}`}
+            label="Bookmaker"
+            value={selected}
+            options={bookmakerFilterOptions}
+          />
+        </div>
+        <div className="browse-filter-group browse-bookmaker-control mobile-browse-filter-control">
           <span className="browse-filter-label">Bookmaker</span>
           <div className="browse-filter-options">
             <Link
@@ -360,7 +386,15 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
             ))}
           </div>
         </div>
-        <div className="browse-filter-group browse-market-control">
+        <div className="browse-filter-group browse-market-control desktop-browse-filter-control">
+          <BrowseFilterSelect
+            id={`browse-market-${id}`}
+            label="Market"
+            value={marketFilter}
+            options={marketFilterOptions}
+          />
+        </div>
+        <div className="browse-filter-group browse-market-control mobile-browse-filter-control">
           <span className="browse-filter-label">Market</span>
           <div className="browse-filter-options">
             {BROWSE_MARKET_FILTERS.map(([value, label]) => (

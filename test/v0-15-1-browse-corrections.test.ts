@@ -74,6 +74,7 @@ describe("v0.15.1 Browse Odds corrections", () => {
   it("does not auto-open a game and uses a master/detail desktop contract", () => {
     const page = read("../src/app/sports/[competition]/page.tsx");
     const controls = read("../src/components/browse-schedule-controls.tsx");
+    const filterSelect = read("../src/components/browse-filter-select.tsx");
     const card = read("../src/components/browse-game-card.tsx");
     const grid = read("../src/components/odds-selection-grid.tsx");
     const css = read("../src/app/globals.css");
@@ -82,12 +83,22 @@ describe("v0.15.1 Browse Odds corrections", () => {
     expect(page).not.toContain("orderedEvents[0]");
     expect(page).toContain("browse-games-rail");
     expect(page).toContain("browse-market-detail");
+    expect(page).toContain("desktop-browse-filter-control");
+    expect(page).toContain("mobile-browse-filter-control");
     expect(controls).toContain("Select a matchup...");
     expect(controls).toContain("if (value) changes.event = value");
+    expect(filterSelect).toContain("useRouter");
+    expect(filterSelect).toContain("BrowseFilterSelectOption");
     expect(card).toContain("browse-game-mobile-board");
+    expect(card).toContain("browse-game-action-label");
+    expect(card).toContain("aria-expanded={active}");
     expect(grid).toContain("watchlistAvailable?: boolean");
     expect(grid).toContain("watchlistAvailable && !odd.eventStarted && !odd.isAlternate");
-    expect(css).toContain("minmax(17rem, 20rem) minmax(0, 1fr) minmax(20rem, 23rem)");
+    expect(css).toContain("minmax(320px, 350px) minmax(500px, 1fr) minmax(330px, 360px)");
+    expect(css).toContain(".browse-filter-select-control");
+    expect(css).toContain(".browse-game-side");
+    expect(css).toContain(".browse-game-action-label");
+    expect(css).not.toContain("scrollbar-gutter: stable");
     expect(css).toContain(".browse-market-detail");
   });
 });

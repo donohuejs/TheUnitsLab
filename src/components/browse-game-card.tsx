@@ -67,17 +67,24 @@ export function BrowseGameCard({
           <span className="event-at">at</span>
           <TeamSummaryLine team={home} />
         </div>
-        <div className="browse-game-meta">
-          <span className="event-kickoff">
-            <span className="sr-only">Kickoff </span>
-            <KickoffTime value={event.scheduledStart} timeZone={timeZone} />
+        <div className="browse-game-side">
+          <div className="browse-game-meta">
+            <span className="event-kickoff">
+              <span className="sr-only">Kickoff </span>
+              <KickoffTime value={event.scheduledStart} timeZone={timeZone} />
+            </span>
+            <StatusBadge status={event.status} />
+            {marquee ? <span className="marquee-badge">Marquee Matchup</span> : null}
+          </div>
+          <span className="browse-game-action">
+            <span className="browse-game-action-label">
+              {active ? "Markets open" : "View markets"}
+            </span>
+            <span className="browse-game-chevron" aria-hidden="true">
+              {active ? "⌃" : "⌄"}
+            </span>
           </span>
-          <StatusBadge status={event.status} />
-          {marquee ? <span className="marquee-badge">Marquee Matchup</span> : null}
         </div>
-        <span className="browse-game-action" aria-hidden="true">
-          {active ? "Markets open" : "View markets"} <span>{active ? "⌃" : "⌄"}</span>
-        </span>
       </Link>
       {active && children ? <div className="browse-game-mobile-board">{children}</div> : null}
     </article>
