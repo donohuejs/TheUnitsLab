@@ -1,0 +1,99 @@
+{
+  "source": "ops/backups/public-data-20260920-1716.sql",
+  "provider": "the_odds_api_v4",
+  "competitionId": "ucl",
+  "providerSportKey": "soccer_uefa_champs_league",
+  "fetchedAt": "2026-09-17T01:41:13.456Z",
+  "events": [
+    {
+      "providerEventId": "2b0a946cac613732fcbf57ce931490a1",
+      "homeTeam": "RC Lens",
+      "awayTeam": "Sporting Lisbon"
+    },
+    {
+      "providerEventId": "46f726554e6876fb828c767bfbfdfdad",
+      "homeTeam": "Sabah FK",
+      "awayTeam": "Slavia Praha"
+    },
+    {
+      "providerEventId": "93177465a42a0fb7802f1c8b06d6ee3a",
+      "homeTeam": "Arsenal",
+      "awayTeam": "Lille"
+    },
+    {
+      "providerEventId": "a9c22e08b395ee5753c8a65bc0eb97cf",
+      "homeTeam": "Atlético Madrid",
+      "awayTeam": "Manchester United"
+    },
+    {
+      "providerEventId": "dd431688ed5c8f383b6434fd4f01e883",
+      "homeTeam": "Galatasaray",
+      "awayTeam": "Barcelona"
+    },
+    {
+      "providerEventId": "8a9d20b23417357011c10585a99335e9",
+      "homeTeam": "Viking FK",
+      "awayTeam": "Bayern Munich"
+    },
+    {
+      "providerEventId": "ca3f4b075d835413f9cb7bd3c439fdd0",
+      "homeTeam": "Inter Milan",
+      "awayTeam": "Club Brugge"
+    },
+    {
+      "providerEventId": "09e41b63d1d59bd4d971c54ffce154d3",
+      "homeTeam": "Villarreal",
+      "awayTeam": "Napoli"
+    },
+    {
+      "providerEventId": "da9e9e9eb9a238ed97827c4a8fbe6044",
+      "homeTeam": "RB Leipzig",
+      "awayTeam": "PSV Eindhoven"
+    },
+    {
+      "providerEventId": "5d6f9accd6f79ae4216dfd29ccc342b2",
+      "homeTeam": "Feyenoord",
+      "awayTeam": "Como"
+    },
+    {
+      "providerEventId": "2903ee092f7e08c549b130a3d394ac3c",
+      "homeTeam": "LASK",
+      "awayTeam": "Liverpool"
+    },
+    {
+      "providerEventId": "0f961390e790ad2c80ecb3f302cad4a6",
+      "homeTeam": "Shakhtar Donetsk",
+      "awayTeam": "AEK Athens"
+    },
+    {
+      "providerEventId": "d4ef112438afa4c2cdbbfc9376a009c9",
+      "homeTeam": "AS Roma",
+      "awayTeam": "Real Madrid"
+    },
+    {
+      "providerEventId": "3f3cb74e560dfcc3e795b667ed9ebdef",
+      "homeTeam": "Aston Villa",
+      "awayTeam": "Fenerbahce"
+    },
+    {
+      "providerEventId": "ca87a3874b0eae31b4173ae4a9324957",
+      "homeTeam": "Bodø/Glimt",
+      "awayTeam": "Borussia Dortmund"
+    },
+    {
+      "providerEventId": "5a1a6a04c5561897741105e30d5d7ec4",
+      "homeTeam": "Manchester City",
+      "awayTeam": "Paris Saint Germain"
+    },
+    {
+      "providerEventId": "4c7f87780ae5ab8bec9e83d6d6ec9909",
+      "homeTeam": "Real Betis",
+      "awayTeam": "Porto"
+    },
+    {
+      "providerEventId": "d7576351b8cb2396e32cc3de0446f3de",
+      "homeTeam": "ŠK Slovan Bratislava",
+      "awayTeam": "VfB Stuttgart"
+    }
+  ]
+}

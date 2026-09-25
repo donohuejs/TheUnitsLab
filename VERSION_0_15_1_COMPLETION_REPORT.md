@@ -22,12 +22,21 @@ uses the correct `/nhl/500/{abbreviation}.png` namespace. The same source-contro
 catalog architecture now covers the current supported EPL, UCL, and NCAAF FBS team
 sets.
 
-Coverage hard gates are now 32/32 NFL, 32/32 NHL, 20/20 EPL, 36/36 UCL, and 138/138
-current FBS teams, all with valid namespace-correct references. The public ESPN team
-catalog is captured in `src/config/team-catalog.json`; updates are manual and
-reviewed, rankings/standings are not involved, and no odds or provider calls are
-triggered by logo resolution. `npm run audit:team-logos` is the deterministic
-developer audit; `--check-assets` performs a bounded CDN reference check.
+Canonical coverage hard gates are now 32/32 NFL, 32/32 NHL, 20/20 EPL, 36/36 UCL,
+and 138/138 current FBS teams, all with valid namespace-correct references. The
+previous UCL `36/36` result was not provider coverage: it only resolved the 36
+canonical ESPN catalog display names and never exercised the provider team strings
+from retained odds data. The tracked The Odds API UCL cache row contains 18 events
+and 36 distinct provider strings. The corrected gate now reports canonical clubs
+36/36, provider strings 36/36, unresolved 0, ambiguous 0, and 7 exact aliases
+from that real dataset: `Bodø/Glimt`, `LASK`, `Porto`, `RC Lens`, `Slavia Praha`,
+`Sporting Lisbon`, and `ŠK Slovan Bratislava`.
+
+The public ESPN team catalog is captured in `src/config/team-catalog.json`; updates
+are manual and reviewed, rankings/standings are not involved, and no odds or
+provider calls are triggered by logo resolution. `npm run audit:team-logos` is the
+deterministic developer audit; `--check-assets` performs a bounded CDN reference
+check.
 The external CDN check passed for every unique snapshot URL, with no broken logo
 references. Runtime CDN failure still degrades to initials without changing identity.
 
@@ -35,7 +44,9 @@ Generic NCAA inputs (`Miami`, `Miami (OH)`, `USC`, `UT`, and `Tigers`) remain
 unresolved rather than receiving a guessed identity. Fully qualified catalog names
 resolve, including `Miami (OH) RedHawks`. NHL, EPL, UCL, and FBS registry resolution
 is exact and competition-scoped, and shared soccer clubs retain one canonical ID
-across domestic and European scopes. No database migration was required.
+across domestic and European scopes. The complete provider-string-to-canonical
+mapping is recorded in `TEAM_LOGO_IDENTITY_AUDIT.md` and regression-tested from
+`test/fixtures/odds-ucl-provider-teams.json`. No database migration was required.
 
 ## Version transition
 
@@ -254,7 +265,8 @@ Modified for this patch:
   `src/lib/odds/types.ts`, `src/lib/odds/normalize.ts`, `src/components/team-mark.tsx`,
   `src/components/browse-game-card.tsx`, `src/app/sports/[competition]/page.tsx`,
   `src/lib/betslip/event-matching.ts`, `src/lib/odds/server.ts`, `scripts/audit-team-logos.mjs`,
-  `test/team-logos.test.ts`, and `TEAM_LOGO_IDENTITY_AUDIT.md`
+  `test/team-logos.test.ts`, `test/fixtures/odds-ucl-provider-teams.json`, and
+  `TEAM_LOGO_IDENTITY_AUDIT.md`
 - `README.md`, `docs/ARCHITECTURE.md`, `docs/MIGRATIONS.md`, `docs/PRODUCT_SPEC.md`,
   `docs/TESTING.md`, `docs/Virtual Sportsbook - Governing Specification V1.docx`
 
@@ -293,9 +305,11 @@ Passed:
   full validation run; authenticated visual QA remains subject to the existing
   protected-Preview limitation below.
 - Logo-correction validation: formatting, lint, typecheck, secret scan, production
-  build, and 51 test files / 309 tests passed; the structural team audit and bounded
+  build, and 51 test files / 310 tests passed; the structural team audit and bounded
   external asset check passed for NFL 32/32, NHL 32/32, EPL 20/20, UCL 36/36, and
-  NCAAF FBS 138/138. `npm audit --audit-level=high` reported 0 vulnerabilities.
+  NCAAF FBS 138/138. The follow-up UCL provider-string audit passed with 36/36
+  provider strings resolved, 0 unresolved, 0 ambiguous, and 7 exact data-backed
+  aliases. `npm audit --audit-level=high` reported 0 vulnerabilities.
 
 Blocked or pending:
 

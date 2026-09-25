@@ -14,6 +14,7 @@ type CatalogTeam = {
   displayName: string;
   location: string;
   shortDisplayName: string;
+  providerAliases?: string[];
   conference?: string;
 };
 type CatalogSnapshot = {
@@ -141,7 +142,13 @@ function snapshotEntry(
   scopes: readonly string[],
   logoAssetStrategy: LogoAssetStrategy,
 ) {
-  const aliases = [team.displayName, team.shortDisplayName, team.abbreviation, team.location];
+  const aliases = [
+    team.displayName,
+    team.shortDisplayName,
+    team.abbreviation,
+    team.location,
+    ...(team.providerAliases ?? []),
+  ];
   if (league === "ncaaf") {
     aliases.push(
       ...(team.id === "2390" ? ["Miami (FL)", "Miami FL", "Miami Florida"] : []),

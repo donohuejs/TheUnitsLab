@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import teamCatalog from "../src/config/team-catalog.json";
+import uclProviderFixture from "./fixtures/odds-ucl-provider-teams.json";
 import {
   TEAM_REGISTRY,
   auditTeamCoverage,
@@ -160,6 +161,40 @@ describe("team logo resolver", () => {
     const uclArsenal = resolveTeamRecord("Arsenal", "soccer", "ucl");
     expect(uclArsenal.canonicalId).toBe(eplArsenal.canonicalId);
     expect(uclArsenal.logoUrl).toBe(eplArsenal.logoUrl);
+  });
+
+  it("resolves every provider team string from the retained UCL odds cache fixture", () => {
+    const providerTeams = [
+      ...new Set(uclProviderFixture.events.flatMap((event) => [event.homeTeam, event.awayTeam])),
+    ];
+    const resolved = providerTeams.map((teamName) => ({
+      teamName,
+      result: resolveTeamRecord(teamName, "soccer", "ucl"),
+    }));
+
+    expect(uclProviderFixture.provider).toBe("the_odds_api_v4");
+    expect(uclProviderFixture.competitionId).toBe("ucl");
+    expect(uclProviderFixture.events).toHaveLength(18);
+    expect(providerTeams).toHaveLength(36);
+    expect(resolved.every(({ result }) => result.resolution === "RESOLVED")).toBe(true);
+    expect(new Set(resolved.map(({ result }) => result.canonicalId))).toHaveLength(36);
+    expect(resolved.every(({ result }) => result.logoUrl?.includes("/soccer/500/") === true)).toBe(
+      true,
+    );
+    expect(resolved.map(({ result }) => result.canonicalId)).toEqual(
+      expect.arrayContaining([
+        "espn:soccer:2980",
+        "espn:soccer:437",
+        "espn:soccer:4411",
+        "espn:soccer:175",
+        "espn:soccer:494",
+        "espn:soccer:2250",
+        "espn:soccer:521",
+      ]),
+    );
+    expect(
+      resolved.filter(({ result }) => result.resolutionReason === "AMBIGUOUS_TEAM"),
+    ).toHaveLength(0);
   });
 
   it("covers every current FBS catalog team without fuzzy or partial-name guessing", () => {

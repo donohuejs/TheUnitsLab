@@ -7,6 +7,9 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const catalog = JSON.parse(
   await readFile(path.join(root, "src", "config", "team-catalog.json"), "utf8"),
 );
+const uclProviderFixture = JSON.parse(
+  await readFile(path.join(root, "test", "fixtures", "odds-ucl-provider-teams.json"), "utf8"),
+);
 
 const nflTeams = [
   ["Arizona Cardinals", "22"],
@@ -55,6 +58,31 @@ const rows = [];
 
 function assert(condition, message) {
   if (!condition) failures.push(message);
+}
+
+function normalizeTeamName(name) {
+  return name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[’']/g, "")
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function uclProviderMatches(teamName) {
+  const key = normalizeTeamName(teamName);
+  return (catalog.ucl?.teams ?? []).filter((team) =>
+    [
+      team.displayName,
+      team.shortDisplayName,
+      team.abbreviation,
+      team.location,
+      ...(team.providerAliases ?? []),
+    ].some((alias) => normalizeTeamName(alias) === key),
+  );
 }
 
 function checkCatalog(label, key, strategy) {
@@ -115,6 +143,59 @@ rows.push({
 
 for (const [label, key, strategy] of expectedCatalogs) checkCatalog(label, key, strategy);
 
+const uclProviderStrings = [
+  ...new Set(
+    (uclProviderFixture.events ?? []).flatMap((event) => [event.homeTeam, event.awayTeam]),
+  ),
+];
+assert(
+  uclProviderFixture.provider === "the_odds_api_v4",
+  "UCL: unexpected provider fixture source",
+);
+assert(
+  uclProviderFixture.competitionId === "ucl",
+  "UCL: provider fixture has the wrong competition",
+);
+assert(uclProviderFixture.events?.length === 18, "UCL: expected 18 provider fixture events");
+const uclProviderRows = uclProviderStrings.map((providerTeam) => {
+  const matches = uclProviderMatches(providerTeam);
+  return {
+    providerTeam,
+    canonicalId: matches.length === 1 ? `espn:soccer:${matches[0].id}` : "—",
+    canonicalName: matches.length === 1 ? matches[0].displayName : "—",
+    status: matches.length === 1 ? "RESOLVED" : matches.length ? "AMBIGUOUS" : "UNRESOLVED",
+  };
+});
+const uclUnresolved = uclProviderRows.filter((row) => row.status === "UNRESOLVED");
+const uclAmbiguous = uclProviderRows.filter((row) => row.status === "AMBIGUOUS");
+const uclAliasCount = (catalog.ucl?.teams ?? []).reduce(
+  (count, team) => count + (team.providerAliases?.length ?? 0),
+  0,
+);
+assert(catalog.ucl?.count === 36, "UCL: expected canonical catalog count is 36");
+assert(
+  catalog.ucl?.teams?.length === 36,
+  `UCL: canonical clubs present ${catalog.ucl?.teams?.length ?? 0}/36`,
+);
+assert(
+  uclProviderStrings.length === 36,
+  `UCL: provider strings encountered ${uclProviderStrings.length}/36`,
+);
+assert(
+  !uclUnresolved.length,
+  `UCL: unresolved provider strings: ${uclUnresolved.map((row) => row.providerTeam).join(", ")}`,
+);
+assert(
+  !uclAmbiguous.length,
+  `UCL: ambiguous provider strings: ${uclAmbiguous.map((row) => row.providerTeam).join(", ")}`,
+);
+rows.push({
+  label: "UCL provider strings",
+  expected: uclProviderStrings.length,
+  resolved: uclProviderRows.filter((row) => row.status === "RESOLVED").length,
+  assets: uclAliasCount,
+});
+
 if (catalog.ncaaf?.teams) {
   const knownNcaafIds = new Set(catalog.ncaaf.teams.map((team) => team.id));
   for (const team of catalog.ncaaf.teams) {
@@ -170,6 +251,12 @@ if (checkAssets) {
 }
 
 console.table(rows);
+console.table(uclProviderRows);
+console.log(
+  `UCL coverage: canonical clubs ${catalog.ucl?.teams?.length ?? 0}/36; provider strings ` +
+    `${uclProviderStrings.length}; resolved ${uclProviderRows.length - uclUnresolved.length - uclAmbiguous.length}; ` +
+    `unresolved ${uclUnresolved.length}; ambiguous ${uclAmbiguous.length}; exact aliases ${uclAliasCount}`,
+);
 if (checkAssets) console.log("Asset URL checks: completed");
 if (failures.length) {
   console.error(`Team logo audit failed with ${failures.length} issue(s):`);
