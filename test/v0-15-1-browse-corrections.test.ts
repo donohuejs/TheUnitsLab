@@ -115,11 +115,29 @@ describe("v0.15.1 Browse Odds corrections", () => {
     expect(css).not.toContain("scrollbar-gutter: stable");
     expect(css).toContain(".browse-market-detail");
     expect(css).toContain(".browse-date-native-input");
-    expect(css).toContain("height: min(72rem, calc(100dvh - var(--desktop-header-offset) - 1rem))");
+    expect(css).toContain("flex: 1 1 auto;");
+    expect(css).toContain("min-height: 100dvh;");
+    expect(css).not.toContain(
+      "height: min(72rem, calc(100dvh - var(--desktop-header-offset) - 1rem))",
+    );
     expect(page).toContain("<BrowseMarketPane activeEventId={selectedEvent?.id ?? null}>");
     expect(pane).toContain('scrollTo({ top: 0, behavior: "auto" })');
     expect(gamesPane).toContain("browse-games-scroll");
     expect(gamesPane).toContain("sessionStorage");
     expect(css).toContain(".browse-master-detail-layout > .browse-games-rail");
+  });
+
+  it("fills the desktop Browse workspace through the shell-to-pane height chain", () => {
+    const css = read("../src/app/globals.css");
+
+    expect(css).toMatch(
+      /@media \(min-width: 1240px\) \{[\s\S]*?\.browse-shell \{[\s\S]*?display: flex;[\s\S]*?flex-direction: column;[\s\S]*?min-height: 100dvh;/,
+    );
+    expect(css).toMatch(
+      /\.browse-master-detail-layout \{[\s\S]*?flex: 1 1 auto;[\s\S]*?min-height: 0;[\s\S]*?align-items: stretch;/,
+    );
+    expect(css).toMatch(
+      /\.browse-master-detail-layout > \.browse-games-rail,[\s\S]*?\.browse-master-detail-layout > \.browse-market-detail,[\s\S]*?\.browse-master-detail-layout > \.browse-bet-slip-target \{[\s\S]*?min-height: 0;[\s\S]*?overflow-y: auto;/,
+    );
   });
 });

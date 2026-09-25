@@ -1,6 +1,6 @@
 # Version 0.15.1 Completion Report
 
-Date: 2026-09-24
+Date: 2026-09-25
 Previous repository version: **0.15.0**
 Target and completed version: **0.15.1**
 Release recommendation: **CONDITIONAL PASS for implementation, automated validation, and Preview deployment**; authenticated responsive QA and DOCX visual rendering remain pending.
@@ -9,8 +9,9 @@ Release recommendation: **CONDITIONAL PASS for implementation, automated validat
 
 Version 0.15.1 is a corrective Browse Odds patch for production QA findings. It fixes
 timezone-drifting date/kickoff presentation, prevents an event from opening implicitly,
-makes the desktop Browse layout match the approved three-region master/detail design, and
-keeps the Bet Slip independent from active-event navigation.
+makes the desktop Browse layout match the approved three-region master/detail design,
+fills that workspace to the remaining desktop viewport height, and keeps the Bet Slip
+independent from active-event navigation.
 
 ## v0.15.1 logo coverage correction
 
@@ -254,6 +255,18 @@ changes, and the Bet Slip pane is no longer an independently sticky child that
 can overlap the center content. Mobile remains natural page flow and does not
 inherit the desktop pane height or right-rail scrolling.
 
+The final desktop height regression was traced to the height chain itself: the
+`.browse-master-detail-layout` grid used a fixed
+`min(72rem, calc(100dvh - var(--desktop-header-offset) - 1rem))` value while
+`.browse-shell` remained a normal-flow block. The global header-offset token was
+not the actual amount of space consumed above the workspace, so the pane bottom
+could stop well short of the viewport. At the desktop three-pane breakpoint,
+`.browse-shell` is now a `min-height: 100dvh` flex column, the workspace is a
+`flex: 1 1 auto` / `min-height: 0` grid item, and each pane stretches into that
+row and owns its `overflow-y: auto`. The obsolete fixed workspace height and
+pane `max-height` constraint were removed. The mobile and medium-width natural
+document-flow layout remains unchanged.
+
 The new browser regression covers the exact alternate-line interaction, one
 selection with the retained line/price metadata, switching games, returning to
 the original game, and clean removal. No migration or provider request path was
@@ -335,8 +348,11 @@ claimed as part of this patch.
 Passed:
 
 - Final external-correction validation on `release/v0.15.1`: `npm.cmd run validate`
-  passed formatting, lint, typecheck, 52 test files / 313 tests, secret scan, and
+  passed formatting, lint, typecheck, 52 test files / 314 tests, secret scan, and
   production build. `npm.cmd audit --audit-level=high` found 0 vulnerabilities.
+- Final desktop height correction validation: the focused Browse layout contracts passed
+  (2 test files / 16 tests), followed by the full 52 test files / 314 tests validation,
+  production build, secret scan, and `npm.cmd audit --audit-level=high` with 0 vulnerabilities.
 - Development React browser regression passed for the exact Florida/Gators
   provider `3.5` → simulated `2.5` selection, one durable selection,
   exact simulated odds/provider anchor metadata, game switching, return navigation,
@@ -388,6 +404,10 @@ Blocked or pending:
 - The new browser-level smoke script could not run against the protected Preview without an
   authenticated Vercel/application session. The prior authenticated failure remains the reason
   this release gate is open; this checkout does not independently prove the post-fix result.
+- Authenticated desktop height QA at 1920x1080, 1440x900, 1366x768, and 1280x800 remains
+  pending for the same reason. The unauthenticated local route redirected to `/auth` because
+  this checkout has no `.env.local` or authenticated application session; source-level layout
+  contracts and production validation passed.
 - DOCX visual rendering and PNG inspection remain blocked because LibreOffice/`soffice.exe` is not
   installed. Structural governing-document editing completed successfully.
 
