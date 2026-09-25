@@ -228,5 +228,6 @@ describe("v0.15.0 Browse Odds schedule", () => {
       "height: min(72rem, calc(100dvh - var(--desktop-header-offset) - 1rem))",
     );
     expect(css).toContain("overflow-y: auto");
+    expect(css).not.toContain("@media (min-width: 980px) and (max-width: 1239px)");
   });
 });

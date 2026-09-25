@@ -160,10 +160,10 @@ configuration cannot be independently confirmed. No Vercel environment variables
 
 ### Desktop and mobile presentation
 
-- Desktop Browse now uses an expanded shell and a deliberate three-region layout: a 320–350px
-  Games navigator, a center selected-game market detail region with a 500px minimum, and a
-  330–360px coordinated right Bet Slip rail. The layout switches to a two-column/tablet form
-  before those minimums can squeeze the page.
+- Desktop Browse now uses a bounded three-region layout beginning at the shared 980px desktop
+  workspace breakpoint: responsive 280–320px Games and Bet Slip rails around the selected-game
+  market detail region. Below that breakpoint the natural tablet/mobile flow remains in place;
+  the three-column layout and viewport-owned pane scrolling cannot enter a hybrid state.
 - Desktop bookmaker and market filters are compact native selects; the existing horizontal mobile
   filter chips remain mobile-only.
 - Desktop game cards use vertical compact navigation rows, word-boundary team wrapping, accessible
@@ -268,6 +268,24 @@ column with `overflow: hidden`, the workspace is a `flex: 1 1 auto` /
 constraint were removed. The mobile and medium-width natural document-flow
 layout remains unchanged.
 
+### Measured desktop overflow correction
+
+Authenticated Preview measurements supplied from the broken Saturday NCAAF page showed a
+1218×1270 viewport with `documentElement.scrollHeight = 14118`, `body.scrollHeight = 14118`,
+and `.browse-shell` computed as a 14118px `display: block` element with `overflow-y: visible`.
+The source audit found that the shell height, pane overflow, and three-column grid were all
+gated by `@media (min-width: 1240px)`, so they were not active at the measured 1218px CSS
+viewport. The correction moves the complete desktop workspace contract to one `@media
+(min-width: 980px)` block and uses responsive three-column tracks that fit the measured width.
+
+The local Playwright breakpoint regression covers 979, 980, 1218, 1239, and 1240px with short
+and long synthetic slates. At 980px and above, both slate sizes keep the document and body at
+1270px, keep the shell at 1270px, and retain the long Games content inside the Games pane
+(`scrollHeight = 10543px` in the long fixture). The 979px fallback remains natural flow. An
+authenticated post-fix Preview measurement remains pending; the supplied authenticated
+before-measurement is the root-cause evidence, while the local matrix verifies the corrected CSS
+architecture and breakpoint invariant.
+
 The new browser regression covers the exact alternate-line interaction, one
 selection with the retained line/price metadata, switching games, returning to
 the original game, and clean removal. No migration or provider request path was
@@ -340,6 +358,11 @@ Modified for this patch:
   `TEAM_LOGO_IDENTITY_AUDIT.md`
 - `README.md`, `docs/ARCHITECTURE.md`, `docs/MIGRATIONS.md`, `docs/PRODUCT_SPEC.md`,
   `docs/TESTING.md`, `docs/Virtual Sportsbook - Governing Specification V1.docx`
+- Desktop overflow correction: `src/app/globals.css`,
+  `scripts/browse-pane-layout-diagnostics.mjs`, `scripts/diagnose-browse-pane-layout.mjs`,
+  `scripts/check-browse-pane-breakpoints.mjs`, `scripts/check-browse-pane-layout.mjs`,
+  `test/v0-15-1-browse-corrections.test.ts`, `test/v0-15-browse-schedule.test.ts`,
+  and `package.json`.
 
 Unrelated pre-existing Watchlist/cache/Postgres-store worktree changes were preserved and are not
 claimed as part of this patch.
@@ -379,6 +402,9 @@ Passed:
 - Read-only linked Supabase project and migration parity checks passed; no v0.15.1 migration exists
   or is pending.
 - `git diff --check` and source-level responsive/master-detail contracts passed.
+- Desktop overflow breakpoint regression passed at 979/980/1218/1239/1240px for short and long
+  synthetic slates. The 980px-and-up desktop cases held document/body/shell height at the 1270px
+  viewport while the long Games content remained inside its pane.
 - Clean corrective-commit validation at `ddeb96bf41ea4484f4bd98bbe5eae4d24737ffd7`: `npm ci`, lint, typecheck, 46 test files / 277
   tests, production build, and secret scan all passed.
 - Clean desktop-remediation validation at `486923315a59fb0be4b34ec6798b9d305fc0b6f6`: `npm ci`,

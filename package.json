@@ -37,6 +37,8 @@
     "check:mobile:bet-slip": "node scripts/check-mobile-bet-slip.mjs",
     "check:release:alt-line": "node scripts/check-alt-line-loop.mjs",
     "check:release:browse-layout": "node scripts/check-browse-pane-layout.mjs",
+    "check:release:browse-breakpoints": "node scripts/check-browse-pane-breakpoints.mjs",
+    "diagnose:release:browse-layout": "node scripts/diagnose-browse-pane-layout.mjs",
     "check:release:browse-slip-navigation": "node scripts/check-browse-slip-navigation.mjs",
     "check:release:ux": "node scripts/check-patch-10-release-ux.mjs",
     "check:release:ux:hotfix": "node scripts/check-patch-10-hotfix.mjs",

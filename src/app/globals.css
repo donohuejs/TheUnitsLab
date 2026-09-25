@@ -1869,7 +1869,8 @@ textarea:focus {
   }
 }
 
-@media (min-width: 1240px) {
+/* Desktop Browse owns the viewport once the three-pane workspace is wide enough. */
+@media (min-width: 980px) {
   .browse-shell {
     display: flex;
     flex-direction: column;
@@ -1880,7 +1881,7 @@ textarea:focus {
   }
 
   .browse-master-detail-layout {
-    grid-template-columns: minmax(320px, 350px) minmax(500px, 1fr) minmax(330px, 360px);
+    grid-template-columns: minmax(280px, 320px) minmax(0, 1fr) minmax(280px, 320px);
     flex: 1 1 auto;
     min-height: 0;
     align-items: stretch;
@@ -1925,20 +1926,6 @@ textarea:focus {
 
   .browse-game-mobile-board {
     display: none;
-  }
-}
-
-@media (min-width: 980px) and (max-width: 1239px) {
-  .browse-master-detail-layout {
-    grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
-  }
-
-  .browse-master-detail-layout > .browse-bet-slip-target {
-    grid-column: 1 / -1;
-    position: static;
-    max-height: none;
-    overflow: visible;
-    padding-right: 0;
   }
 }
 

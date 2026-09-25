@@ -1,4 +1,8 @@
 import { chromium } from "@playwright/test";
+import {
+  collectBrowsePaneDiagnostics,
+  formatBrowsePaneDiagnostics,
+} from "./browse-pane-layout-diagnostics.mjs";
 
 const baseUrl = process.env.SMOKE_URL ?? "http://127.0.0.1:3000";
 const competition = process.env.BROWSE_COMPETITION ?? "ncaaf";
@@ -8,9 +12,13 @@ const lateEventPattern = process.env.BROWSE_LATE_EVENT
 const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const email = process.env.SMOKE_EMAIL ?? `browse-layout-${suffix}@example.test`;
 const password = process.env.SMOKE_PASSWORD ?? `BrowseLayout-${suffix}-password`;
+const storageState = process.env.SMOKE_STORAGE_STATE;
 
 const browser = await chromium.launch();
-const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+const context = await browser.newContext({
+  viewport: { width: 1440, height: 900 },
+  ...(storageState ? { storageState } : {}),
+});
 const page = await context.newPage();
 
 const fail = (message) => {
@@ -18,6 +26,7 @@ const fail = (message) => {
 };
 
 async function signIn() {
+  if (storageState) return;
   await page.goto(`${baseUrl}/auth`, { waitUntil: "networkidle" });
   if (!page.url().includes("/auth")) return;
 
@@ -39,34 +48,25 @@ async function openBrowse() {
 }
 
 async function layoutMetrics() {
-  return page.evaluate(() => {
-    const pane = (selector) => {
-      const element = document.querySelector(selector);
-      if (!element) return null;
-      const rect = element.getBoundingClientRect();
-      return {
-        scrollTop: element.scrollTop,
-        scrollHeight: element.scrollHeight,
-        clientHeight: element.clientHeight,
-        top: rect.top,
-        bottom: rect.bottom,
-      };
-    };
-    return {
-      pageScrollY: window.scrollY,
-      documentScrollHeight: document.documentElement.scrollHeight,
-      viewportHeight: window.innerHeight,
-      games: pane(".browse-games-rail"),
-      markets: pane(".browse-market-detail"),
-      betSlip: pane("#browse-bet-slip-target"),
-    };
-  });
+  const detail = await collectBrowsePaneDiagnostics(page);
+  return {
+    pageScrollY: detail.document.scrollY,
+    documentScrollHeight: detail.document.documentElementScrollHeight,
+    viewportHeight: detail.viewport.innerHeight,
+    games: detail.panes.games,
+    markets: detail.panes.markets,
+    betSlip: detail.panes.betSlip,
+    detail,
+  };
 }
 
 function assertBoundedPage(metrics, label) {
-  if (metrics.documentScrollHeight - metrics.viewportHeight > 6) {
+  if (
+    metrics.documentScrollHeight - metrics.viewportHeight > 6 ||
+    metrics.detail.document.bodyScrollHeight - metrics.viewportHeight > 6
+  ) {
     fail(
-      `${label} has page-level overflow (${metrics.documentScrollHeight} > ${metrics.viewportHeight})`,
+      `${label} has page-level overflow (document ${metrics.detail.document.documentElementScrollHeight}, body ${metrics.detail.document.bodyScrollHeight}, viewport ${metrics.viewportHeight})`,
     );
   }
 }
@@ -75,6 +75,9 @@ function assertPane(metrics, name) {
   const pane = metrics[name];
   if (!pane || pane.clientHeight <= 0) fail(`${name} pane is not visible or has no height`);
   if (pane.bottom > metrics.viewportHeight + 2) fail(`${name} pane extends below the viewport`);
+  if (!/(auto|scroll)/.test(pane.computed.overflowY)) {
+    fail(`${name} pane is not an independent vertical scroll container`);
+  }
 }
 
 async function selectCard(card) {
@@ -91,6 +94,10 @@ async function selectCard(card) {
   return eventId;
 }
 
+function printDiagnostics(label, metrics) {
+  console.log(`\n${label} layout diagnostics:\n${formatBrowsePaneDiagnostics(metrics.detail)}`);
+}
+
 try {
   await signIn();
   await openBrowse();
@@ -102,6 +109,7 @@ try {
   await selectCard(firstCard);
 
   let metrics = await layoutMetrics();
+  printDiagnostics("Initial", metrics);
   assertBoundedPage(metrics, "initial Browse workspace");
   for (const name of ["games", "markets", "betSlip"]) assertPane(metrics, name);
 
@@ -134,6 +142,7 @@ try {
   await selectCard(lateCard);
 
   metrics = await layoutMetrics();
+  printDiagnostics("After low-game selection", metrics);
   assertBoundedPage(metrics, "late-game selection");
   if (Math.abs(metrics.pageScrollY - pageBefore) > 2)
     fail("document scroll changed after game selection");

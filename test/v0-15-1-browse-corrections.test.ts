@@ -88,6 +88,8 @@ describe("v0.15.1 Browse Odds corrections", () => {
     const pane = read("../src/components/browse-market-pane.tsx");
     const gamesPane = read("../src/components/browse-games-pane.tsx");
     const css = read("../src/app/globals.css");
+    const diagnostics = read("../scripts/browse-pane-layout-diagnostics.mjs");
+    const breakpointSmoke = read("../scripts/check-browse-pane-breakpoints.mjs");
 
     expect(page).toContain("const activeEvent = requestedActiveEvent;");
     expect(page).not.toContain("orderedEvents[0]");
@@ -108,7 +110,7 @@ describe("v0.15.1 Browse Odds corrections", () => {
     expect(grid).toContain("watchlistAvailable && !odd.eventStarted && !odd.isAlternate");
     expect(grid).toContain("eventStatus");
     expect(grid).not.toContain("pregame price");
-    expect(css).toContain("minmax(320px, 350px) minmax(500px, 1fr) minmax(330px, 360px)");
+    expect(css).toContain("minmax(280px, 320px) minmax(0, 1fr) minmax(280px, 320px)");
     expect(css).toContain(".browse-filter-select-control");
     expect(css).toContain(".browse-game-side");
     expect(css).toContain(".browse-game-action-label");
@@ -125,14 +127,21 @@ describe("v0.15.1 Browse Odds corrections", () => {
     expect(gamesPane).toContain("browse-games-scroll");
     expect(gamesPane).toContain("sessionStorage");
     expect(css).toContain(".browse-master-detail-layout > .browse-games-rail");
+    expect(diagnostics).toContain("documentElementScrollHeight");
+    expect(diagnostics).toContain("bodyScrollHeight");
+    expect(diagnostics).toContain("desktopWorkspace");
+    expect(diagnostics).toContain("bottomExtendingElements");
+    expect(breakpointSmoke).toContain("1218");
+    expect(breakpointSmoke).toContain("scrollHeight");
   });
 
   it("fills the desktop Browse workspace through the shell-to-pane height chain", () => {
     const css = read("../src/app/globals.css");
 
     expect(css).toMatch(
-      /@media \(min-width: 1240px\) \{[\s\S]*?\.browse-shell \{[\s\S]*?display: flex;[\s\S]*?flex-direction: column;[\s\S]*?height: 100dvh;[\s\S]*?min-height: 100dvh;[\s\S]*?overflow: hidden;/,
+      /@media \(min-width: 980px\) \{[\s\S]*?\.browse-shell \{[\s\S]*?display: flex;[\s\S]*?flex-direction: column;[\s\S]*?height: 100dvh;[\s\S]*?min-height: 100dvh;[\s\S]*?overflow: hidden;/,
     );
+    expect(css).not.toContain("@media (min-width: 980px) and (max-width: 1239px)");
     expect(css).toMatch(
       /\.browse-master-detail-layout \{[\s\S]*?flex: 1 1 auto;[\s\S]*?min-height: 0;[\s\S]*?align-items: stretch;/,
     );
