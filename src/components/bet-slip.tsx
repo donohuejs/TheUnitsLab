@@ -26,7 +26,7 @@ import {
   registerSlipDiagnosticsMount,
   removeSlipSelectionIdsAndPersist,
   removeStraightSlipSelectionIdsAndPersist,
-  replaceMutuallyExclusiveSelection,
+  reconcileActiveStraightSelection,
   setSlipDiagnosticsEnabled,
   setStraightSlipSelections,
   setSlipSelections,
@@ -144,15 +144,6 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
   }, [selection]);
 
   useEffect(() => {
-    if (!selection) return;
-    const activeKey = slipSelectionKey(selection);
-    if (straightSelections.some((leg) => slipSelectionKey(leg) === activeKey)) return;
-    if (straightSelections.length >= 12) return;
-    const replacement = replaceMutuallyExclusiveSelection(straightSelections, selection);
-    setStraightSlipSelections(replacement ?? [...straightSelections, selection]);
-  }, [selection, straightSelections]);
-
-  useEffect(() => {
     if (!mobileModalOpen) return;
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setMobileSheetOpen(false);
@@ -217,15 +208,15 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
 
   useEffect(() => {
     if (!selection || !activeSelection) return;
-    const baseKey = slipSelectionKey(selection);
-    const activeKey = slipSelectionKey(activeSelection);
-    if (baseKey === activeKey) return;
-    const baseIndex = straightSelections.findIndex((leg) => slipSelectionKey(leg) === baseKey);
-    if (baseIndex < 0) return;
-    const next = [...straightSelections];
-    next[baseIndex] = activeSelection;
+    if (suppressedMobileSelectionKey.current === slipSelectionKey(activeSelection)) return;
+    const next = reconcileActiveStraightSelection(straightSelections, selection, activeSelection);
+    if (next === straightSelections) return;
     setStraightSlipSelections(next);
   }, [activeSelection, straightSelections, selection]);
+
+  useEffect(() => {
+    if (!selection) suppressedMobileSelectionKey.current = null;
+  }, [selection]);
 
   const straightPotential = useMemo(() => {
     if (!activeSelection) return null;
@@ -329,8 +320,12 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
     );
     const candidate = candidates[index];
     if (!candidate) return;
+    const activeKey = activeSelection ? slipSelectionKey(activeSelection) : null;
     const isCurrentMobileSelection =
-      mode === "mobile" && selection && slipSelectionKey(candidate) === slipSelectionKey(selection);
+      mode === "mobile" &&
+      selection &&
+      (slipSelectionKey(candidate) === slipSelectionKey(selection) ||
+        (activeKey !== null && slipSelectionKey(candidate) === activeKey));
     if (isCurrentMobileSelection) {
       suppressedMobileSelectionKey.current = slipSelectionKey(candidate);
     }
@@ -341,9 +336,10 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
     if (mode === "mobile" && mobileSelectionCount <= 1) setMobileSheetOpen(false);
   };
   const removeCurrentMobileSelection = () => {
-    if (!currentSelection) return;
+    const removableSelection = activeSelection ?? currentSelection;
+    if (!removableSelection) return;
     const index = mobileSelections.findIndex(
-      (candidate) => slipSelectionKey(candidate) === slipSelectionKey(currentSelection),
+      (candidate) => slipSelectionKey(candidate) === slipSelectionKey(removableSelection),
     );
     if (index >= 0) {
       removeSelection(getClientSelectionId(mobileSelections[index]!, index), "mobile");

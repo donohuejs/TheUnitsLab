@@ -279,6 +279,57 @@ export function replaceMutuallyExclusiveSelection(
   return next;
 }
 
+function isSameSimulatedAlternateAnchor(left: SlipSelection, right: SlipSelection) {
+  return (
+    left.pricingSource === "simulated_alternate" &&
+    right.pricingSource === "simulated_alternate" &&
+    left.eventId === right.eventId &&
+    left.bookmakerId === right.bookmakerId &&
+    left.marketType === right.marketType &&
+    left.selection === right.selection &&
+    left.anchorProviderLine === right.anchorProviderLine &&
+    left.anchorProviderAmericanOdds === right.anchorProviderAmericanOdds
+  );
+}
+
+/**
+ * Reconciles the displayed selection with the durable straight slip in one
+ * direction. A simulated alternate replaces its provider anchor (or the
+ * previous simulated alternate) instead of allowing the auto-add and
+ * alternate-line effects to re-add each other indefinitely.
+ */
+export function reconcileActiveStraightSelection(
+  selections: SlipSelection[],
+  baseSelection: SlipSelection,
+  activeSelection: SlipSelection,
+) {
+  const activeKey = slipSelectionKey(activeSelection);
+  if (selections.some((selection) => slipSelectionKey(selection) === activeKey)) {
+    return selections;
+  }
+
+  const baseKey = slipSelectionKey(baseSelection);
+  const baseIndex = selections.findIndex((selection) => slipSelectionKey(selection) === baseKey);
+  if (baseIndex >= 0) {
+    const next = [...selections];
+    next[baseIndex] = activeSelection;
+    return next;
+  }
+
+  const simulatedIndex = selections.findIndex((selection) =>
+    isSameSimulatedAlternateAnchor(selection, activeSelection),
+  );
+  if (simulatedIndex >= 0) {
+    const next = [...selections];
+    next[simulatedIndex] = activeSelection;
+    return next;
+  }
+
+  if (selections.length >= 12) return selections;
+  const replacement = replaceMutuallyExclusiveSelection(selections, activeSelection);
+  return replacement ?? [...selections, activeSelection];
+}
+
 export function assessParlayAvailability(selections: SlipSelection[]) {
   if (selections.length < 2) {
     return { eligible: false, reason: "Select at least two picks to build a parlay." };

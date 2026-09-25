@@ -8,6 +8,25 @@ import { clearSlip, clearStraightSlip, type SlipSelection } from "@/lib/wagers/s
 
 const choices: SlipSelection[] = [
   {
+    clientSelectionId: "patch-10-hotfix-florida-spread",
+    competitionKey: "ncaaf",
+    eventId: "patch-10-hotfix-florida-event",
+    sport: "football",
+    competition: "College Football",
+    event: "Florida at Gators",
+    scheduledStart: "2099-09-20T23:30:00Z",
+    homeTeam: "Gators",
+    awayTeam: "Florida",
+    bookmakerId: "fanduel",
+    bookmaker: "FanDuel",
+    marketType: "spread",
+    selection: "away",
+    selectionName: "Florida / Gators",
+    line: -3.5,
+    americanOdds: -110,
+    decimalOdds: 1.9091,
+  },
+  {
     clientSelectionId: "patch-10-hotfix-alpha",
     competitionKey: "ncaaf",
     eventId: "patch-10-hotfix-alpha-event",
