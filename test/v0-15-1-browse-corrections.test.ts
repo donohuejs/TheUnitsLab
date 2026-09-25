@@ -111,6 +111,8 @@ describe("v0.15.1 Browse Odds corrections", () => {
     expect(filterSelect).toContain("BrowseFilterSelectOption");
     expect(card).toContain("browse-game-mobile-board");
     expect(card).toContain("browse-game-action-label");
+    expect(card).toContain("browse-game-card-kickoff");
+    expect(card).toContain("team-ranking");
     expect(card).toContain("aria-expanded={active}");
     expect(grid).toContain("watchlistAvailable?: boolean");
     expect(grid).toContain("watchlistAvailable && !odd.eventStarted && !odd.isAlternate");
@@ -120,10 +122,13 @@ describe("v0.15.1 Browse Odds corrections", () => {
     expect(css).toContain(".browse-filter-select-control");
     expect(css).toContain(".browse-game-side");
     expect(css).toContain(".browse-game-action-label");
+    expect(css).toContain(".browse-game-card-kickoff");
+    expect(css).toContain("word-break: normal;");
+    expect(css).toContain("overflow-wrap: break-word;");
     expect(css).not.toContain("scrollbar-gutter: stable");
     expect(css).toContain(".browse-market-detail");
     expect(css).toContain(".browse-date-native-input");
-    expect(css).toContain("flex: 1 1 auto;");
+    expect(css).toContain("flex: 1 1 0;");
     expect(css).toContain("min-height: 100dvh;");
     expect(css).not.toContain(
       "height: min(72rem, calc(100dvh - var(--desktop-header-offset) - 1rem))",
@@ -154,7 +159,7 @@ describe("v0.15.1 Browse Odds corrections", () => {
     expect(css).toContain("html.browse-route-active");
     expect(css).toContain("html.browse-route-active body");
     expect(css).toMatch(
-      /\.browse-master-detail-layout \{[\s\S]*?flex: 1 1 auto;[\s\S]*?min-height: 0;[\s\S]*?align-items: stretch;/,
+      /\.browse-master-detail-layout \{[\s\S]*?flex: 1 1 0;[\s\S]*?min-height: 0;[\s\S]*?overflow: hidden;[\s\S]*?align-items: stretch;/,
     );
     expect(css).toMatch(
       /\.browse-master-detail-layout > \.browse-games-rail,[\s\S]*?\.browse-master-detail-layout > \.browse-market-detail,[\s\S]*?\.browse-master-detail-layout > \.browse-bet-slip-target \{[\s\S]*?min-height: 0;[\s\S]*?overflow-y: auto;/,

@@ -304,6 +304,35 @@ selection with the retained line/price metadata, switching games, returning to
 the original game, and clean removal. No migration or provider request path was
 added.
 
+### Final desktop viewport and game-card polish
+
+The final external desktop review exposed two presentation defects after the root
+scroll lock was corrected. First, the workspace flex item still used an intrinsic
+content-sized basis (`flex: 1 1 auto`). On short desktop viewports, a long Games
+slate could therefore influence the workspace's used height even though the shell
+and root were bounded. The correction keeps the existing 980px desktop breakpoint,
+sets the workspace to `flex: 1 1 0` with `min-height: 0`, and gives that workspace
+`overflow: hidden`; the three existing child panes continue to own one intentional
+`overflow-y: auto` scroll container each. No shell height, root lock, pane, or
+mobile flow contract was removed.
+
+Second, desktop compact cards repeated the already-visible date/kickoff context in
+the card side. The repeated kickoff element now has a desktop-only presentation
+class and is hidden at the 980px breakpoint. Mobile retains the kickoff context.
+Team lines are constrained to their available width and use normal word boundaries
+with `overflow-wrap: break-word`; no smaller type, clipping, absolute positioning,
+or `break-all` behavior was introduced. Representative `#1 Texas Longhorns` vs
+`#14 Tennessee Volunteers` and `Georgia Tech Yellow Jackets` vs `Stanford
+Cardinal` names remain readable and inside the Games card region.
+
+The local Playwright layout harness now covers the requested viewport matrix:
+1218×1270, 1920×1080, 1440×900, 1440×800, 1366×768, and 1280×720, plus the
+980px boundary and 979px fallback, with 375×844 and 430×844 mobile checks. Every
+desktop case kept document, body, and shell height equal to the viewport; all pane
+bottoms remained within the viewport; long Games content stayed inside the Games
+pane; and the root remained locked. Mobile and the 979px fallback remained natural
+document flow, with mobile kickoff context preserved.
+
 ## Sorting, rankings, and metadata
 
 The v0.15.0 deterministic sport-aware priority engine remains unchanged. Kickoff date and time
@@ -377,6 +406,9 @@ Modified for this patch:
   `scripts/check-browse-pane-breakpoints.mjs`, `scripts/check-browse-pane-layout.mjs`,
   `test/v0-15-1-browse-corrections.test.ts`, `test/v0-15-browse-schedule.test.ts`,
   and `package.json`.
+- Final desktop viewport/card polish: `src/app/globals.css`,
+  `src/components/browse-game-card.tsx`, `scripts/check-browse-pane-breakpoints.mjs`,
+  `test/v0-15-1-browse-corrections.test.ts`, and this report.
 
 Unrelated pre-existing Watchlist/cache/Postgres-store worktree changes were preserved and are not
 claimed as part of this patch.
@@ -422,6 +454,12 @@ Passed:
 - Root scroll-lock regression covers desktop `html`/`body` overflow, attempted `window.scrollTo`,
   and route-exit cleanup. Authenticated post-fix Preview execution remains pending because the
   local checkout still has no authenticated session.
+- Final desktop viewport/card regression passed: the Playwright matrix covered 375×844 and
+  430×844 mobile flow, the 979px fallback, 980px/1218px/1239px/1240px boundary widths, and
+  1920×1080, 1440×900, 1440×800, 1366×768, and 1280×720 desktop heights. Desktop document,
+  body, and shell heights stayed at the viewport, pane bottoms stayed inside the viewport,
+  long-name cards had no horizontal spill, and redundant desktop kickoff text was hidden while
+  mobile kickoff context remained visible.
 - Clean corrective-commit validation at `ddeb96bf41ea4484f4bd98bbe5eae4d24737ffd7`: `npm ci`, lint, typecheck, 46 test files / 277
   tests, production build, and secret scan all passed.
 - Clean desktop-remediation validation at `486923315a59fb0be4b34ec6798b9d305fc0b6f6`: `npm ci`,

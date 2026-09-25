@@ -78,7 +78,7 @@ export function BrowseGameCard({
         </div>
         <div className="browse-game-side">
           <div className="browse-game-meta">
-            <span className="event-kickoff">
+            <span className="event-kickoff browse-game-card-kickoff">
               <span className="sr-only">Kickoff </span>
               <KickoffTime value={event.scheduledStart} timeZone={timeZone} />
             </span>

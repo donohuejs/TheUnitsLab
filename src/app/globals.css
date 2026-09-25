@@ -1277,14 +1277,16 @@ textarea:focus {
 .browse-team-line {
   display: inline-flex;
   align-items: center;
+  max-width: 100%;
   min-width: 0;
   gap: 0.4rem;
   overflow-wrap: normal;
 }
 
 .browse-team-name {
+  max-width: 100%;
   min-width: 0;
-  overflow-wrap: normal;
+  overflow-wrap: break-word;
   word-break: normal;
   font-weight: 800;
 }
@@ -1890,8 +1892,9 @@ textarea:focus {
 
   .browse-master-detail-layout {
     grid-template-columns: minmax(280px, 320px) minmax(0, 1fr) minmax(280px, 320px);
-    flex: 1 1 auto;
+    flex: 1 1 0;
     min-height: 0;
+    overflow: hidden;
     align-items: stretch;
   }
 
@@ -1933,6 +1936,10 @@ textarea:focus {
   }
 
   .browse-game-mobile-board {
+    display: none;
+  }
+
+  .browse-game-card-kickoff {
     display: none;
   }
 }

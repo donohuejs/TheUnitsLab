@@ -2,8 +2,20 @@ import { chromium } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
 const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
-const viewportHeight = 1270;
-const matrix = [979, 980, 1218, 1239, 1240];
+const matrix = [
+  { width: 375, height: 844, desktop: false, mobile: true },
+  { width: 430, height: 844, desktop: false, mobile: true },
+  { width: 979, height: 1270, desktop: false },
+  { width: 980, height: 1270, desktop: true },
+  { width: 1218, height: 1270, desktop: true },
+  { width: 1239, height: 1270, desktop: true },
+  { width: 1240, height: 1270, desktop: true },
+  { width: 1920, height: 1080, desktop: true },
+  { width: 1440, height: 900, desktop: true },
+  { width: 1440, height: 800, desktop: true },
+  { width: 1366, height: 768, desktop: true },
+  { width: 1280, height: 720, desktop: true },
+];
 
 function markup(gameCount) {
   const games = Array.from(
@@ -12,10 +24,10 @@ function markup(gameCount) {
       <article class="card browse-game-card">
         <a class="browse-game-row" href="#">
           <div class="browse-game-teams">
-            <span class="browse-team-line"><span class="browse-team-name">Away Team ${index + 1}</span></span>
-            <span class="browse-team-line"><span class="browse-team-name">Home Team ${index + 1}</span></span>
+            <span class="browse-team-line"><span class="browse-team-name">${index === 0 ? "#1 Texas Longhorns" : index === 1 ? "Georgia Tech Yellow Jackets" : `Away Team ${index + 1}`}</span></span>
+            <span class="browse-team-line"><span class="browse-team-name">${index === 0 ? "#14 Tennessee Volunteers" : index === 1 ? "Stanford Cardinal" : `Home Team ${index + 1}`}</span></span>
           </div>
-          <div class="browse-game-side"><div class="browse-game-meta"><span>7:00 PM</span></div></div>
+          <div class="browse-game-side"><div class="browse-game-meta"><span class="event-kickoff browse-game-card-kickoff">Sat, Sep 26 · 7:00 PM</span></div></div>
         </a>
       </article>`,
   ).join("");
@@ -55,8 +67,8 @@ function fail(message) {
   throw new Error(`Browse breakpoint regression failed: ${message}`);
 }
 
-async function measure(width, gameCount) {
-  await page.setViewportSize({ width, height: viewportHeight });
+async function measure(viewport, gameCount) {
+  await page.setViewportSize({ width: viewport.width, height: viewport.height });
   await page.setContent(markup(gameCount));
   await page.evaluate(() => document.documentElement.classList.add("browse-route-active"));
   const attemptedScrollY = await page.evaluate(() => {
@@ -96,28 +108,39 @@ async function measure(width, gameCount) {
       games: detail(".browse-games-rail"),
       markets: detail(".browse-market-detail"),
       betSlip: detail("#browse-bet-slip-target"),
+      cardKickoffDisplay: getComputedStyle(document.querySelector(".browse-game-card-kickoff"))
+        .display,
+      teamChecks: Array.from(document.querySelectorAll(".browse-game-card"))
+        .slice(0, 2)
+        .map((card) => {
+          const region = card.querySelector(".browse-game-teams").getBoundingClientRect();
+          return {
+            regionRight: region.right,
+            lineRights: Array.from(card.querySelectorAll(".browse-team-line")).map(
+              (element) => element.getBoundingClientRect().right,
+            ),
+          };
+        }),
+      documentScrollWidth: document.documentElement.scrollWidth,
     };
   }, attemptedScrollY);
 }
 
 try {
-  for (const width of matrix) {
-    const shortSlate = await measure(width, 3);
-    const longSlate = await measure(width, 120);
-    const desktop = width >= 980;
+  for (const viewport of matrix) {
+    const shortSlate = await measure(viewport, 3);
+    const longSlate = await measure(viewport, 120);
+    const { width, height, desktop } = viewport;
 
     if (desktop) {
       for (const [label, metrics] of [
         ["short", shortSlate],
         ["long", longSlate],
       ]) {
-        if (
-          metrics.documentScrollHeight > viewportHeight + 4 ||
-          metrics.bodyScrollHeight > viewportHeight + 4
-        ) {
+        if (metrics.documentScrollHeight > height + 4 || metrics.bodyScrollHeight > height + 4) {
           fail(`${width}px ${label} slate expanded the document (${JSON.stringify(metrics)})`);
         }
-        if (Math.abs(metrics.shell.rect.height - viewportHeight) > 4) {
+        if (Math.abs(metrics.shell.rect.height - height) > 4) {
           fail(
             `${width}px ${label} shell is not viewport bounded (${JSON.stringify(metrics.shell)})`,
           );
@@ -143,15 +166,24 @@ try {
           markets: metrics.markets,
           betSlip: metrics.betSlip,
         })) {
-          if (
-            !pane ||
-            !/(auto|scroll)/.test(pane.overflowY) ||
-            pane.rect.bottom > viewportHeight + 4
-          ) {
+          if (!pane || !/(auto|scroll)/.test(pane.overflowY) || pane.rect.bottom > height + 4) {
             fail(
               `${width}px ${label} ${name} pane is not independently bounded (${JSON.stringify(pane)})`,
             );
           }
+        }
+        if (metrics.cardKickoffDisplay !== "none") {
+          fail(`${width}x${height} ${label} desktop card retained redundant kickoff copy`);
+        }
+        if (metrics.documentScrollWidth > width + 4) {
+          fail(`${width}x${height} ${label} card content caused horizontal overflow`);
+        }
+        if (
+          metrics.teamChecks.some(({ regionRight, lineRights }) =>
+            lineRights.some((right) => right > regionRight + 1),
+          )
+        ) {
+          fail(`${width}x${height} ${label} long team name exceeded its card region`);
         }
       }
       if (longSlate.games.scrollHeight <= shortSlate.games.scrollHeight) {
@@ -166,7 +198,7 @@ try {
         );
       }
     } else {
-      if (longSlate.documentScrollHeight <= viewportHeight + 4) {
+      if (longSlate.documentScrollHeight <= height + 4) {
         fail(`${width}px fallback unexpectedly became a bounded desktop workspace`);
       }
       if (
@@ -180,9 +212,12 @@ try {
       if (longSlate.attemptedScrollY === 0) {
         fail(`${width}px fallback unexpectedly prevented normal document scrolling`);
       }
+      if (viewport.mobile && longSlate.cardKickoffDisplay === "none") {
+        fail(`${width}x${height} mobile card lost its kickoff context`);
+      }
     }
     console.log(
-      `${width}px: ${desktop ? "bounded desktop" : "natural fallback"}; short=${shortSlate.documentScrollHeight}px, long=${longSlate.documentScrollHeight}px, games=${longSlate.games.scrollHeight}px, root=${longSlate.rootScrollLock.htmlOverflowY}/${longSlate.rootScrollLock.bodyOverflowY}, attemptedScrollY=${longSlate.attemptedScrollY}`,
+      `${width}x${height}: ${desktop ? "bounded desktop" : "natural fallback"}; short=${shortSlate.documentScrollHeight}px, long=${longSlate.documentScrollHeight}px, games=${longSlate.games.scrollHeight}px, root=${longSlate.rootScrollLock.htmlOverflowY}/${longSlate.rootScrollLock.bodyOverflowY}, attemptedScrollY=${longSlate.attemptedScrollY}`,
     );
   }
   console.log(
