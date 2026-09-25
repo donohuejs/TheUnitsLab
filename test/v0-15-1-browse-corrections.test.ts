@@ -131,7 +131,7 @@ describe("v0.15.1 Browse Odds corrections", () => {
     const css = read("../src/app/globals.css");
 
     expect(css).toMatch(
-      /@media \(min-width: 1240px\) \{[\s\S]*?\.browse-shell \{[\s\S]*?display: flex;[\s\S]*?flex-direction: column;[\s\S]*?min-height: 100dvh;/,
+      /@media \(min-width: 1240px\) \{[\s\S]*?\.browse-shell \{[\s\S]*?display: flex;[\s\S]*?flex-direction: column;[\s\S]*?height: 100dvh;[\s\S]*?min-height: 100dvh;[\s\S]*?overflow: hidden;/,
     );
     expect(css).toMatch(
       /\.browse-master-detail-layout \{[\s\S]*?flex: 1 1 auto;[\s\S]*?min-height: 0;[\s\S]*?align-items: stretch;/,

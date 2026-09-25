@@ -261,11 +261,12 @@ The final desktop height regression was traced to the height chain itself: the
 `.browse-shell` remained a normal-flow block. The global header-offset token was
 not the actual amount of space consumed above the workspace, so the pane bottom
 could stop well short of the viewport. At the desktop three-pane breakpoint,
-`.browse-shell` is now a `min-height: 100dvh` flex column, the workspace is a
-`flex: 1 1 auto` / `min-height: 0` grid item, and each pane stretches into that
-row and owns its `overflow-y: auto`. The obsolete fixed workspace height and
-pane `max-height` constraint were removed. The mobile and medium-width natural
-document-flow layout remains unchanged.
+`.browse-shell` is now a bounded `height: 100dvh` / `min-height: 100dvh` flex
+column with `overflow: hidden`, the workspace is a `flex: 1 1 auto` /
+`min-height: 0` grid item, and each pane stretches into that row and owns its
+`overflow-y: auto`. The obsolete fixed workspace height and pane `max-height`
+constraint were removed. The mobile and medium-width natural document-flow
+layout remains unchanged.
 
 The new browser regression covers the exact alternate-line interaction, one
 selection with the retained line/price metadata, switching games, returning to
@@ -353,6 +354,9 @@ Passed:
 - Final desktop height correction validation: the focused Browse layout contracts passed
   (2 test files / 16 tests), followed by the full 52 test files / 314 tests validation,
   production build, secret scan, and `npm.cmd audit --audit-level=high` with 0 vulnerabilities.
+- `node --check scripts/check-browse-pane-layout.mjs` passed. The authenticated browser
+  regression was attempted with the local Playwright harness but blocked before Browse
+  navigation because this checkout has no Supabase authentication configuration/session.
 - Development React browser regression passed for the exact Florida/Gators
   provider `3.5` → simulated `2.5` selection, one durable selection,
   exact simulated odds/provider anchor metadata, game switching, return navigation,

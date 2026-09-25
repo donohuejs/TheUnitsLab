@@ -82,6 +82,7 @@ describe("v0.15.1 active-event and Bet Slip separation", () => {
     const page = read("../src/app/sports/[competition]/page.tsx");
     const controls = read("../src/components/browse-schedule-controls.tsx");
     const browserSmoke = read("../scripts/check-browse-slip-navigation.mjs");
+    const layoutSmoke = read("../scripts/check-browse-pane-layout.mjs");
     const css = read("../src/app/globals.css");
 
     expect(host).toContain("createPortal");
@@ -97,6 +98,11 @@ describe("v0.15.1 active-event and Bet Slip separation", () => {
     expect(browserSmoke).toContain("link.click()");
     expect(browserSmoke).toContain("selectOption(eventA)");
     expect(browserSmoke).toContain("Open Bet Slip, 1 pick");
+    expect(layoutSmoke).toContain("documentScrollHeight");
+    expect(layoutSmoke).toContain("games.scrollTop");
+    expect(layoutSmoke).toContain("markets.scrollTop");
+    expect(layoutSmoke).toContain("betSlip.scrollTop");
+    expect(layoutSmoke).toContain("selected market header is outside the center pane viewport");
     expect(page).not.toContain("<BetSlip");
     expect(controls).toContain("browse-date-readable");
     expect(css).toContain(".browse-bet-slip-target");
