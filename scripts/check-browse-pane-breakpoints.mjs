@@ -58,7 +58,12 @@ function fail(message) {
 async function measure(width, gameCount) {
   await page.setViewportSize({ width, height: viewportHeight });
   await page.setContent(markup(gameCount));
-  return page.evaluate(() => {
+  await page.evaluate(() => document.documentElement.classList.add("browse-route-active"));
+  const attemptedScrollY = await page.evaluate(() => {
+    window.scrollTo(0, 240);
+    return window.scrollY;
+  });
+  return page.evaluate((attemptedScrollY) => {
     const detail = (selector) => {
       const element = document.querySelector(selector);
       if (!element) return null;
@@ -78,15 +83,21 @@ async function measure(width, gameCount) {
     return {
       width: window.innerWidth,
       height: window.innerHeight,
+      attemptedScrollY,
       documentScrollHeight: document.documentElement.scrollHeight,
       bodyScrollHeight: document.body.scrollHeight,
+      rootScrollLock: {
+        htmlClassName: document.documentElement.className,
+        htmlOverflowY: getComputedStyle(document.documentElement).overflowY,
+        bodyOverflowY: getComputedStyle(document.body).overflowY,
+      },
       shell: detail(".browse-shell"),
       workspace: detail(".browse-master-detail-layout"),
       games: detail(".browse-games-rail"),
       markets: detail(".browse-market-detail"),
       betSlip: detail("#browse-bet-slip-target"),
     };
-  });
+  }, attemptedScrollY);
 }
 
 try {
@@ -116,6 +127,17 @@ try {
             `${width}px ${label} shell computed styles are not desktop bounded (${JSON.stringify(metrics.shell)})`,
           );
         }
+        if (
+          metrics.rootScrollLock.htmlOverflowY !== "hidden" ||
+          metrics.rootScrollLock.bodyOverflowY !== "hidden"
+        ) {
+          fail(
+            `${width}px ${label} root scroll is not locked (${JSON.stringify(metrics.rootScrollLock)})`,
+          );
+        }
+        if (metrics.attemptedScrollY !== 0) {
+          fail(`${width}px ${label} allowed root window scrolling (${metrics.attemptedScrollY})`);
+        }
         for (const [name, pane] of Object.entries({
           games: metrics.games,
           markets: metrics.markets,
@@ -143,11 +165,24 @@ try {
           `${width}px desktop workspace is not three-column (${longSlate.workspace.gridTemplateColumns})`,
         );
       }
-    } else if (longSlate.documentScrollHeight <= viewportHeight + 4) {
-      fail(`${width}px fallback unexpectedly became a bounded desktop workspace`);
+    } else {
+      if (longSlate.documentScrollHeight <= viewportHeight + 4) {
+        fail(`${width}px fallback unexpectedly became a bounded desktop workspace`);
+      }
+      if (
+        longSlate.rootScrollLock.htmlOverflowY === "hidden" ||
+        longSlate.rootScrollLock.bodyOverflowY === "hidden"
+      ) {
+        fail(
+          `${width}px fallback incorrectly locked root scrolling (${JSON.stringify(longSlate.rootScrollLock)})`,
+        );
+      }
+      if (longSlate.attemptedScrollY === 0) {
+        fail(`${width}px fallback unexpectedly prevented normal document scrolling`);
+      }
     }
     console.log(
-      `${width}px: ${desktop ? "bounded desktop" : "natural fallback"}; short=${shortSlate.documentScrollHeight}px, long=${longSlate.documentScrollHeight}px, games=${longSlate.games.scrollHeight}px`,
+      `${width}px: ${desktop ? "bounded desktop" : "natural fallback"}; short=${shortSlate.documentScrollHeight}px, long=${longSlate.documentScrollHeight}px, games=${longSlate.games.scrollHeight}px, root=${longSlate.rootScrollLock.htmlOverflowY}/${longSlate.rootScrollLock.bodyOverflowY}, attemptedScrollY=${longSlate.attemptedScrollY}`,
     );
   }
   console.log(

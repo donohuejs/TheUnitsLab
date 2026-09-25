@@ -286,6 +286,19 @@ authenticated post-fix Preview measurement remains pending; the supplied authent
 before-measurement is the root-cause evidence, while the local matrix verifies the corrected CSS
 architecture and breakpoint invariant.
 
+### Root document scroll-lock correction
+
+The next authenticated Preview measurement showed that the pane architecture was correct while
+the root HTML document remained scrollable: at 1218×1270, the document element reported
+`scrollHeight = 13186px`, while `body` and `.browse-shell` were both correctly bounded at
+1270px. The Games, Markets, and Bet Slip panes remained the intended independent scroll owners.
+
+The correction adds `BrowseRootScrollLock` to the existing `/sports/[competition]` layout. It
+adds and removes a route-scoped `browse-route-active` class on `html`; CSS locks `html` and
+`body` to `100dvh` with `overflow-y: hidden` only at the same `min-width: 980px` desktop
+breakpoint. Unmount cleanup restores ordinary document scrolling when leaving Browse, and below
+980px the class has no locking effect so mobile/tablet natural flow remains unchanged.
+
 The new browser regression covers the exact alternate-line interaction, one
 selection with the retained line/price metadata, switching games, returning to
 the original game, and clean removal. No migration or provider request path was
@@ -359,6 +372,7 @@ Modified for this patch:
 - `README.md`, `docs/ARCHITECTURE.md`, `docs/MIGRATIONS.md`, `docs/PRODUCT_SPEC.md`,
   `docs/TESTING.md`, `docs/Virtual Sportsbook - Governing Specification V1.docx`
 - Desktop overflow correction: `src/app/globals.css`,
+  `src/app/sports/[competition]/layout.tsx`, `src/components/browse-root-scroll-lock.tsx`,
   `scripts/browse-pane-layout-diagnostics.mjs`, `scripts/diagnose-browse-pane-layout.mjs`,
   `scripts/check-browse-pane-breakpoints.mjs`, `scripts/check-browse-pane-layout.mjs`,
   `test/v0-15-1-browse-corrections.test.ts`, `test/v0-15-browse-schedule.test.ts`,
@@ -405,6 +419,9 @@ Passed:
 - Desktop overflow breakpoint regression passed at 979/980/1218/1239/1240px for short and long
   synthetic slates. The 980px-and-up desktop cases held document/body/shell height at the 1270px
   viewport while the long Games content remained inside its pane.
+- Root scroll-lock regression covers desktop `html`/`body` overflow, attempted `window.scrollTo`,
+  and route-exit cleanup. Authenticated post-fix Preview execution remains pending because the
+  local checkout still has no authenticated session.
 - Clean corrective-commit validation at `ddeb96bf41ea4484f4bd98bbe5eae4d24737ffd7`: `npm ci`, lint, typecheck, 46 test files / 277
   tests, production build, and secret scan all passed.
 - Clean desktop-remediation validation at `486923315a59fb0be4b34ec6798b9d305fc0b6f6`: `npm ci`,

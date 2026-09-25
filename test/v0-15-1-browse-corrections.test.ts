@@ -81,6 +81,8 @@ describe("v0.15.1 Browse Odds corrections", () => {
 
   it("does not auto-open a game and uses a master/detail desktop contract", () => {
     const page = read("../src/app/sports/[competition]/page.tsx");
+    const layout = read("../src/app/sports/[competition]/layout.tsx");
+    const rootLock = read("../src/components/browse-root-scroll-lock.tsx");
     const controls = read("../src/components/browse-schedule-controls.tsx");
     const filterSelect = read("../src/components/browse-filter-select.tsx");
     const card = read("../src/components/browse-game-card.tsx");
@@ -94,6 +96,10 @@ describe("v0.15.1 Browse Odds corrections", () => {
     expect(page).toContain("const activeEvent = requestedActiveEvent;");
     expect(page).not.toContain("orderedEvents[0]");
     expect(page).toContain("browse-games-rail");
+    expect(layout).toContain("BrowseRootScrollLock");
+    expect(rootLock).toContain('"browse-route-active"');
+    expect(rootLock).toContain("window.scrollTo(0, 0)");
+    expect(rootLock).toContain("root.classList.remove");
     expect(page).toContain("browse-market-detail");
     expect(page).toContain("desktop-browse-filter-control");
     expect(page).toContain("mobile-browse-filter-control");
@@ -131,8 +137,11 @@ describe("v0.15.1 Browse Odds corrections", () => {
     expect(diagnostics).toContain("bodyScrollHeight");
     expect(diagnostics).toContain("desktopWorkspace");
     expect(diagnostics).toContain("bottomExtendingElements");
+    expect(diagnostics).toContain("htmlOverflowY");
+    expect(diagnostics).toContain("bodyOverflowY");
     expect(breakpointSmoke).toContain("1218");
     expect(breakpointSmoke).toContain("scrollHeight");
+    expect(breakpointSmoke).toContain("rootScrollLock");
   });
 
   it("fills the desktop Browse workspace through the shell-to-pane height chain", () => {
@@ -142,6 +151,8 @@ describe("v0.15.1 Browse Odds corrections", () => {
       /@media \(min-width: 980px\) \{[\s\S]*?\.browse-shell \{[\s\S]*?display: flex;[\s\S]*?flex-direction: column;[\s\S]*?height: 100dvh;[\s\S]*?min-height: 100dvh;[\s\S]*?overflow: hidden;/,
     );
     expect(css).not.toContain("@media (min-width: 980px) and (max-width: 1239px)");
+    expect(css).toContain("html.browse-route-active");
+    expect(css).toContain("html.browse-route-active body");
     expect(css).toMatch(
       /\.browse-master-detail-layout \{[\s\S]*?flex: 1 1 auto;[\s\S]*?min-height: 0;[\s\S]*?align-items: stretch;/,
     );

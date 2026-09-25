@@ -71,6 +71,26 @@ function assertBoundedPage(metrics, label) {
   }
 }
 
+function assertRootScrollLocked(metrics, label) {
+  if (!metrics.detail.rootScrollLock.htmlClassName.includes("browse-route-active")) {
+    fail(`${label} is missing the Browse root lifecycle class`);
+  }
+  if (
+    metrics.detail.rootScrollLock.htmlOverflowY !== "hidden" ||
+    metrics.detail.rootScrollLock.bodyOverflowY !== "hidden"
+  ) {
+    fail(`${label} root scroll is not locked (${JSON.stringify(metrics.detail.rootScrollLock)})`);
+  }
+}
+
+async function assertWindowScrollLocked(label) {
+  const scrollY = await page.evaluate(() => {
+    window.scrollTo(0, 240);
+    return window.scrollY;
+  });
+  if (scrollY !== 0) fail(`${label} allowed root window scrolling (${scrollY})`);
+}
+
 function assertPane(metrics, name) {
   const pane = metrics[name];
   if (!pane || pane.clientHeight <= 0) fail(`${name} pane is not visible or has no height`);
@@ -111,6 +131,8 @@ try {
   let metrics = await layoutMetrics();
   printDiagnostics("Initial", metrics);
   assertBoundedPage(metrics, "initial Browse workspace");
+  assertRootScrollLocked(metrics, "initial Browse workspace");
+  await assertWindowScrollLocked("initial Browse workspace");
   for (const name of ["games", "markets", "betSlip"]) assertPane(metrics, name);
 
   await markets.evaluate((element) => {
@@ -144,6 +166,8 @@ try {
   metrics = await layoutMetrics();
   printDiagnostics("After low-game selection", metrics);
   assertBoundedPage(metrics, "late-game selection");
+  assertRootScrollLocked(metrics, "late-game selection");
+  await assertWindowScrollLocked("late-game selection");
   if (Math.abs(metrics.pageScrollY - pageBefore) > 2)
     fail("document scroll changed after game selection");
   if (Math.abs(metrics.games.scrollTop - leftBefore) > 8)
@@ -167,8 +191,24 @@ try {
   }
   for (const name of ["games", "markets", "betSlip"]) assertPane(metrics, name);
 
+  const myBetsLink = page.getByRole("link", { name: "My Bets", exact: true }).first();
+  if (!(await myBetsLink.count())) fail("could not find the My Bets route-exit link");
+  await Promise.all([page.waitForURL((url) => url.pathname === "/my-bets"), myBetsLink.click()]);
+  const exitRoot = await page.evaluate(() => ({
+    className: document.documentElement.className,
+    htmlOverflowY: getComputedStyle(document.documentElement).overflowY,
+    bodyOverflowY: getComputedStyle(document.body).overflowY,
+  }));
+  if (
+    exitRoot.className.includes("browse-route-active") ||
+    exitRoot.htmlOverflowY === "hidden" ||
+    exitRoot.bodyOverflowY === "hidden"
+  ) {
+    fail(`Browse root scroll lock was not restored after route exit (${JSON.stringify(exitRoot)})`);
+  }
+
   console.log(
-    `PASS: bounded desktop panes preserve Games/Bet Slip position and reset Markets on low-game selection`,
+    `PASS: bounded desktop panes preserve scroll state, lock Browse root scrolling, and restore it on route exit`,
   );
 } finally {
   await context.close();

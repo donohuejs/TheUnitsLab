@@ -41,6 +41,14 @@ html {
   overflow-x: clip;
 }
 
+@media (min-width: 980px) {
+  html.browse-route-active,
+  html.browse-route-active body {
+    height: 100dvh;
+    overflow-y: hidden;
+  }
+}
+
 a {
   color: inherit;
 }

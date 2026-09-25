@@ -124,6 +124,13 @@ export async function collectBrowsePaneDiagnostics(page) {
         bodyClientHeight: body.clientHeight,
         bodyScrollHeight: body.scrollHeight,
       },
+      rootScrollLock: {
+        htmlClassName: root.className,
+        htmlOverflowY: getComputedStyle(root).overflowY,
+        htmlHeight: getComputedStyle(root).height,
+        bodyOverflowY: getComputedStyle(body).overflowY,
+        bodyHeight: getComputedStyle(body).height,
+      },
       breakpoints: {
         desktopWorkspace: window.matchMedia("(min-width: 980px)").matches,
         legacyWideWorkspace: window.matchMedia("(min-width: 1240px)").matches,
