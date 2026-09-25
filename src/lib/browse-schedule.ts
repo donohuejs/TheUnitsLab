@@ -13,6 +13,10 @@ import {
 
 export type BrowseDateKey = string;
 
+export function shouldShowBrowseEventStatus(status: string) {
+  return status.toLowerCase() !== "scheduled";
+}
+
 /**
  * Browse has historically presented US college schedules in Eastern Time. Profiles created
  * before Browse timezone support use UTC as their database default, so UTC is treated as the

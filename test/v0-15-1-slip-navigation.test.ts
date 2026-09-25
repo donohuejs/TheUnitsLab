@@ -87,7 +87,8 @@ describe("v0.15.1 active-event and Bet Slip separation", () => {
     expect(host).toContain("createPortal");
     expect(host).toContain("BROWSE_BET_SLIP_TARGET_ID");
     expect(host).toContain("BrowseBetSlipTarget");
-    expect(host).toContain("ref={registerTarget}");
+    expect(host).toContain("targetRef.current = target");
+    expect(host).toContain("registerTarget(target)");
     expect(host).toContain("if (target) context.setTarget(target)");
     expect(layout).toContain("BrowseBetSlipProvider");
     expect(page).toContain("BrowseBetSlipBridge");

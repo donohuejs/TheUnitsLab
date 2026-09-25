@@ -75,6 +75,11 @@ The follow-up portal-lifecycle correction is `c19d0f1`
 (`fix: rebind bet slip portal across browse navigation`). It is also on `release/v0.15.1`; `main`
 remains unchanged.
 
+The final external Preview correction is split into two commits:
+`e0847a3` (`fix: prevent alternate line update loop`) and
+`polish: refine browse odds navigation and cards`. Both are on
+`release/v0.15.1`; `main` remains unchanged.
+
 ## Vercel Preview correction
 
 The first Preview for `5ca2a32d16670ab7c14b696b3980b537618371f6` failed during TypeScript
@@ -117,6 +122,10 @@ The portal-lifecycle correction `c19d0f1` completed successfully in Vercel
 <https://vercel.com/donohuejs-1066s-projects/theunitslab/CbUgqrkeKdM5zk3aNPcDwdcTssPC>
 The Preview remains protected by Vercel Login from this environment, so authenticated behavior
 cannot be independently confirmed here.
+
+The final external-correction commits were pushed to `origin/release/v0.15.1` after
+local validation. Vercel Preview creation/status was not independently verified in
+this session; the prior branch Preview remains protected by Vercel Login.
 
 The deployment is protected by Vercel Login from this environment, so Preview environment-variable
 configuration cannot be independently confirmed. No Vercel environment variables were changed.
@@ -202,6 +211,54 @@ actual Browse page, Games navigator, Jump to Game control, straight-slip A→B�
 A→B flow. The earlier unit test appeared correct because it only exercised the durable store and
 static component contracts; it never replaced the portal DOM node through a router transition.
 
+## Final external Preview corrections
+
+The Florida/Gators alternate-line crash was reproduced locally in the development
+React build using the development-only Patch 10 harness: select the FanDuel
+provider spread at `-3.5`, then choose the existing Simulated Alternate Line
+value `-2.5`. The pre-fix console reported React's maximum update depth error and
+the development stack identified `BetSlip`'s effect calling
+`setStraightSlipSelections`.
+
+The exact cycle was:
+
+1. `activeSelection` derived the simulated `-2.5` selection from the provider
+   `-3.5` anchor.
+2. The alternate reconciliation effect replaced the provider selection in the
+   durable straight slip with the simulated selection.
+3. The auto-add effect saw the original provider selection absent and appended it.
+4. The reconciliation effect replaced the provider selection again, producing a
+   new store snapshot and repeating the cycle until React raised error #185.
+
+The correction removes the competing auto-add effect and uses one idempotent
+`reconcileActiveStraightSelection` path. It replaces the provider anchor or the
+previous simulated alternate for the same provider identity, retains exact
+pricing metadata, and returns the existing array when no change is needed.
+Provider-priced alternates remain ordinary provider selections; they are not
+converted into simulated alternates. Mobile removal also targets the active
+simulated selection and suppresses one re-add during URL cleanup.
+
+Browse polish now provides a keyboard-accessible central date button backed by the
+existing native date input and `showPicker`/fallback behavior. Previous and next
+date navigation remains intact, and date changes continue to clear incompatible
+event state through the existing query architecture. Ordinary scheduled event
+badges are omitted while live and completed statuses remain visible. Odds tiles
+retain bookmaker, selection, line, odds, and selected-state information while
+removing the repeated ordinary `pregame price` label; live/final indicators
+remain meaningful.
+
+At the desktop breakpoint, Games, Markets, and Bet Slip are bounded independent
+scroll panes. The Games pane uses the existing `scroll={false}` navigation, the
+Markets pane resets only its own `scrollTop` when the canonical active event ID
+changes, and the Bet Slip pane is no longer an independently sticky child that
+can overlap the center content. Mobile remains natural page flow and does not
+inherit the desktop pane height or right-rail scrolling.
+
+The new browser regression covers the exact alternate-line interaction, one
+selection with the retained line/price metadata, switching games, returning to
+the original game, and clean removal. No migration or provider request path was
+added.
+
 ## Sorting, rankings, and metadata
 
 The v0.15.0 deterministic sport-aware priority engine remains unchanged. Kickoff date and time
@@ -277,6 +334,13 @@ claimed as part of this patch.
 
 Passed:
 
+- Final external-correction validation on `release/v0.15.1`: `npm.cmd run validate`
+  passed formatting, lint, typecheck, 52 test files / 313 tests, secret scan, and
+  production build. `npm.cmd audit --audit-level=high` found 0 vulnerabilities.
+- Development React browser regression passed for the exact Florida/Gators
+  provider `3.5` → simulated `2.5` selection, one durable selection,
+  exact simulated odds/provider anchor metadata, game switching, return navigation,
+  and clean mobile removal.
 - Clean exact portal-lifecycle validation at `c19d0f1`: `npm ci`, `npm.cmd run validate` with
   format check, lint, typecheck, 47 test files / 280 tests, secret scan, and production build.
 - `node --check scripts/check-browse-slip-navigation.mjs` passed; the Playwright regression is

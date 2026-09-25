@@ -5,12 +5,14 @@ import { AppNav } from "@/components/app-nav";
 import { BrowseBetSlipBridge, BrowseBetSlipTarget } from "@/components/browse-bet-slip-host";
 import { BrowseFilterSelect } from "@/components/browse-filter-select";
 import { BrowseGameCard } from "@/components/browse-game-card";
+import { BrowseGamesPane } from "@/components/browse-games-pane";
 import {
   BROWSE_MARKET_FILTERS,
   BrowseMarketBoard,
   type BrowseMarketFilter,
 } from "@/components/browse-market-board";
 import { BrowseScheduleControls } from "@/components/browse-schedule-controls";
+import { BrowseMarketPane } from "@/components/browse-market-pane";
 import { CompetitionSwitcher } from "@/components/competition-switcher";
 import { KickoffTime } from "@/components/kickoff-time";
 import { LocalDateTime } from "@/components/local-date-time";
@@ -38,6 +40,7 @@ import {
   normalizeBrowseTimeZone,
   nextBrowseDate,
   previousBrowseDate,
+  shouldShowBrowseEventStatus,
   sortEventsForBrowse,
 } from "@/lib/browse-schedule";
 import { getCompetition } from "@/lib/odds/request";
@@ -444,7 +447,7 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
         ) : null}
       </div>
       <div className="sportsbook-layout browse-master-detail-layout">
-        <aside className="browse-games-rail" aria-label="Games navigator">
+        <BrowseGamesPane competitionId={id}>
           <header className="browse-games-rail-header">
             <div>
               <p className="eyebrow">Games</p>
@@ -514,12 +517,8 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
               </p>
             ) : null}
           </div>
-        </aside>
-        <section
-          className="browse-market-detail"
-          aria-label="Selected game markets"
-          aria-live="polite"
-        >
+        </BrowseGamesPane>
+        <BrowseMarketPane activeEventId={selectedEvent?.id ?? null}>
           {selectedEvent ? (
             <>
               <header className="browse-market-detail-header">
@@ -552,8 +551,13 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
                   </span>
                 </h2>
                 <p className="browse-detail-meta">
-                  <KickoffTime value={selectedEvent.scheduledStart} timeZone={timeZone} /> ·{" "}
-                  <StatusBadge status={selectedEvent.status} />
+                  <KickoffTime value={selectedEvent.scheduledStart} timeZone={timeZone} />
+                  {shouldShowBrowseEventStatus(selectedEvent.status) ? (
+                    <>
+                      {" "}
+                      · <StatusBadge status={selectedEvent.status} />
+                    </>
+                  ) : null}
                 </p>
               </header>
               {activeMarketBoard}
@@ -567,7 +571,7 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
               <p>Choose a matchup from the Games list or Jump to Game above.</p>
             </div>
           )}
-        </section>
+        </BrowseMarketPane>
         <BrowseBetSlipBridge
           selection={slipSelection}
           groups={groups}

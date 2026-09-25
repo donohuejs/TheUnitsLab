@@ -114,6 +114,7 @@ export function BrowseMarketBoard({
                         chosen.odds.selection === odd.selection &&
                         chosen.odds.point === odd.point,
                       eventStarted,
+                      eventStatus: event.status,
                     }))}
                   />
                 ) : marketType === "other" ? (

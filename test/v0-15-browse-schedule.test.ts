@@ -221,7 +221,7 @@ describe("v0.15.0 Browse Odds schedule", () => {
     expect(card).toContain("#{team.rank}");
     expect(card).not.toContain("NR");
     expect(css).toContain(".sportsbook-layout > .bet-slip-stack");
-    expect(css).toContain("max-height: calc(100vh - var(--desktop-header-offset) - 1rem)");
+    expect(css).toContain("height: min(72rem, calc(100dvh - var(--desktop-header-offset) - 1rem))");
     expect(css).toContain("overflow-y: auto");
   });
 });

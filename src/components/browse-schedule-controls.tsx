@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 type DateOption = { value: string; label: string };
@@ -52,6 +52,7 @@ export function BrowseScheduleControls({
   shouldScrollToActiveEvent?: boolean;
 }) {
   const router = useRouter();
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!activeEventId || !shouldScrollToActiveEvent) return;
@@ -79,6 +80,19 @@ export function BrowseScheduleControls({
     navigate(changes);
   }
 
+  function openDatePicker() {
+    const input = dateInputRef.current as (HTMLInputElement & { showPicker?: () => void }) | null;
+    if (!input) return;
+    if (typeof input.showPicker === "function") input.showPicker();
+    else {
+      input.focus();
+      input.click();
+    }
+  }
+
+  const selectedDateLabel =
+    dateOptions.find((option) => option.value === selectedDate)?.label ?? selectedDate;
+
   return (
     <section className="browse-schedule-controls" aria-label="Browse Odds schedule controls">
       <div className="browse-date-control">
@@ -97,17 +111,27 @@ export function BrowseScheduleControls({
             <span aria-hidden="true" className="browse-date-icon">
               ▣
             </span>
-            <span aria-hidden="true" className="browse-date-readable">
-              {dateOptions.find((option) => option.value === selectedDate)?.label ?? selectedDate}
-            </span>
+            <button
+              className="browse-date-readable"
+              type="button"
+              aria-label={"Choose date, " + selectedDateLabel}
+              aria-haspopup="dialog"
+              onClick={openDatePicker}
+            >
+              {selectedDateLabel}
+            </button>
             <input
+              ref={dateInputRef}
               id={`browse-date-${competitionId}`}
               name="date"
+              className="browse-date-native-input"
               type="date"
               value={selectedDate}
               list={`browse-date-options-${competitionId}`}
               onChange={(event) => changeDate(event.target.value)}
               aria-describedby={`browse-date-help-${competitionId}`}
+              tabIndex={-1}
+              aria-hidden="true"
             />
           </div>
           <button

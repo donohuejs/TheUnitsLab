@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { KickoffTime } from "@/components/kickoff-time";
 import { StatusBadge } from "@/components/status-badge";
 import { TeamMark } from "@/components/team-mark";
+import { shouldShowBrowseEventStatus } from "@/lib/browse-schedule";
 import type { NormalizedEvent } from "@/lib/odds/types";
 import type { TeamResolution } from "@/lib/teams/logos";
 
@@ -81,7 +82,9 @@ export function BrowseGameCard({
               <span className="sr-only">Kickoff </span>
               <KickoffTime value={event.scheduledStart} timeZone={timeZone} />
             </span>
-            <StatusBadge status={event.status} />
+            {shouldShowBrowseEventStatus(event.status) ? (
+              <StatusBadge status={event.status} />
+            ) : null}
             {marquee ? <span className="marquee-badge">Marquee Matchup</span> : null}
           </div>
           <span className="browse-game-action">

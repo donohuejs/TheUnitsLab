@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -75,10 +76,42 @@ export function BrowseBetSlipTarget() {
     },
     [context],
   );
+  const targetRef = useRef<HTMLDivElement>(null);
+  const storageKey = "sportsbook-simulator:browse-bet-slip-scroll";
+  const setTargetRef = useCallback(
+    (target: HTMLDivElement | null) => {
+      targetRef.current = target;
+      registerTarget(target);
+    },
+    [registerTarget],
+  );
+
+  useEffect(() => {
+    const target = targetRef.current;
+    if (!target) return;
+    try {
+      const saved = Number(window.sessionStorage.getItem(storageKey));
+      if (Number.isFinite(saved) && saved > 0) target.scrollTop = saved;
+    } catch {
+      // Scroll restoration is an enhancement; the rail remains usable when storage is blocked.
+    }
+    const saveScroll = () => {
+      try {
+        window.sessionStorage.setItem(storageKey, String(target.scrollTop));
+      } catch {
+        // Ignore storage failures without affecting navigation.
+      }
+    };
+    target.addEventListener("scroll", saveScroll, { passive: true });
+    return () => {
+      saveScroll();
+      target.removeEventListener("scroll", saveScroll);
+    };
+  }, [storageKey]);
 
   return (
     <div
-      ref={registerTarget}
+      ref={setTargetRef}
       id={BROWSE_BET_SLIP_TARGET_ID}
       className="browse-bet-slip-target"
       aria-label="Simulated bet slips"

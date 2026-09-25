@@ -145,9 +145,7 @@ describe("mobile Bet Slip UX addendum", () => {
   });
 
   it("keeps picks-first mobile selections together when a parlay is unavailable", () => {
-    expect(betSlip).toContain(
-      "setStraightSlipSelections(replacement ?? [...straightSelections, selection])",
-    );
+    expect(betSlip).toContain("reconcileActiveStraightSelection");
     expect(betSlip).toContain("mobile-straight-slip");
     expect(betSlip).toContain("Parlay unavailable");
     expect(betSlip).toContain("parlayAvailability.eligible");

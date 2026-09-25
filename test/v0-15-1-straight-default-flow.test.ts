@@ -97,9 +97,7 @@ describe("v0.15.1 direct straight-bet workflow", () => {
     const betSlip = read("../src/components/bet-slip.tsx");
     const oddsGrid = read("../src/components/odds-selection-grid.tsx");
 
-    expect(betSlip).toContain(
-      "setStraightSlipSelections(replacement ?? [...straightSelections, selection])",
-    );
+    expect(betSlip).toContain("reconcileActiveStraightSelection");
     expect(betSlip).toContain("Add selected bets to parlay");
     expect(betSlip).toContain("setSlipSelections(selectedParlaySelections)");
     expect(betSlip).not.toContain("Add to straight bets");

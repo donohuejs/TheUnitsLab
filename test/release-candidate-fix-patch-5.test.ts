@@ -45,7 +45,7 @@ describe("release-candidate fix patch 5 surfaces", () => {
     const css = read("../src/app/globals.css");
     expect(oddsGrid).toContain("Best:");
     expect(oddsGrid).toContain("Compare ${prices.length} books");
-    expect(oddsGrid).toContain("LIVE · pregame price locked");
+    expect(oddsGrid).toContain('odd.eventStatus === "live" ? " · LIVE"');
     expect(css).toContain(".mobile-odds-card");
     expect(css).toContain(".mobile-odds-items");
   });

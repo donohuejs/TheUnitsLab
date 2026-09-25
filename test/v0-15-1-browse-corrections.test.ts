@@ -8,6 +8,7 @@ import {
   formatBrowseTime,
   getLocalDateKey,
   groupEventsByKickoff,
+  shouldShowBrowseEventStatus,
 } from "../src/lib/browse-schedule";
 import type { NormalizedEvent } from "../src/lib/odds/types";
 
@@ -71,12 +72,21 @@ describe("v0.15.1 Browse Odds corrections", () => {
     expect(normalizeBrowseTimeZone("not/a-zone")).toBe(eastern);
   });
 
+  it("keeps ordinary scheduled cards quiet while preserving meaningful statuses", () => {
+    expect(shouldShowBrowseEventStatus("scheduled")).toBe(false);
+    expect(shouldShowBrowseEventStatus("live")).toBe(true);
+    expect(shouldShowBrowseEventStatus("completed")).toBe(true);
+    expect(shouldShowBrowseEventStatus("postponed")).toBe(true);
+  });
+
   it("does not auto-open a game and uses a master/detail desktop contract", () => {
     const page = read("../src/app/sports/[competition]/page.tsx");
     const controls = read("../src/components/browse-schedule-controls.tsx");
     const filterSelect = read("../src/components/browse-filter-select.tsx");
     const card = read("../src/components/browse-game-card.tsx");
     const grid = read("../src/components/odds-selection-grid.tsx");
+    const pane = read("../src/components/browse-market-pane.tsx");
+    const gamesPane = read("../src/components/browse-games-pane.tsx");
     const css = read("../src/app/globals.css");
 
     expect(page).toContain("const activeEvent = requestedActiveEvent;");
@@ -87,6 +97,8 @@ describe("v0.15.1 Browse Odds corrections", () => {
     expect(page).toContain("mobile-browse-filter-control");
     expect(controls).toContain("Select a matchup...");
     expect(controls).toContain("if (value) changes.event = value");
+    expect(controls).toContain("showPicker");
+    expect(controls).toContain('aria-label={"Choose date, " + selectedDateLabel}');
     expect(filterSelect).toContain("useRouter");
     expect(filterSelect).toContain("BrowseFilterSelectOption");
     expect(card).toContain("browse-game-mobile-board");
@@ -94,11 +106,20 @@ describe("v0.15.1 Browse Odds corrections", () => {
     expect(card).toContain("aria-expanded={active}");
     expect(grid).toContain("watchlistAvailable?: boolean");
     expect(grid).toContain("watchlistAvailable && !odd.eventStarted && !odd.isAlternate");
+    expect(grid).toContain("eventStatus");
+    expect(grid).not.toContain("pregame price");
     expect(css).toContain("minmax(320px, 350px) minmax(500px, 1fr) minmax(330px, 360px)");
     expect(css).toContain(".browse-filter-select-control");
     expect(css).toContain(".browse-game-side");
     expect(css).toContain(".browse-game-action-label");
     expect(css).not.toContain("scrollbar-gutter: stable");
     expect(css).toContain(".browse-market-detail");
+    expect(css).toContain(".browse-date-native-input");
+    expect(css).toContain("height: min(72rem, calc(100dvh - var(--desktop-header-offset) - 1rem))");
+    expect(page).toContain("<BrowseMarketPane activeEventId={selectedEvent?.id ?? null}>");
+    expect(pane).toContain('scrollTo({ top: 0, behavior: "auto" })');
+    expect(gamesPane).toContain("browse-games-scroll");
+    expect(gamesPane).toContain("sessionStorage");
+    expect(css).toContain(".browse-master-detail-layout > .browse-games-rail");
   });
 });

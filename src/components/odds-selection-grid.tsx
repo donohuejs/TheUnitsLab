@@ -29,6 +29,7 @@ type DisplayOdd = {
   href: string;
   isSelected: boolean;
   eventStarted: boolean;
+  eventStatus: "scheduled" | "live" | "completed";
   watch: {
     initialLine: number | null;
     initialAmericanOdds: number;
@@ -159,7 +160,8 @@ function OddChoice({ odd, watchlistAvailable }: { odd: DisplayOdd; watchlistAvai
   const content = (
     <>
       <small>
-        {odd.bookmakerName} · {odd.eventStarted ? "LIVE · pregame price locked" : "pregame price"}
+        {odd.bookmakerName}
+        {odd.eventStatus === "live" ? " · LIVE" : odd.eventStatus === "completed" ? " · FINAL" : ""}
       </small>
       <strong>
         {odd.selectionName}
