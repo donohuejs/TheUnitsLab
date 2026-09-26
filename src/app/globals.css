@@ -41,14 +41,6 @@ html {
   overflow-x: clip;
 }
 
-@media (min-width: 980px) {
-  html.browse-route-active,
-  html.browse-route-active body {
-    height: 100dvh;
-    overflow-y: hidden;
-  }
-}
-
 a {
   color: inherit;
 }
@@ -1884,27 +1876,13 @@ textarea:focus {
   .browse-shell {
     display: flex;
     flex-direction: column;
-    height: 100dvh;
     min-height: 100dvh;
     padding-bottom: 1rem;
-    overflow: hidden;
   }
 
   .browse-master-detail-layout {
     grid-template-columns: minmax(280px, 320px) minmax(0, 1fr) minmax(280px, 320px);
-    flex: 1 1 0;
-    min-height: 0;
-    overflow: hidden;
-    align-items: stretch;
-  }
-
-  .browse-master-detail-layout > .browse-games-rail,
-  .browse-master-detail-layout > .browse-market-detail,
-  .browse-master-detail-layout > .browse-bet-slip-target {
-    min-height: 0;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding-right: 0.2rem;
+    align-items: start;
   }
 
   .browse-master-detail-layout > .browse-games-rail > .browse-games-rail-header {
