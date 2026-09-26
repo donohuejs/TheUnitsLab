@@ -140,8 +140,7 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
   let error: string | null = null;
   try {
     result = await getCompetitionOdds(id as CompetitionId);
-  } catch (caughtError) {
-    console.error("getCompetitionOdds failed", caughtError);
+  } catch {
     error = "Odds are temporarily unavailable. Try again later.";
   }
 
