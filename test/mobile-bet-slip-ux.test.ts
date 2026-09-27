@@ -134,7 +134,7 @@ describe("mobile Bet Slip UX addendum", () => {
     removeStraightSlipSelectionKeysAndPersist([slipSelectionKey(selection)]);
     expect(getStraightSlipSnapshot()).toEqual([]);
     expect(betSlip).toContain(
-      "const mobileModalOpen = mobileSheetOpen && isMobileViewport && mobileSelectionCount > 0",
+      "!embedded && mobileSheetOpen && isMobileViewport && mobileSelectionCount > 0",
     );
   });
 
@@ -197,11 +197,11 @@ describe("mobile Bet Slip UX addendum", () => {
     expect(css).toContain(".sportsbook-layout:has(.has-mobile-slip)");
   });
 
-  it("uses compact mobile schedule rows while leaving only the selected market board expanded", () => {
+  it("uses game tiles with the selected market board in an overlay", () => {
     expect(sportsPage).toContain("BrowseGameCard");
-    expect(sportsPage).toContain("groupEventsByKickoff");
+    expect(sportsPage).toContain("BrowseOddsDialog");
+    expect(sportsPage).toContain("sortEventsForBrowse");
     expect(css).toContain(".browse-game-card");
-    expect(css).toContain(".event-card.is-collapsed");
   });
 
   it("keeps controls touch-sized and touch-responsive", () => {

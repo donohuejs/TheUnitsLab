@@ -36,7 +36,13 @@ const EMPTY_PROPS: BrowseBetSlipProps = {
   initialMobileSheetOpen: false,
 };
 
-export function BrowseBetSlipProvider({ children }: { children: ReactNode }) {
+export function BrowseBetSlipProvider({
+  children,
+  placementEnabled = true,
+}: {
+  children: ReactNode;
+  placementEnabled?: boolean;
+}) {
   const [target, setTarget] = useState<HTMLElement | null>(null);
   const [props, setProps] = useState<BrowseBetSlipProps>(EMPTY_PROPS);
   const contextValue = useMemo(() => ({ setTarget, setProps }), []);
@@ -44,7 +50,9 @@ export function BrowseBetSlipProvider({ children }: { children: ReactNode }) {
   return (
     <BrowseBetSlipContext.Provider value={contextValue}>
       {children}
-      {target ? createPortal(<BetSlip {...props} />, target) : null}
+      {target
+        ? createPortal(<BetSlip {...props} embedded placementEnabled={placementEnabled} />, target)
+        : null}
     </BrowseBetSlipContext.Provider>
   );
 }

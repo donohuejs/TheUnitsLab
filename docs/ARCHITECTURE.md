@@ -717,3 +717,23 @@ selected-event content cannot collide with independently sticky slip sections. M
 existing mobile sheet/tray behavior and does not inherit desktop rail stickiness. This release adds
 no database migration, changes no RLS or wager/settlement boundary, and does not add a provider
 request for date changes, sorting, event navigation, market expansion, or ranking display.
+
+## Proposed Browse tile grid and odds overlay
+
+PRODUCT_SPEC section 30.6 records this presentation proposal for maintainer review.
+`BrowseGamesPane` holds responsive `BrowseGameCard` links within a centered 68rem maximum-width
+column. The shared competition route still resolves one selected event from query state and renders
+only its market board. Tile navigation disables prefetch and preserves page scroll; the previous
+active-card scrolling effect is removed.
+
+`BrowseOddsDialog` uses a native modal dialog, the existing composable body scroll lock, focus
+restoration, and independently scrolling content. Its Game odds and Bet Slip views share one
+persistent `BrowseBetSlipTarget`. The existing layout-owned provider and portal retain selections
+and form state across view, game, and open/close changes. Embedded BetSlip mode avoids nesting the
+old mobile sheet inside this dialog. Placement-return notices appear in the dialog.
+
+`/browse-preview` is a development-only fixture with scheduled sample games, sample odds, and
+disabled placement controls. It returns not-found in production. The updated Browse smoke entry
+points use `scripts/check-browse-tiles.mjs`; other legacy pane diagnostics remain historical.
+No server-secret, RLS, provider/cache/quota, ticket, bankroll, settlement, or migration boundary
+changes are proposed. Release numbering and production release governance remain with the maintainer.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { useRouter } from "next/navigation";
 
 type DateOption = { value: string; label: string };
@@ -38,7 +38,6 @@ export function BrowseScheduleControls({
   nextDate,
   eventOptions,
   activeEventId,
-  shouldScrollToActiveEvent,
 }: {
   pathname: string;
   baseQuery: string;
@@ -49,21 +48,9 @@ export function BrowseScheduleControls({
   nextDate: string | null;
   eventOptions: readonly EventOption[];
   activeEventId: string | null;
-  shouldScrollToActiveEvent?: boolean;
 }) {
   const router = useRouter();
   const dateInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!activeEventId || !shouldScrollToActiveEvent) return;
-    const frame = window.requestAnimationFrame(() => {
-      document.getElementById(`browse-event-${activeEventId}`)?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [activeEventId, shouldScrollToActiveEvent]);
 
   function navigate(changes: Record<string, string | null>) {
     router.push(buildHref(pathname, baseQuery, changes), { scroll: false });

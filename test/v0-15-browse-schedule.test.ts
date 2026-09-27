@@ -203,14 +203,13 @@ describe("v0.15.0 Browse Odds schedule", () => {
     expect(getTeamRanking("Ole Miss", rankingSnapshot)?.rank).toBe(4);
   });
 
-  it("keeps the browse page schedule-first and the desktop rail coordinated", () => {
+  it("keeps the browse page schedule-first with one selected market board", () => {
     const page = read("../src/app/sports/[competition]/page.tsx");
     const card = read("../src/components/browse-game-card.tsx");
     const controls = read("../src/components/browse-schedule-controls.tsx");
-    const css = read("../src/app/globals.css");
 
     expect(page).toContain("BrowseScheduleControls");
-    expect(page).toContain("groupEventsByKickoff");
+    expect(page).toContain("sortEventsForBrowse");
     expect(page).toContain("activeEvent");
     const board = read("../src/components/browse-market-board.tsx");
     expect(page).toContain("BrowseMarketBoard");
@@ -220,14 +219,5 @@ describe("v0.15.0 Browse Odds schedule", () => {
     expect(controls).toContain("browse-jump-${competitionId}");
     expect(card).toContain("#{team.rank}");
     expect(card).not.toContain("NR");
-    expect(css).toContain(".sportsbook-layout > .bet-slip-stack");
-    expect(css).toContain("flex: 1 1 auto;");
-    expect(css).toContain("height: 100dvh;");
-    expect(css).toContain("min-height: 100dvh;");
-    expect(css).not.toContain(
-      "height: min(72rem, calc(100dvh - var(--desktop-header-offset) - 1rem))",
-    );
-    expect(css).toContain("overflow-y: auto");
-    expect(css).not.toContain("@media (min-width: 980px) and (max-width: 1239px)");
   });
 });

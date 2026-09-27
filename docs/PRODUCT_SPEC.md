@@ -1085,3 +1085,25 @@ must be defined and tested before exposing CLV numbers to users.
   region, and the coordinated Bet Slip rail. Mobile retains the single-column schedule with inline
   selected-game market expansion. The full market board is not rendered in every desktop schedule
   row.
+
+### 30.6 Proposed game tiles and odds overlay
+
+This contributor-proposed Phase 8 presentation refinement is submitted for maintainer review.
+If accepted, it supersedes the Browse navigator, inline expansion, and fixed Bet Slip rail
+presentation in sections 30.4–30.5. It does not begin Phase 9.
+
+- Present the selected date's games as responsive tiles in a centered, narrower column across
+  every enabled competition. Preserve chronological/sport-aware ordering, kickoff times, rankings,
+  and status labels. Team names remain prominent and wrap within compact cards.
+- Selecting a tile or Jump to Game opens the existing market board in a modal overlay at the
+  current page position. Back to games, Escape, and a desktop backdrop click dismiss it and
+  restore focus to the triggering control.
+- Game odds and Bet Slip views share a persistent slip. Selections and entered stakes survive
+  switching views or games and closing/reopening the overlay. A persistent Bet Slip button also
+  opens saved picks without selecting a game. Mobile uses a viewport-filling dialog with a visible
+  close control and independently scrolling content.
+- Date/competition filters, query deep links, provider cache, Watch Odds, alternate lines, and
+  server-authoritative simulated-wager validation retain their existing boundaries.
+- A development-only fixture provides scheduled sample games and both sides of sample spreads
+  with placement disabled. It is unavailable in production and makes no provider requests.
+- No database schema, paid dependency, new wager type, or polling behavior is introduced.
