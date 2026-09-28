@@ -15,6 +15,7 @@ export interface OddsStore {
   acquireLease(key: string, token: string): Promise<boolean>;
   releaseLease(key: string, token: string): Promise<void>;
   write(row: CacheRow, request: CanonicalOddsRequest): Promise<void>;
+  recordHistory?(row: CacheRow, request: CanonicalOddsRequest): Promise<void>;
   latestUsed(): Promise<number | null>;
   record(
     request: CanonicalOddsRequest,
@@ -133,6 +134,27 @@ export async function getOddsForRequest(
       refreshNotBefore: new Date(new Date(fetchedAt).getTime() + 300_000).toISOString(),
     };
     await dependencies.store.write(row, request);
+    if (dependencies.store.recordHistory) {
+      try {
+        await dependencies.store.recordHistory(row, request);
+      } catch (error) {
+        const failure = error as { code?: unknown; message?: unknown };
+        console.error(
+          "[odds-history] Movement history could not be recorded; the current odds cache was saved.",
+          {
+            competitionId,
+            endpoint: request.endpoint,
+            errorCode: typeof failure?.code === "string" ? failure.code : undefined,
+            errorMessage:
+              typeof failure?.message === "string"
+                ? failure.message
+                : error instanceof Error
+                  ? error.message
+                  : String(error),
+          },
+        );
+      }
+    }
     await dependencies.store.record(
       request,
       options.purpose ?? (manual ? "manual_refresh" : "page_load"),

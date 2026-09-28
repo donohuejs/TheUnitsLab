@@ -64,9 +64,14 @@ export async function watchOdds(formData: FormData) {
     p_expected_american_odds: parsed.data.expectedAmericanOdds,
   });
   if (error) {
+    console.error("[watchlist] Watch creation failed.", {
+      competitionKey: parsed.data.competitionKey,
+      errorCode: error.code,
+      errorMessage: error.message,
+    });
     const message = error.message.includes("WATCH_ODDS_CHANGED")
       ? "The odds moved. Review the latest price before watching."
-      : "This pregame market is no longer available to watch.";
+      : "We couldn't save this watch. Current odds are still available; try again later.";
     notice(parsed.data.returnTo, message);
   }
   revalidatePath("/watchlist");
@@ -86,7 +91,13 @@ export async function stopWatching(formData: FormData) {
   const { error } = await supabase.rpc("stop_watching_odds", {
     p_watch_id: parsed.data.watchId,
   });
-  if (error) notice(parsed.data.returnTo, "This watch could not be cleared.");
+  if (error) {
+    console.error("[watchlist] Watch clearing failed.", {
+      errorCode: error.code,
+      errorMessage: error.message,
+    });
+    notice(parsed.data.returnTo, "This watch could not be cleared. Reload to verify its status.");
+  }
   revalidatePath("/watchlist");
   revalidatePath("/sports");
   notice(parsed.data.returnTo, "Watch removed from your active Watchlist.");

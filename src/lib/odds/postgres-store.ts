@@ -45,6 +45,23 @@ export class PostgresOddsStore implements OddsStore {
   }
 
   async write(row: CacheRow, request: CanonicalOddsRequest) {
+    const { error } = await this.client.from("odds_cache").upsert({
+      cache_key: row.cacheKey,
+      provider: request.provider,
+      endpoint: request.endpoint,
+      sport: request.providerSportKey.split("_")[0],
+      competition: request.competitionId,
+      request_parameters: request,
+      normalized_payload: row.dataset,
+      fetched_at: row.fetchedAt,
+      expires_at: row.expiresAt,
+      refresh_not_before: row.refreshNotBefore,
+      updated_at: row.fetchedAt,
+    });
+    if (error) throw error;
+  }
+
+  async recordHistory(row: CacheRow, request: CanonicalOddsRequest) {
     const { observations, seenEventIds } = oddsObservations(row.dataset);
     const { error } = await this.client.rpc("record_odds_cache_snapshot", {
       p_cache: {
