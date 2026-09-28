@@ -22,7 +22,23 @@ export default async function WatchlistPage() {
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase.auth.getUser();
   if (!data.user) redirect("/auth");
-  const watches = await getActiveWatchlist();
+  let watches: Awaited<ReturnType<typeof getActiveWatchlist>> = [];
+  let watchlistUnavailable = false;
+  try {
+    watches = await getActiveWatchlist();
+  } catch (error) {
+    watchlistUnavailable = true;
+    const failure = error as { code?: unknown; message?: unknown };
+    console.error("[watchlist] Required Watchlist data could not be loaded.", {
+      errorCode: typeof failure?.code === "string" ? failure.code : undefined,
+      errorMessage:
+        typeof failure?.message === "string"
+          ? failure.message
+          : error instanceof Error
+            ? error.message
+            : String(error),
+    });
+  }
 
   return (
     <main className="shell">
@@ -40,7 +56,12 @@ export default async function WatchlistPage() {
           Browse Odds
         </Link>
       </header>
-      {watches.length ? (
+      {watchlistUnavailable ? (
+        <div className="card error-state" role="alert">
+          <strong>Watchlist data could not be loaded.</strong>
+          <p>Movement history is unavailable right now. Reload the page to try again.</p>
+        </div>
+      ) : watches.length ? (
         <div className="watchlist-grid">
           {watches.map((watch) => {
             const competition = getCompetition(watch.competitionKey);
