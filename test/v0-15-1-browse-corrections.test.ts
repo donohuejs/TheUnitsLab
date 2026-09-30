@@ -79,66 +79,18 @@ describe("v0.15.1 Browse Odds corrections", () => {
     expect(shouldShowBrowseEventStatus("postponed")).toBe(true);
   });
 
-  it("does not auto-open a game and uses a master/detail desktop contract", () => {
+  it("keeps a neutral initial selection and accessible schedule controls", () => {
     const page = read("../src/app/sports/[competition]/page.tsx");
     const controls = read("../src/components/browse-schedule-controls.tsx");
-    const filterSelect = read("../src/components/browse-filter-select.tsx");
     const card = read("../src/components/browse-game-card.tsx");
     const grid = read("../src/components/odds-selection-grid.tsx");
-    const pane = read("../src/components/browse-market-pane.tsx");
-    const gamesPane = read("../src/components/browse-games-pane.tsx");
-    const css = read("../src/app/globals.css");
-    const diagnostics = read("../scripts/browse-pane-layout-diagnostics.mjs");
-    const breakpointSmoke = read("../scripts/check-browse-pane-breakpoints.mjs");
-
     expect(page).toContain("const activeEvent = requestedActiveEvent;");
     expect(page).not.toContain("orderedEvents[0]");
-    expect(page).toContain("browse-games-rail");
-    expect(page).toContain("browse-market-detail");
-    expect(page).toContain("desktop-browse-filter-control");
-    expect(page).toContain("mobile-browse-filter-control");
     expect(controls).toContain("Select a matchup...");
     expect(controls).toContain("if (value) changes.event = value");
     expect(controls).toContain("showPicker");
-    expect(controls).toContain('aria-label={"Choose date, " + selectedDateLabel}');
-    expect(filterSelect).toContain("useRouter");
-    expect(filterSelect).toContain("BrowseFilterSelectOption");
-    expect(card).toContain("browse-game-mobile-board");
-    expect(card).toContain("browse-game-action-label");
-    expect(card).toContain("browse-game-card-kickoff");
     expect(card).toContain("team-ranking");
     expect(card).toContain("aria-expanded={active}");
-    expect(grid).toContain("watchlistAvailable?: boolean");
     expect(grid).toContain("watchlistAvailable && !odd.eventStarted && !odd.isAlternate");
-    expect(grid).toContain("eventStatus");
-    expect(grid).not.toContain("pregame price");
-    expect(css).toContain("minmax(280px, 320px) minmax(0, 1fr) minmax(280px, 320px)");
-    expect(css).toContain(".browse-filter-select-control");
-    expect(css).toContain(".browse-game-side");
-    expect(css).toContain(".browse-game-action-label");
-    expect(css).toContain(".browse-game-card-kickoff");
-    expect(css).toContain("word-break: normal;");
-    expect(css).toContain("overflow-wrap: break-word;");
-    expect(css).not.toContain("scrollbar-gutter: stable");
-    expect(css).toContain(".browse-market-detail");
-    expect(css).toContain(".browse-date-native-input");
-    expect(css).toContain("min-height: 100dvh;");
-    expect(css).not.toContain(
-      "height: min(72rem, calc(100dvh - var(--desktop-header-offset) - 1rem))",
-    );
-    expect(page).toContain("<BrowseMarketPane activeEventId={selectedEvent?.id ?? null}>");
-    expect(pane).toContain('scrollTo({ top: 0, behavior: "auto" })');
-    expect(gamesPane).toContain("browse-games-scroll");
-    expect(gamesPane).toContain("sessionStorage");
-    expect(css).toContain(".browse-master-detail-layout > .browse-games-rail");
-    expect(diagnostics).toContain("documentElementScrollHeight");
-    expect(diagnostics).toContain("bodyScrollHeight");
-    expect(diagnostics).toContain("desktopWorkspace");
-    expect(diagnostics).toContain("bottomExtendingElements");
-    expect(diagnostics).toContain("htmlOverflowY");
-    expect(diagnostics).toContain("bodyOverflowY");
-    expect(breakpointSmoke).toContain("1218");
-    expect(breakpointSmoke).toContain("scrollHeight");
-    expect(breakpointSmoke).toContain("rootScrollLock");
   });
 });

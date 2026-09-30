@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppNav } from "@/components/app-nav";
-import { BrowseBetSlipBridge, BrowseBetSlipTarget } from "@/components/browse-bet-slip-host";
+import { BrowseBetSlipBridge } from "@/components/browse-bet-slip-host";
 import { BrowseFilterSelect } from "@/components/browse-filter-select";
 import { BrowseGameCard } from "@/components/browse-game-card";
 import { BrowseGamesPane } from "@/components/browse-games-pane";
@@ -12,6 +12,7 @@ import {
   type BrowseMarketFilter,
 } from "@/components/browse-market-board";
 import { BrowseScheduleControls } from "@/components/browse-schedule-controls";
+import { BrowseOddsDialog } from "@/components/browse-odds-dialog";
 import { BrowseMarketPane } from "@/components/browse-market-pane";
 import { CompetitionSwitcher } from "@/components/competition-switcher";
 import { KickoffTime } from "@/components/kickoff-time";
@@ -35,7 +36,6 @@ import {
   getDefaultBrowseDate,
   getLocalDateKey,
   getMarqueeEventIds,
-  groupEventsByKickoff,
   isBrowseDateKey,
   normalizeBrowseTimeZone,
   nextBrowseDate,
@@ -158,7 +158,6 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
   const orderedEvents = sortEventsForBrowse(visibleEvents, timeZone, priorityContext);
   const requestedActiveEvent = orderedEvents.find((event) => event.id === query.event) ?? null;
   const activeEvent = requestedActiveEvent;
-  const shouldScrollToActiveEvent = Boolean(query.event && requestedActiveEvent);
 
   const baseEvent = rawEvents.find((event) => event.id === activeEvent?.id) ?? null;
   const loadAlternates = Boolean(
@@ -359,7 +358,6 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
           nextDate={nextDate}
           eventOptions={eventOptions}
           activeEventId={activeEvent?.id ?? null}
-          shouldScrollToActiveEvent={shouldScrollToActiveEvent}
         />
         <div className="browse-filter-group browse-bookmaker-control desktop-browse-filter-control">
           <BrowseFilterSelect
@@ -446,9 +444,9 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
           </p>
         ) : null}
       </div>
-      <div className="sportsbook-layout browse-master-detail-layout">
-        <BrowseGamesPane competitionId={id}>
-          <header className="browse-games-rail-header">
+      <div className="browse-tile-layout">
+        <BrowseGamesPane>
+          <header className="browse-games-header">
             <div>
               <p className="eyebrow">Games</p>
               <h2>{formatBrowseDate(selectedDate, timeZone)}</h2>
@@ -457,54 +455,42 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
               {orderedEvents.length} {orderedEvents.length === 1 ? "game" : "games"}
             </span>
           </header>
-          <div className="event-list browse-event-list">
+          <div className="browse-game-grid">
             {orderedEvents.length ? (
-              groupEventsByKickoff(orderedEvents, timeZone, priorityContext).map((group) => (
-                <section className="kickoff-group" key={group.key}>
-                  <h3 className="kickoff-group-heading">
-                    <span>{group.label}</span>
-                    <span>{group.events.length}</span>
-                  </h3>
-                  <div className="kickoff-group-games">
-                    {group.events.map((event) => {
-                      const isActive = event.id === activeEvent?.id;
-                      const eventHrefParams = new URLSearchParams();
-                      if (selected !== "all") eventHrefParams.set("bookmaker", selected);
-                      if (marketFilter !== "all") eventHrefParams.set("marketFilter", marketFilter);
-                      eventHrefParams.set("date", selectedDate);
-                      eventHrefParams.set("event", event.id);
-                      return (
-                        <BrowseGameCard
-                          key={event.id}
-                          event={event}
-                          href={"/sports/" + id + "?" + eventHrefParams.toString()}
-                          active={isActive}
-                          timeZone={timeZone}
-                          marquee={marqueeEventIds.has(event.id)}
-                          away={{
-                            name: event.awayTeam,
-                            rank: getTeamRanking(event.awayTeam, rankingSnapshot)?.rank ?? null,
-                            record: recordLabel(event.awayTeam),
-                            sport: event.sport,
-                            competitionId: event.competitionId,
-                            identity: event.awayTeamIdentity,
-                          }}
-                          home={{
-                            name: event.homeTeam,
-                            rank: getTeamRanking(event.homeTeam, rankingSnapshot)?.rank ?? null,
-                            record: recordLabel(event.homeTeam),
-                            sport: event.sport,
-                            competitionId: event.competitionId,
-                            identity: event.homeTeamIdentity,
-                          }}
-                        >
-                          {isActive ? activeMarketBoard : null}
-                        </BrowseGameCard>
-                      );
-                    })}
-                  </div>
-                </section>
-              ))
+              orderedEvents.map((event) => {
+                const isActive = event.id === activeEvent?.id;
+                const eventHrefParams = new URLSearchParams();
+                if (selected !== "all") eventHrefParams.set("bookmaker", selected);
+                if (marketFilter !== "all") eventHrefParams.set("marketFilter", marketFilter);
+                eventHrefParams.set("date", selectedDate);
+                eventHrefParams.set("event", event.id);
+                return (
+                  <BrowseGameCard
+                    key={event.id}
+                    event={event}
+                    href={"/sports/" + id + "?" + eventHrefParams.toString()}
+                    active={isActive}
+                    timeZone={timeZone}
+                    marquee={marqueeEventIds.has(event.id)}
+                    away={{
+                      name: event.awayTeam,
+                      rank: getTeamRanking(event.awayTeam, rankingSnapshot)?.rank ?? null,
+                      record: recordLabel(event.awayTeam),
+                      sport: event.sport,
+                      competitionId: event.competitionId,
+                      identity: event.awayTeamIdentity,
+                    }}
+                    home={{
+                      name: event.homeTeam,
+                      rank: getTeamRanking(event.homeTeam, rankingSnapshot)?.rank ?? null,
+                      record: recordLabel(event.homeTeam),
+                      sport: event.sport,
+                      competitionId: event.competitionId,
+                      identity: event.homeTeamIdentity,
+                    }}
+                  />
+                );
+              })
             ) : result ? (
               <p className="empty-state">
                 <strong>No games on {formatBrowseDate(selectedDate, timeZone)}.</strong>
@@ -518,66 +504,72 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
             ) : null}
           </div>
         </BrowseGamesPane>
-        <BrowseMarketPane activeEventId={selectedEvent?.id ?? null}>
-          {selectedEvent ? (
-            <>
-              <header className="browse-market-detail-header">
-                <p className="eyebrow">Selected game</p>
-                <h2>
-                  <span>
-                    <TeamMark
-                      teamName={selectedEvent.awayTeam}
-                      sport={selectedEvent.sport}
-                      competitionId={selectedEvent.competitionId}
-                      identity={selectedEvent.awayTeamIdentity}
-                    />
-                    {getTeamRanking(selectedEvent.awayTeam, rankingSnapshot)?.rank
-                      ? `#${getTeamRanking(selectedEvent.awayTeam, rankingSnapshot)?.rank} `
-                      : ""}
-                    {selectedEvent.awayTeam}
-                  </span>
-                  <span className="event-at">at</span>
-                  <span>
-                    <TeamMark
-                      teamName={selectedEvent.homeTeam}
-                      sport={selectedEvent.sport}
-                      competitionId={selectedEvent.competitionId}
-                      identity={selectedEvent.homeTeamIdentity}
-                    />
-                    {getTeamRanking(selectedEvent.homeTeam, rankingSnapshot)?.rank
-                      ? `#${getTeamRanking(selectedEvent.homeTeam, rankingSnapshot)?.rank} `
-                      : ""}
-                    {selectedEvent.homeTeam}
-                  </span>
-                </h2>
-                <p className="browse-detail-meta">
-                  <KickoffTime value={selectedEvent.scheduledStart} timeZone={timeZone} />
-                  {shouldShowBrowseEventStatus(selectedEvent.status) ? (
-                    <>
-                      {" "}
-                      · <StatusBadge status={selectedEvent.status} />
-                    </>
-                  ) : null}
-                </p>
-              </header>
-              {activeMarketBoard}
-            </>
-          ) : (
-            <div className="browse-selection-empty">
-              <span className="browse-selection-empty-icon" aria-hidden="true">
-                ◎
-              </span>
-              <h2>Select a game to view markets.</h2>
-              <p>Choose a matchup from the Games list or Jump to Game above.</p>
-            </div>
-          )}
-        </BrowseMarketPane>
+        <BrowseOddsDialog
+          activeEventId={selectedEvent?.id ?? null}
+          closeHref={filterHref(id, selected, marketFilter, selectedDate)}
+          openSlip={query.mobileSheet === "1"}
+          notice={query.notice}
+        >
+          <BrowseMarketPane activeEventId={selectedEvent?.id ?? null}>
+            {selectedEvent ? (
+              <>
+                <header className="browse-market-detail-header">
+                  <p className="eyebrow">Selected game</p>
+                  <h2>
+                    <span>
+                      <TeamMark
+                        teamName={selectedEvent.awayTeam}
+                        sport={selectedEvent.sport}
+                        competitionId={selectedEvent.competitionId}
+                        identity={selectedEvent.awayTeamIdentity}
+                      />
+                      {getTeamRanking(selectedEvent.awayTeam, rankingSnapshot)?.rank
+                        ? `#${getTeamRanking(selectedEvent.awayTeam, rankingSnapshot)?.rank} `
+                        : ""}
+                      {selectedEvent.awayTeam}
+                    </span>
+                    <span className="event-at">at</span>
+                    <span>
+                      <TeamMark
+                        teamName={selectedEvent.homeTeam}
+                        sport={selectedEvent.sport}
+                        competitionId={selectedEvent.competitionId}
+                        identity={selectedEvent.homeTeamIdentity}
+                      />
+                      {getTeamRanking(selectedEvent.homeTeam, rankingSnapshot)?.rank
+                        ? `#${getTeamRanking(selectedEvent.homeTeam, rankingSnapshot)?.rank} `
+                        : ""}
+                      {selectedEvent.homeTeam}
+                    </span>
+                  </h2>
+                  <p className="browse-detail-meta">
+                    <KickoffTime value={selectedEvent.scheduledStart} timeZone={timeZone} />
+                    {shouldShowBrowseEventStatus(selectedEvent.status) ? (
+                      <>
+                        {" "}
+                        · <StatusBadge status={selectedEvent.status} />
+                      </>
+                    ) : null}
+                  </p>
+                </header>
+                {activeMarketBoard}
+              </>
+            ) : (
+              <div className="browse-selection-empty">
+                <span className="browse-selection-empty-icon" aria-hidden="true">
+                  ◎
+                </span>
+                <h2>Select a game to view markets.</h2>
+                <p>Choose a matchup from the Games list or Jump to Game above.</p>
+              </div>
+            )}
+          </BrowseMarketPane>
+        </BrowseOddsDialog>
         <BrowseBetSlipBridge
           selection={slipSelection}
           groups={groups}
           initialMobileSheetOpen={query.mobileSheet === "1"}
         />
-        <BrowseBetSlipTarget />
       </div>
     </main>
   );

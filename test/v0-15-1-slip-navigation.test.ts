@@ -93,7 +93,8 @@ describe("v0.15.1 active-event and Bet Slip separation", () => {
     expect(host).toContain("if (target) context.setTarget(target)");
     expect(layout).toContain("BrowseBetSlipProvider");
     expect(page).toContain("BrowseBetSlipBridge");
-    expect(page).toContain("<BrowseBetSlipTarget />");
+    const dialog = read("../src/components/browse-odds-dialog.tsx");
+    expect(dialog).toContain("<BrowseBetSlipTarget />");
     expect(browserSmoke).toContain("page.goto(`${baseUrl}/sports/${competition}`");
     expect(browserSmoke).toContain("link.click()");
     expect(browserSmoke).toContain("selectOption(eventA)");

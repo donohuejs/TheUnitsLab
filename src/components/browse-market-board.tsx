@@ -39,6 +39,7 @@ export function BrowseMarketBoard({
   alternateLoaded,
   alternateEvents,
   watchlistAvailable,
+  pathname,
 }: {
   event: NormalizedEvent;
   competitionId: string;
@@ -51,6 +52,7 @@ export function BrowseMarketBoard({
   alternateLoaded: boolean;
   alternateEvents: readonly NormalizedEvent[];
   watchlistAvailable: boolean;
+  pathname?: string;
 }) {
   const eventStarted = event.status === "live" || event.status === "completed";
   const odds = event.odds.filter(
@@ -61,7 +63,7 @@ export function BrowseMarketBoard({
   const visibleGroups = marketGroups.filter(
     ([marketType]) => marketFilter === "all" || marketType === marketFilter,
   );
-  const basePath = "/sports/" + competitionId;
+  const basePath = pathname ?? "/sports/" + competitionId;
   const eventHref = (changes: Record<string, string | undefined>) => {
     const params = new URLSearchParams();
     if (selectedBookmaker !== "all") params.set("bookmaker", selectedBookmaker);

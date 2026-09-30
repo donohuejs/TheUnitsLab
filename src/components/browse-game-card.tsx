@@ -1,5 +1,4 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 
 import { KickoffTime } from "@/components/kickoff-time";
 import { StatusBadge } from "@/components/status-badge";
@@ -47,7 +46,6 @@ export function BrowseGameCard({
   home,
   marquee,
   timeZone,
-  children,
 }: {
   event: NormalizedEvent;
   href: string;
@@ -56,7 +54,6 @@ export function BrowseGameCard({
   home: TeamSummary;
   marquee?: boolean;
   timeZone: string;
-  children?: ReactNode;
 }) {
   return (
     <article
@@ -68,6 +65,9 @@ export function BrowseGameCard({
         className="browse-game-row"
         href={href}
         scroll={false}
+        prefetch={false}
+        aria-haspopup="dialog"
+        aria-controls="browse-odds-dialog"
         aria-current={active ? "true" : undefined}
         aria-expanded={active}
       >
@@ -88,16 +88,13 @@ export function BrowseGameCard({
             {marquee ? <span className="marquee-badge">Marquee Matchup</span> : null}
           </div>
           <span className="browse-game-action">
-            <span className="browse-game-action-label">
-              {active ? "Markets open" : "View markets"}
-            </span>
+            <span className="browse-game-action-label">{active ? "Odds open" : "View odds"}</span>
             <span className="browse-game-chevron" aria-hidden="true">
-              {active ? "⌃" : "⌄"}
+              →
             </span>
           </span>
         </div>
       </Link>
-      {active && children ? <div className="browse-game-mobile-board">{children}</div> : null}
     </article>
   );
 }

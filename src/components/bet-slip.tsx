@@ -42,6 +42,8 @@ type Props = {
   selection: SlipSelection | null;
   groups: { id: string; name: string }[];
   initialMobileSheetOpen?: boolean;
+  embedded?: boolean;
+  placementEnabled?: boolean;
 };
 
 const americanPrice = (value: number) => (value > 0 ? `+${value}` : String(value));
@@ -72,7 +74,13 @@ function attachPlacementAttemptKey(form: HTMLFormElement, keyRef: { current: str
   if (input instanceof HTMLInputElement) input.value = keyRef.current;
 }
 
-export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: Props) {
+export function BetSlip({
+  selection,
+  groups,
+  initialMobileSheetOpen = false,
+  embedded = false,
+  placementEnabled = true,
+}: Props) {
   const router = useRouter();
   const [parlayStake, setParlayStake] = useState("10.00");
   const [straightStake, setStraightStake] = useState("10.00");
@@ -105,7 +113,8 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
   const mobileSelections = straightSelections;
   const mobileSelectionCount = mobileSelections.length;
   const mobileSheetSelection = mobileSelectionCount === 1 ? (mobileSelections[0] ?? null) : null;
-  const mobileModalOpen = mobileSheetOpen && isMobileViewport && mobileSelectionCount > 0;
+  const mobileModalOpen =
+    !embedded && mobileSheetOpen && isMobileViewport && mobileSelectionCount > 0;
 
   useEffect(() => {
     const cleanup = registerSlipDiagnosticsMount();
@@ -373,10 +382,10 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
 
   return (
     <aside
-      className={mobileSelectionCount ? "bet-slip-stack has-mobile-slip" : "bet-slip-stack"}
+      className={`bet-slip-stack${mobileSelectionCount ? " has-mobile-slip" : ""}${embedded ? " bet-slip-embedded" : ""}`}
       aria-label="Simulated bet slips"
     >
-      {mobileSelectionCount ? (
+      {!embedded && mobileSelectionCount ? (
         <div className="mobile-slip-tray-wrap">
           <button
             ref={trayButtonRef}
@@ -744,7 +753,9 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
                   pendingLabel="Placing straight bets…"
                   className="button"
                   disabled={
-                    !straightSelections.length || straightPreviews.some((preview) => !preview)
+                    !placementEnabled ||
+                    !straightSelections.length ||
+                    straightPreviews.some((preview) => !preview)
                   }
                 >
                   Place all straight bets
@@ -902,7 +913,7 @@ export function BetSlip({ selection, groups, initialMobileSheetOpen = false }: P
                 <SubmitButton
                   pendingLabel="Placing parlay…"
                   className="button"
-                  disabled={!parlayPotential || !parlayAvailability.eligible}
+                  disabled={!placementEnabled || !parlayPotential || !parlayAvailability.eligible}
                 >
                   <span className="desktop-cta-label">Place simulated parlay</span>
                   <span className="mobile-cta-label">Place {legs.length}-leg parlay</span>
