@@ -6,6 +6,16 @@ export type VersionHistoryEntry = {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = [
   {
+    version: "0.16.0",
+    title: "Odds Data Architecture Optimization",
+    changes: [
+      "Added adaptive pregame odds freshness, hard-stale limits, lease-backed stale-while-revalidate, and Next.js after() scheduling",
+      "Made the default request pack cost-safe with FanDuel, DraftKings, and BetRivers while retaining Caesars as configured paid-only coverage",
+      "Added provider telemetry, quota-ledger reconciliation, pregame-only movement history, and settlement score-target prioritization",
+      "Added provider-neutral normalization fields for future markets and dimensions without enabling props, same-game parlays, or live odds",
+    ],
+  },
+  {
     version: "0.15.1",
     title: "Browse Odds Corrective Patch",
     changes: [

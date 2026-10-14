@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getCompetition } from "@/lib/odds/request";
 import type { CompetitionId } from "@/lib/odds/types";
 import { runScoreAndSettlementCycle } from "@/lib/scores/server";
+import type { ScoreRefreshTarget } from "@/lib/scores/priority";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const betIdSchema = z.uuid();
@@ -155,15 +156,27 @@ export async function refreshMyOpenScores() {
   if (!authData.user) redirect("/auth");
   const { data, error } = await supabase
     .from("bets")
-    .select("bet_legs(competition_key)")
+    .select("bet_legs(provider_event_id,competition_key,scheduled_start)")
     .eq("status", "open");
   if (error) redirect("/my-bets?notice=Open%20wagers%20could%20not%20be%20loaded.");
-  const competitionIds = (data ?? [])
+  const targets = (data ?? [])
     .flatMap((ticket) => ticket.bet_legs)
-    .map((leg) => leg.competition_key)
-    .filter((id): id is CompetitionId => Boolean(getCompetition(id)));
+    .filter(
+      (
+        leg,
+      ): leg is { provider_event_id: string; competition_key: string; scheduled_start: string } =>
+        typeof leg.provider_event_id === "string" &&
+        typeof leg.competition_key === "string" &&
+        typeof leg.scheduled_start === "string" &&
+        Boolean(getCompetition(leg.competition_key)),
+    )
+    .map((leg): ScoreRefreshTarget => ({
+      competitionId: leg.competition_key as CompetitionId,
+      providerEventId: leg.provider_event_id,
+      scheduledStart: leg.scheduled_start,
+    }));
   try {
-    await runScoreAndSettlementCycle(competitionIds, "active_view");
+    await runScoreAndSettlementCycle(targets, "open_wagers");
     redirect("/my-bets?notice=Shared%20scores%20and%20settlements%20were%20checked.");
   } catch {
     redirect(

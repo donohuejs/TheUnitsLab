@@ -132,7 +132,9 @@ export default async function CompetitionPage({ params, searchParams }: Props) {
   ]);
   const groups = (groupRows ?? []) as { id: string; name: string }[];
   const timeZone = normalizeBrowseTimeZone(profile?.time_zone);
-  const books = sportsProviderConfiguration.bookmakers.filter((book) => book.enabled);
+  const books = sportsProviderConfiguration.bookmakers.filter(
+    (book) => book.enabled && book.requestByDefault,
+  );
   const selected = books.some((book) => book.id === query.bookmaker) ? query.bookmaker! : "all";
   const marketFilter = selectedMarketFilter(query.marketFilter);
 

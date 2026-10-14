@@ -60,7 +60,7 @@ describe("Odds API normalization", () => {
       "soccer_spain_la_liga",
     ]);
     expect(new Set(keys.map(canonicalRequestKey))).toHaveLength(8);
-    expect(keys[0].bookmakers).toEqual(["betmgm", "draftkings", "fanduel"]);
+    expect(keys[0].bookmakers).toEqual(["betrivers", "draftkings", "fanduel"]);
     expect(createAlternateOddsRequest("nfl", "provider-event")).toMatchObject({
       endpoint: "event_odds",
       eventId: "provider-event",

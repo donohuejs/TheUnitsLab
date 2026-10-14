@@ -1085,3 +1085,37 @@ must be defined and tested before exposing CLV numbers to users.
   region, and the coordinated Bet Slip rail. Mobile retains the single-column schedule with inline
   selected-game market expansion. The full market board is not rendered in every desktop schedule
   row.
+
+### 30.6 v0.16.0 Odds Data Architecture Optimization
+
+The owner explicitly authorizes this forward-only architecture optimization after Phase 8. It does
+not start Phase 9, add real-money behavior, add a paid dependency, weaken RLS, change immutable
+submitted ticket terms, or enable props, same-game parlays, live odds, or uncontrolled polling.
+
+- Pregame odds freshness is adaptive to the nearest upcoming event: target freshness is 24 hours
+  when the event is more than seven days away, 6 hours in the week-out band, 2 hours in the day-out
+  band, 30 minutes within six hours, and 10 minutes within one hour. Each shared cache row also has
+  a hard stale limit of 48 hours, 18 hours, 6 hours, 2 hours, or 30 minutes respectively. Started
+  and completed events are not refreshed as pregame odds; stale rows fail closed after their hard
+  limit.
+- A stale-but-usable shared row may be returned immediately while one lease-protected server refresh
+  is scheduled with Next.js `after()`. The browser never polls the provider, and provider failures
+  never extend the hard stale limit. The existing five-minute manual-refresh floor and quota
+  conservation bands remain in force.
+- The default cost-safe bookmaker request pack is FanDuel, DraftKings, and BetRivers. BetMGM remains
+  configurable but is not requested by default. Caesars remains configured as core coverage but is
+  excluded from default requests because its current provider key is paid-only; adding it to the
+  free request pack requires a later provider-plan decision. The provider's normalized capability
+  declaration continues to expose only moneyline, spread, and total markets.
+- Odds movement history is pregame-only. Trusted captures include scheduled events strictly before
+  kickoff and core bookmaker observations; event-catalog and alternate-line snapshots do not create
+  shared pregame movement points. Existing post-start rows remain retained for audit and are marked
+  non-pregame.
+- Provider telemetry records actual successful and failed attempts with canonical requested markets,
+  bookmakers, regions, provider event ID, refresh reason, cache state, lease state, attempts,
+  response time, safe error metadata, HTTP status, and quota headers. The admin view compares the
+  provider's cumulative usage headline with the current-month ledger sum and shows any difference.
+- Settlement and open-wager score refreshes pass target provider event IDs so competition-level score
+  requests can skip unrelated future events while preserving the shared score cache and settlement
+  idempotency. The normalized provider model reserves optional provider market keys, participant IDs,
+  scope, period, and variant fields for future dimensions without implementing new markets now.

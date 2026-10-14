@@ -4,7 +4,9 @@ The Units Lab is a private, entertainment-focused sports wagering simulator and 
 
 ## Phase status
 
-Phases 0-8 are complete. v0.15.1 corrects Browse Odds timezone/date grouping, neutral default
+Phases 0-8 are complete. v0.16.0 optimizes odds-data freshness, shared refresh behavior, provider
+telemetry, pregame history, and score-target prioritization while preserving the $0/month and
+pregame-only boundaries. v0.15.1 corrects Browse Odds timezone/date grouping, neutral default
 selection, and desktop Games / selected-game / Bet Slip master-detail conformance. v0.15.0 added
 schedule-first Browse Odds navigation with date filtering, kickoff grouping, deterministic sport-aware
 prioritization, college ranking context, and a coordinated desktop Bet Slip rail. v0.14.0 added a
@@ -118,6 +120,7 @@ Individual commands are `npm run format:check`, `npm run lint`, `npm run typeche
 - [Phase 7 completion report](PHASE_7_COMPLETION_REPORT.md)
 - [Phase 8 plan](docs/PHASE_8_PLAN.md)
 - [Phase 8 completion report](PHASE_8_COMPLETION_REPORT.md)
+- [v0.16.0 completion report](VERSION_0_16_0_COMPLETION_REPORT.md)
 - [Release-candidate UX Patch 3 report](RELEASE_CANDIDATE_UX_PATCH_3_REPORT.md)
 - [Release-candidate Fix Patch 1 report](RELEASE_CANDIDATE_FIX_PATCH_1_REPORT.md)
 - [Release-candidate Fix Patch 3 report](RELEASE_CANDIDATE_FIX_PATCH_3_REPORT.md)

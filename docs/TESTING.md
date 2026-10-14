@@ -62,6 +62,14 @@
   behavior, Jump to Game placeholder/selection behavior, and the desktop master/detail structure.
   Visual QA is required at 1440px, 1366px, short-height laptop, tablet, 430px, and 375px widths;
   authenticated visual review remains an environment-dependent release gate.
+- v0.16.0 adds adaptive freshness boundary tests for all lead-time bands and started/final events,
+  hard-stale behavior, stale-while-revalidate coalescing and provider-failure fallback, provider
+  telemetry/error redaction, cost-safe default bookmaker requests, pregame-only history selection,
+  normalized future-dimension fields, and settlement/open-wager score-target filtering. The
+  `supabase/tests/v0_16_odds_data_architecture.sql` suite checks additive columns, indexes,
+  constraints, and the unchanged forced-RLS boundary. The local reset and complete pgTAP run pass;
+  a live-provider smoke and linked-database parity check remain release-gated because credentials
+  and remote migration state are environment-owned.
 - Release-candidate fix patch 4 adds universal straight/parlay import contracts, FanDuel-shaped extraction acceptance, local OCR preprocessing/progress/failure behavior, editable parlay-leg review, optional sportsbook persistence, cached-event-first manual import, exact total-return economics, and leaderboard controls/mobile-card source contracts. Its pgTAP suite verifies nullable sportsbook identity, authenticated unknown-sportsbook creation, stable display fallback, no virtual-bankroll mutation, and anonymous execute denial. Narrow-width review targets 390x844 and 375x812; the four existing concurrency suites remain required.
 - v0.11.0 adds private-beta release contracts for the authenticated Home announcement, canonical
   version/history display, Feedback & Version settings content, the multi-stage Import Betslip

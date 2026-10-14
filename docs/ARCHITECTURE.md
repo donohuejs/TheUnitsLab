@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-This document turns the governing product specification into architectural boundaries and records the technical foundation selected during Phase 0. Phases 0–8 are implemented; v0.11.0 added private-beta release-readiness surfaces, v0.12.0 launched the private beta, v0.12.1 added the authentication onboarding hotfix, v0.13.0 added hashed group invite codes, v0.14.0 added an Odds Watchlist with shared movement history and moved imported-wager manual settlement into My Bets, v0.15.0 added schedule-first Browse Odds navigation and sport-aware prioritization, and v0.15.1 corrects Browse timezone normalization, default selection, and desktop master-detail presentation. Product questions left open by the source remain open unless an explicit owner clarification is recorded.
+This document turns the governing product specification into architectural boundaries and records the technical foundation selected during Phase 0. Phases 0–8 are implemented; v0.11.0 added private-beta release-readiness surfaces, v0.12.0 launched the private beta, v0.12.1 added the authentication onboarding hotfix, v0.13.0 added hashed group invite codes, v0.14.0 added an Odds Watchlist with shared movement history and moved imported-wager manual settlement into My Bets, v0.15.0 added schedule-first Browse Odds navigation and sport-aware prioritization, v0.15.1 corrected Browse timezone normalization, default selection, and desktop master-detail presentation, and v0.16.0 optimizes adaptive odds freshness, stale-while-revalidate, provider telemetry, pregame history, and score-target priority. Product questions left open by the source remain open unless an explicit owner clarification is recorded.
 
 The system must support multiple authenticated users and private groups, server-side odds ingestion, virtual-unit wagering, external-wager tracking, secure screenshots, deterministic settlement, analytics, leaderboards, and quota-aware operation without real-money wagering.
 
@@ -458,9 +458,9 @@ Phase 1 does not implement provider access. Phase 2 must preserve application-sc
 
 Phase 2 implements this boundary with `public.odds_cache`, a replaceable normalized JSON dataset keyed by a SHA-256 hash of canonical provider, endpoint, competition, market, bookmaker, region, and format parameters. Authenticated users may read this intentionally shared data through RLS but cannot write it. Server-only service code performs provider calls and cache writes.
 
-Cross-instance cache stampedes are prevented by an atomic short lease stored in `app_private.odds_refresh_leases`; narrow public-schema RPC functions are executable only by `service_role`. A lease loser rechecks the shared cache and never independently calls the provider while the winner is refreshing. Pregame TTL is 15 minutes, the manual-refresh floor is five minutes, and Conserve lengthens automatic freshness to 30 minutes. High serves stale data rather than spending nonessential quota; Critical allows only explicit stale manual refreshes. Provider failures return visibly stale data when available.
+Cross-instance cache stampedes are prevented by an atomic short lease stored in `app_private.odds_refresh_leases`; narrow public-schema RPC functions are executable only by `service_role`. A lease loser rechecks the shared cache and never independently calls the provider while the winner is refreshing. v0.16.0 replaces the universal 15-minute odds TTL with configured lead-time bands: distant events target 24 hours, week-out events 6 hours, day-out events 2 hours, near events 30 minutes, and imminent events 10 minutes. Each row also stores a hard stale limit, and stale-while-revalidate returns the shared row while one lease-protected refresh is scheduled through Next.js `after()`. Manual refreshes retain the five-minute floor and quota conservation remains authoritative. Provider failures return visibly stale data only while the row remains within its hard stale limit.
 
-`public.api_usage_ledger` records one row per successful upstream response and no row for cache reads. The allowlisted administrative dashboard reads it through server-only credentials. No background polling or Phase 4 score behavior exists.
+`public.api_usage_ledger` records one row for each attempted upstream provider call, including failed calls, cache state, refresh reason, request dimensions, lease ownership, attempts, latency, safe error metadata, and provider quota headers. Cache reads create no row. The allowlisted administrative dashboard reads it through server-only credentials. No uncontrolled background polling exists; scheduled work is bounded to a cache-key refresh that was triggered by a server request.
 
 The provider integration should have a single server-side client boundary responsible for:
 
@@ -717,3 +717,51 @@ selected-event content cannot collide with independently sticky slip sections. M
 existing mobile sheet/tray behavior and does not inherit desktop rail stickiness. This release adds
 no database migration, changes no RLS or wager/settlement boundary, and does not add a provider
 request for date changes, sorting, event navigation, market expansion, or ranking display.
+
+## v0.16.0 Odds data architecture optimization
+
+v0.16.0 is an approved forward-only optimization within the existing Phase 2 and Phase 4
+boundaries; it does not begin Phase 9. Pregame odds freshness is selected from the nearest future
+event in the normalized cache. The configured policy targets 24 hours for events more than seven
+days away, 6 hours for the week-out band, 2 hours for the day-out band, 30 minutes for the near
+band, and 10 minutes for the imminent band. Every refreshed odds row records both its normal expiry
+and its hard stale limit. Started or completed events are never refreshed as pregame odds; a row may
+be shown stale until its hard limit and then fails closed.
+
+Stale-while-revalidate is server-triggered and bounded. The first eligible stale read returns the
+shared dataset and schedules one refresh through Next.js `after()`; an in-process key guard avoids
+duplicate callbacks, while `app_private.odds_refresh_leases` remains the cross-instance lock. The
+background refresh uses the same canonical request, provider boundary, quota conservation, history
+write, and usage-ledger path. Provider failures preserve usable stale data but never extend its hard
+limit. The fallback outside a request context is test-only execution of the same bounded work, not a
+permanent scheduler or client polling loop.
+
+The provider boundary is an `OddsProvider` interface with a current The Odds API v4 adapter and an
+explicit capability declaration. Current supported normalized markets remain moneyline, spread,
+and total; player props, same-game parlays, live odds, and other new markets remain disabled. The
+normalized model now has optional provider market/selection keys, participant IDs, scope, period,
+and variant fields so a future provider can add dimensions without changing immutable ticket
+terms. No second provider or paid dependency is introduced.
+
+The cost-safe default request pack is FanDuel, DraftKings, and BetRivers. BetMGM remains configured
+but is not requested by default. Caesars remains configured as a core bookmaker for future paid-plan
+coverage, but its current The Odds API key is not free-tier eligible and is excluded from default
+requests. This is an explicit provider-plan deviation from the source's initial bookmaker list, not
+a removal of configurable bookmaker support.
+
+Odds history is explicitly pregame-only for future movement analysis. Trusted history writes accept
+only scheduled events strictly before kickoff and core bookmaker observations, while existing rows
+remain available for audit with a pregame marker. Event-catalog and alternate-line snapshots do not
+enter the shared pregame movement history.
+
+Every actual odds or score provider attempt records request dimensions, provider event ID when
+available, refresh reason, cache state, lease acquisition, attempts, response time, HTTP status,
+safe error metadata, and provider-reported quota headers. The admin usage view reconciles the
+provider's cumulative usage headline against the current-month ledger sum and shows the difference
+instead of presenting an unexplained total. Score refreshes also accept target event IDs from open
+wagers and settlement selects only those targets, while still using the competition-level shared
+score cache.
+
+The migration adds only additive cache/history/ledger columns and indexes. Existing exposed tables
+remain forced-RLS and no new browser write grant is created. Wager snapshots, settlement state,
+virtual bankroll, and external-wager isolation are unchanged.

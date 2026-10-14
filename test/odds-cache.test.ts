@@ -61,8 +61,14 @@ const normalizedEvent: NormalizedEvent = {
 describe("shared odds cache acceptance", () => {
   it("reuses one upstream request and ledger row across equivalent users, then refreshes once after expiry", async () => {
     const store = new MemoryStore();
-    const provider = vi.fn(async () => providerResult);
-    const dependencies = { store, provider, now: () => now };
+    const provider = vi.fn(async () => ({ ...providerResult, events: [normalizedEvent] }));
+    const scheduled: (() => Promise<void>)[] = [];
+    const dependencies = {
+      store,
+      provider,
+      now: () => now,
+      scheduleRefresh: (work: () => Promise<void>) => scheduled.push(work),
+    };
     const [userA, userB] = await Promise.all([
       getOdds(dependencies, "epl"),
       getOdds(dependencies, "epl"),
@@ -74,8 +80,11 @@ describe("shared odds cache acceptance", () => {
     expect(provider).toHaveBeenCalledTimes(1);
     expect(store.records).toHaveLength(1);
 
-    now.setTime(new Date("2026-09-12T12:16:00Z").getTime());
+    now.setTime(new Date("2026-09-12T18:01:00Z").getTime());
     await Promise.all([getOdds(dependencies, "epl"), getOdds(dependencies, "epl")]);
+    expect(provider).toHaveBeenCalledTimes(1);
+    expect(scheduled).toHaveLength(1);
+    await scheduled[0]();
     expect(provider).toHaveBeenCalledTimes(2);
     expect(store.records).toHaveLength(2);
   });
@@ -90,6 +99,34 @@ describe("shared odds cache acceptance", () => {
     expect(provider).toHaveBeenCalledTimes(1);
   });
 
+  it("propagates provider attempts and measured response time into the usage record", async () => {
+    const store = new MemoryStore();
+    const provider = vi.fn(async () => ({ ...providerResult, attempts: 2, responseTimeMs: 37 }));
+
+    await getOdds({ store, provider, now: () => new Date("2026-09-12T12:00:00Z") }, "epl");
+
+    const metadata = (store.records[0] as unknown[])[5];
+    expect(metadata).toMatchObject({
+      attempts: 2,
+      responseTimeMs: 37,
+      success: true,
+    });
+  });
+
+  it("uses safe telemetry defaults when a provider response omits timing data", async () => {
+    const store = new MemoryStore();
+    const provider = vi.fn(async () => providerResult);
+
+    await getOdds({ store, provider, now: () => new Date("2026-09-12T12:00:00Z") }, "epl");
+
+    const metadata = (store.records[0] as unknown[])[5];
+    expect(metadata).toMatchObject({
+      attempts: 1,
+      responseTimeMs: null,
+      success: true,
+    });
+  });
+
   it("serves stale data without calling upstream in high quota state", async () => {
     const store = new MemoryStore();
     store.used = 425;
@@ -98,12 +135,109 @@ describe("shared odds cache acceptance", () => {
       dataset: { competitionId: "epl", events: [], fetchedAt: "2026-09-12T11:00:00Z" },
       fetchedAt: "2026-09-12T11:00:00Z",
       expiresAt: "2026-09-12T11:15:00Z",
+      staleUntil: "2026-09-12T12:30:00Z",
       refreshNotBefore: "2026-09-12T11:05:00Z",
     };
     const provider = vi.fn(async () => providerResult);
-    const result = await getOdds({ store, provider, now: () => now }, "epl");
+    const result = await getOdds(
+      { store, provider, now: () => new Date("2026-09-12T12:00:00Z") },
+      "epl",
+    );
     expect(result.cacheStatus).toBe("stale");
     expect(provider).not.toHaveBeenCalled();
+  });
+
+  it("serves stale-but-usable data while scheduling one lease-protected refresh", async () => {
+    const store = new MemoryStore();
+    store.row = {
+      cacheKey: "x",
+      dataset: {
+        competitionId: "epl",
+        events: [normalizedEvent],
+        fetchedAt: "2026-09-12T12:00:00Z",
+      },
+      fetchedAt: "2026-09-12T12:00:00Z",
+      expiresAt: "2026-09-12T14:00:00Z",
+      staleUntil: "2026-09-12T18:00:00Z",
+      refreshNotBefore: "2026-09-12T12:05:00Z",
+    };
+    const provider = vi.fn(async () => ({ ...providerResult, events: [normalizedEvent] }));
+    const scheduled: (() => Promise<void>)[] = [];
+    const result = await getOdds(
+      {
+        store,
+        provider,
+        now: () => new Date("2026-09-12T14:01:00Z"),
+        scheduleRefresh: (work) => scheduled.push(work),
+      },
+      "epl",
+    );
+    expect(result.cacheStatus).toBe("stale");
+    expect(result.dataset).toBe(store.row?.dataset);
+    expect(provider).not.toHaveBeenCalled();
+    expect(scheduled).toHaveLength(1);
+    await scheduled[0]();
+    expect(provider).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps stale data usable when a background provider refresh fails", async () => {
+    const store = new MemoryStore();
+    store.row = {
+      cacheKey: "x",
+      dataset: {
+        competitionId: "epl",
+        events: [normalizedEvent],
+        fetchedAt: "2026-09-12T12:00:00Z",
+      },
+      fetchedAt: "2026-09-12T12:00:00Z",
+      expiresAt: "2026-09-12T14:00:00Z",
+      staleUntil: "2026-09-12T18:00:00Z",
+      refreshNotBefore: "2026-09-12T12:05:00Z",
+    };
+    const scheduled: (() => Promise<void>)[] = [];
+    const result = await getOdds(
+      {
+        store,
+        provider: async () => {
+          throw new Error("provider unavailable");
+        },
+        now: () => new Date("2026-09-12T14:01:00Z"),
+        scheduleRefresh: (work) => scheduled.push(work),
+      },
+      "epl",
+    );
+    expect(result.cacheStatus).toBe("stale");
+    await scheduled[0]();
+    expect((store.records.at(-1) as unknown[])[5]).toMatchObject({ success: false });
+    expect(store.row?.dataset.events).toHaveLength(1);
+  });
+
+  it("does not serve a hard-expired odds row", async () => {
+    const store = new MemoryStore();
+    store.row = {
+      cacheKey: "x",
+      dataset: {
+        competitionId: "epl",
+        events: [normalizedEvent],
+        fetchedAt: "2026-09-12T12:00:00Z",
+      },
+      fetchedAt: "2026-09-12T12:00:00Z",
+      expiresAt: "2026-09-12T14:00:00Z",
+      staleUntil: "2026-09-12T14:30:00Z",
+      refreshNotBefore: "2026-09-12T12:05:00Z",
+    };
+    await expect(
+      getOdds(
+        {
+          store,
+          provider: vi.fn(async () => {
+            throw new Error("provider unavailable");
+          }),
+          now: () => new Date("2026-09-12T15:00:00Z"),
+        },
+        "epl",
+      ),
+    ).rejects.toThrow("provider unavailable");
   });
 
   it("returns valid current odds and records quota when optional history persistence fails", async () => {
@@ -184,6 +318,6 @@ describe("shared odds cache acceptance", () => {
       ),
     ).rejects.toBe(cacheFailure);
     expect(cacheStore.historyWrites).toHaveLength(0);
-    expect(cacheStore.records).toHaveLength(0);
+    expect(cacheStore.records).toHaveLength(1);
   });
 });

@@ -81,6 +81,8 @@ describe("Phase 2 shared-data authorization migration", () => {
     expect(provider).toMatch(/^import "server-only";/);
     expect(server).toMatch(/^import "server-only";/);
     expect(provider).not.toMatch(/NEXT_PUBLIC_.*ODDS/i);
+    expect(server).toContain("attempts: response.attempts");
+    expect(server).toContain("responseTimeMs: response.responseTimeMs");
   });
 });
 

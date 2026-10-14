@@ -8,6 +8,7 @@ import {
   rawSportsProviderConfiguration,
   sportsProviderConfiguration,
 } from "../src/config/sports";
+import { createOddsRequest } from "../src/lib/odds/request";
 
 describe("sports and provider configuration", () => {
   it("exposes the configured core competitions", () => {
@@ -76,12 +77,27 @@ describe("sports and provider configuration", () => {
     expect(() => providerConfigurationSchema.parse(duplicate)).toThrow(/must be unique/);
   });
 
-  it("keeps paid-only Caesars disabled under the zero-cost policy", () => {
+  it("keeps the core bookmaker pack explicit and quota-safe", () => {
     const caesars = sportsProviderConfiguration.bookmakers.find(
       (bookmaker) => bookmaker.id === "caesars",
     );
+    const core = sportsProviderConfiguration.bookmakers.filter((bookmaker) => bookmaker.core);
+    const request = createOddsRequest("nfl");
 
-    expect(caesars).toMatchObject({ enabled: false, freeTierEligible: false });
+    expect(core.map((bookmaker) => bookmaker.id)).toEqual([
+      "fanduel",
+      "draftkings",
+      "betrivers",
+      "caesars",
+    ]);
+    expect(request.bookmakers).toEqual(["betrivers", "draftkings", "fanduel"]);
+    expect(caesars).toMatchObject({
+      enabled: true,
+      core: true,
+      requestByDefault: false,
+      freeTierEligible: false,
+      providerKey: "williamhill_us",
+    });
   });
 });
 

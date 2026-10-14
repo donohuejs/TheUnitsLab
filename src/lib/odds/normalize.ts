@@ -62,6 +62,7 @@ export function normalizeOddsResponse(
 
   return events.map((event) => ({
     id: `${competitionId}:${event.id}`,
+    provider: "the_odds_api_v4" as const,
     providerEventId: event.id,
     sport: competition.sport,
     competitionId,
@@ -84,12 +85,21 @@ export function normalizeOddsResponse(
             {
               bookmakerId: configured.id,
               bookmakerName: configured.name,
+              providerBookmakerKey: bookmaker.key,
+              providerMarketKey: market.key,
+              providerSelectionName: outcome.name,
               marketType:
                 market.key === "h2h"
                   ? ("moneyline" as const)
                   : market.key === "spreads" || market.key === "alternate_spreads"
                     ? ("spread" as const)
                     : ("total" as const),
+              marketScope: "game" as const,
+              marketPeriod: "full_game" as const,
+              marketVariant: market.key.startsWith("alternate_")
+                ? ("alternate" as const)
+                : ("main" as const),
+              participantId: null,
               selection: normalizedSelection,
               selectionName: outcome.name,
               point: outcome.point ?? null,
