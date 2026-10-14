@@ -5,7 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CompetitionId, QuotaMetadata } from "@/lib/odds/types";
 
 import type { CanonicalScoreRequest } from "./request";
-import type { ScoreRefreshRow, ScoreStore } from "./service";
+import type { ScoreRefreshRow, ScoreStore, ScoreUsageRecordMetadata } from "./service";
 import type { NormalizedScore, ScoreRefreshPurpose } from "./types";
 
 export class PostgresScoreStore implements ScoreStore {
@@ -123,14 +123,27 @@ export class PostgresScoreStore implements ScoreStore {
     key: string,
     quota: QuotaMetadata,
     status: number,
+    metadata: ScoreUsageRecordMetadata,
   ) {
     const { error } = await this.client.from("api_usage_ledger").insert({
       provider: request.provider,
       endpoint: request.endpoint,
       sport: request.providerSportKey.split("_")[0],
       competition: request.competitionId,
+      provider_event_id: null,
       request_purpose: `score_${purpose}`,
       cache_key: key,
+      requested_markets: [],
+      requested_bookmakers: [],
+      requested_regions: [],
+      refresh_reason: purpose,
+      cache_state: metadata.cacheState,
+      refresh_lease_acquired: metadata.refreshLeaseAcquired,
+      http_attempts: metadata.attempts,
+      response_time_ms: metadata.responseTimeMs,
+      success: metadata.success,
+      error_code: metadata.errorCode ?? null,
+      error_detail: metadata.errorDetail ?? null,
       http_status: status,
       credits_consumed: quota.lastRequestCost,
       credits_used: quota.used,

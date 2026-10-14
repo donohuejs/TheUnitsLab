@@ -20,6 +20,22 @@ type Ledger = {
   requested_at: string;
   endpoint: string;
   sport: string;
+  competition: string;
+  provider_event_id: string | null;
+  request_purpose: string;
+  requested_markets: string[];
+  requested_bookmakers: string[];
+  requested_regions: string[];
+  refresh_reason: string;
+  cache_state: string;
+  refresh_lease_acquired: boolean;
+  http_attempts: number;
+  response_time_ms: number | null;
+  success: boolean;
+  error_code: string | null;
+  error_detail: string | null;
+  http_status: number;
+  cache_key: string;
   credits_consumed: number | null;
   credits_used: number | null;
   credits_remaining: number | null;
@@ -75,9 +91,14 @@ export default async function ApiUsagePage({ searchParams }: Props) {
   if (!data.user) redirect("/auth");
   const environment = readServerEnvironment(process.env);
   if (!environment.APP_ADMIN_USER_IDS.includes(data.user.id)) redirect("/sports");
+  const monthStart = new Date();
+  monthStart.setUTCDate(1);
   const { data: rows, error } = await createSupabaseAdminClient()
     .from("api_usage_ledger")
-    .select("requested_at,endpoint,sport,credits_consumed,credits_used,credits_remaining")
+    .select(
+      "requested_at,endpoint,sport,competition,provider_event_id,request_purpose,requested_markets,requested_bookmakers,requested_regions,refresh_reason,cache_state,refresh_lease_acquired,http_attempts,response_time_ms,success,error_code,error_detail,http_status,cache_key,credits_consumed,credits_used,credits_remaining",
+    )
+    .gte("requested_at", monthStart.toISOString())
     .order("requested_at", { ascending: false });
   if (error) {
     return (
@@ -94,8 +115,6 @@ export default async function ApiUsagePage({ searchParams }: Props) {
     );
   }
   const admin = createSupabaseAdminClient();
-  const monthStart = new Date();
-  monthStart.setUTCDate(1);
   const monthKey = monthStart.toISOString().slice(0, 10);
   const [
     { data: visionRows },
@@ -218,13 +237,20 @@ export default async function ApiUsagePage({ searchParams }: Props) {
   const remaining =
     latest?.credits_remaining ?? Math.max(0, environment.ODDS_API_MONTHLY_ALLOWANCE - used);
   const percent = (used / environment.ODDS_API_MONTHLY_ALLOWANCE) * 100;
-  const sum = (key: "sport" | "endpoint") =>
+  const sum = (key: "sport" | "endpoint" | "competition" | "request_purpose") =>
     Object.entries(
       ledger.reduce<Record<string, number>>((totals, row) => {
         totals[row[key]] = (totals[row[key]] ?? 0) + (row.credits_consumed ?? 0);
         return totals;
       }, {}),
-    );
+    ).sort(([, left], [, right]) => right - left);
+  const sumArray = (key: "requested_markets" | "requested_bookmakers") =>
+    Object.entries(
+      ledger.reduce<Record<string, number>>((totals, row) => {
+        for (const value of row[key] ?? []) totals[value] = (totals[value] ?? 0) + 1;
+        return totals;
+      }, {}),
+    ).sort(([, left], [, right]) => right - left);
   const byDay = Object.entries(
     ledger.reduce<Record<string, number>>((totals, row) => {
       const day = row.requested_at.slice(0, 10);
@@ -232,6 +258,14 @@ export default async function ApiUsagePage({ searchParams }: Props) {
       return totals;
     }, {}),
   );
+  const upstreamCalls = ledger.length;
+  const failedCalls = ledger.filter((row) => !row.success).length;
+  const providerCost = ledger.reduce((total, row) => total + (row.credits_consumed ?? 0), 0);
+  const reconciliationDelta = used - providerCost;
+  const expensiveCalls = [...ledger]
+    .filter((row) => row.credits_consumed !== null)
+    .sort((left, right) => (right.credits_consumed ?? 0) - (left.credits_consumed ?? 0))
+    .slice(0, 12);
   return (
     <main className="shell">
       <AppNav active="admin" userId={data.user.id} />
@@ -262,6 +296,22 @@ export default async function ApiUsagePage({ searchParams }: Props) {
         <div className="card">
           <small>Consumed</small>
           <strong>{percent.toFixed(1)}%</strong>
+        </div>
+        <div className="card">
+          <small>Upstream HTTP calls</small>
+          <strong>{upstreamCalls}</strong>
+        </div>
+        <div className="card">
+          <small>Failed calls</small>
+          <strong>{failedCalls}</strong>
+        </div>
+        <div className="card">
+          <small>Ledger cost</small>
+          <strong>{providerCost}</strong>
+        </div>
+        <div className="card">
+          <small>Headline − ledger</small>
+          <strong>{reconciliationDelta}</strong>
         </div>
       </div>
       <div className="dashboard-grid">
@@ -294,6 +344,48 @@ export default async function ApiUsagePage({ searchParams }: Props) {
           )}
         </section>
         <section className="card">
+          <h2>Usage by competition</h2>
+          {sum("competition").length ? (
+            <ul>
+              {sum("competition").map(([label, value]) => (
+                <li key={label}>
+                  {label}: {value}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="empty-state">No provider calls have been recorded.</p>
+          )}
+        </section>
+        <section className="card">
+          <h2>Usage by requested market</h2>
+          {sumArray("requested_markets").length ? (
+            <ul>
+              {sumArray("requested_markets").map(([label, value]) => (
+                <li key={label}>
+                  {label}: {value} calls
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="empty-state">No market metadata has been recorded.</p>
+          )}
+        </section>
+        <section className="card">
+          <h2>Usage by requested bookmaker</h2>
+          {sumArray("requested_bookmakers").length ? (
+            <ul>
+              {sumArray("requested_bookmakers").map(([label, value]) => (
+                <li key={label}>
+                  {label}: {value} calls
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="empty-state">No bookmaker metadata has been recorded.</p>
+          )}
+        </section>
+        <section className="card">
           <h2>Usage by day</h2>
           {byDay.length ? (
             <ul>
@@ -308,6 +400,56 @@ export default async function ApiUsagePage({ searchParams }: Props) {
           )}
         </section>
       </div>
+      <section className="card">
+        <h2>Recent provider calls</h2>
+        {expensiveCalls.length ? (
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Endpoint / sport</th>
+                  <th>Purpose / reason</th>
+                  <th>Markets / books</th>
+                  <th>Cost</th>
+                  <th>Status</th>
+                  <th>Latency</th>
+                </tr>
+              </thead>
+              <tbody>
+                {expensiveCalls.map((row) => (
+                  <tr key={`${row.requested_at}-${row.cache_key}`}>
+                    <td>{row.requested_at}</td>
+                    <td>
+                      {row.endpoint} · {row.sport} · {row.competition}
+                    </td>
+                    <td>
+                      {row.request_purpose} · {row.refresh_reason} · {row.cache_state}
+                    </td>
+                    <td>
+                      {(row.requested_markets ?? []).join(", ") || "—"} /{" "}
+                      {(row.requested_bookmakers ?? []).join(", ") || "—"}
+                    </td>
+                    <td>{row.credits_consumed ?? "—"}</td>
+                    <td>
+                      {row.success ? "Success" : `Failed (${row.http_status})`}
+                      {row.http_attempts > 1 ? ` · ${row.http_attempts} attempts` : ""}
+                    </td>
+                    <td>{row.response_time_ms === null ? "—" : `${row.response_time_ms} ms`}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="empty-state">No provider calls have been recorded.</p>
+        )}
+        <p className="muted">
+          Headline usage comes from the provider&apos;s cumulative usage header. Ledger cost is the
+          sum of provider-reported per-call costs captured for this month; a non-zero difference is
+          retained for investigation rather than silently normalized.
+        </p>
+      </section>
       <section className="card admin-vision-card" aria-labelledby="vision-budget-title">
         <div className="section-heading">
           <div>

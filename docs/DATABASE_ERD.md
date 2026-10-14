@@ -2,11 +2,12 @@
 
 ## Phase 2 operational data
 
-`public.odds_cache` stores one replaceable normalized dataset per canonical upstream request. `public.api_usage_ledger` stores only actual upstream requests. `app_private.odds_refresh_leases` coordinates refresh ownership across application instances and is not exposed to authenticated clients. These are operational provider records, not future immutable wager snapshots.
+`public.odds_cache` stores one replaceable normalized dataset per canonical upstream request. v0.16.0 adds `stale_until` so a stale row can be served only within a hard limit. `public.odds_price_history` stores shared pregame movement points and marks retained post-start rows as non-pregame. `public.api_usage_ledger` stores actual upstream attempts, including failures, requested dimensions, lease/cache context, latency, safe error metadata, and provider quota headers. `app_private.odds_refresh_leases` coordinates refresh ownership across application instances and is not exposed to authenticated clients. These are operational provider records, not future immutable wager snapshots.
 
 ```mermaid
 erDiagram
   ODDS_CACHE ||--o{ API_USAGE_LEDGER : "canonical key"
+  PROVIDER_EVENTS ||--o{ ODDS_PRICE_HISTORY : "pregame movement"
   ODDS_CACHE ||--o| ODDS_REFRESH_LEASES : coordinates
 ```
 

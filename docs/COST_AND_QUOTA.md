@@ -6,7 +6,7 @@ Limits were checked against official provider pages on 2026-09-11 and must be re
 
 | Service      | Selected free baseline                                                                                     | Important constraint                                                                                                           |
 | ------------ | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| The Odds API | Free plan, 500 credits per month                                                                           | Caesars (`williamhill_us`) is currently paid-only; it remains configured but disabled.                                         |
+| The Odds API | Free plan, 500 credits per month                                                                           | Caesars (`williamhill_us`) is currently paid-only; it remains configured but is excluded from default requests.                |
 | Supabase     | Two active free projects, 500 MB database, 1 GB storage, 5 GB uncached plus 5 GB cached egress, 50,000 MAU | Free projects pause after one week of inactivity; no automatic backups or point-in-time recovery.                              |
 | Vercel       | Hobby for private non-commercial use, 1,000,000 invocations and 4 CPU-hours included                       | Hobby cron is daily at best and cannot support live-score polling. Usage overages pause service rather than authorizing spend. |
 | GitHub       | Existing source-control baseline                                                                           | Hosted CI minute and storage usage must remain within the account's free allowance.                                            |
@@ -32,11 +32,11 @@ This is a credit envelope, not a polling schedule. Before Phase 2 enables any ca
 
 - Canonicalize provider, endpoint, competition, bookmaker set, market set, and response format into one request key.
 - Store responses in a shared PostgreSQL cache so all application instances and users reuse the same result.
-- Cache schedules for six hours initially and pregame odds for 15 minutes, within the source's recommended range.
+- Cache schedules for six hours initially. v0.16.0 replaces the universal pregame odds window with adaptive freshness: 24 hours when an event is more than seven days away, 6 hours in the week-out band, 2 hours in the day-out band, 30 minutes within six hours, and 10 minutes within one hour. Each row has a separate hard stale limit.
 - Coalesce concurrent misses so five users opening EPL within one window generate at most one upstream request.
-- Return the last-refresh timestamp. Phase 3 bet submission accepts only a non-expired shared cache row; it does not refresh upstream. An expired selection requires the user to refresh and review the current terms.
+- Return the last-refresh timestamp. Phase 3 bet submission accepts only a non-expired shared cache row; it does not refresh upstream. An expired selection requires the user to refresh and review the current terms. A stale-but-usable browse read may return immediately while one lease-protected server refresh runs through Next.js `after()`; stale data is never served beyond its hard limit.
 - Never run a client polling loop against the provider. The client reads the application server, which independently decides whether a bounded upstream request is allowed.
-- Score priority is: finalization required for settlement, open wagers, actively viewed events, then explicitly requested refreshes. Broad competition polling is prohibited.
+- Score priority is: finalization required for settlement, open wagers, actively viewed events, then explicitly requested refreshes. Settlement and open-wager refreshes pass target event IDs so unrelated future events do not trigger score work. Broad competition polling is prohibited.
 
 Phase 3 adds no provider endpoint, background task, polling loop, or per-user or per-bet call. Selection page loads reuse the Phase 2 canonical shared cache, and the atomic placement function reads PostgreSQL only. Expected monthly provider consumption is therefore unchanged.
 
@@ -83,6 +83,34 @@ Phase 8 uses the existing Next.js, React, Supabase, and CSS stack. The dashboard
 ledger/ticket/group data and the canonical analytics RPC; it never requests provider data merely to
 render historical summaries. Loading boundaries, status badges, responsive CSS, and the dependency-
 free secret scan add no paid service, package, polling loop, cache path, or provider quota usage.
+
+## v0.16.0 odds-data cost impact
+
+The default priced-odds request pack is FanDuel, DraftKings, and BetRivers. It is selected from
+the configured free-tier-eligible bookmakers and is shared across users by canonical cache key.
+BetMGM remains available as explicit configuration but is not requested by default. Caesars remains
+configured for future coverage but its current `williamhill_us` key is paid-only, so it is excluded
+from the free default request. No new provider or paid service was introduced.
+
+Adaptive freshness reduces needless distant-event refreshes while tightening windows near kickoff.
+The policy is a cache policy, not a polling schedule: a request must still be triggered by a page,
+bounded settlement work, event discovery, or an explicit allowed refresh. Stale-while-revalidate
+uses the existing PostgreSQL lease and schedules only the cache key that was read. Provider errors
+are ledgered and may serve existing stale data only until the row's hard stale limit.
+
+The usage ledger now records both successful and failed attempts with requested markets, bookmakers,
+regions, provider event ID, purpose/reason, cache state, lease result, attempt count, latency, HTTP
+status, safe error metadata, and provider quota headers. The admin dashboard shows provider-reported
+cumulative usage separately from the current-month sum of ledger credits and displays their delta.
+This is the reconciliation path for the known situation where a provider headline and a dashboard
+breakdown do not match; the repository does not invent a production explanation without the actual
+ledger rows and provider response history.
+
+Pregame history writes are restricted to scheduled events before kickoff and core bookmaker IDs,
+which prevents alternate/event-catalog or post-start snapshots from inflating movement history.
+History volume therefore scales with actual odds refreshes and the configured core pack rather than
+with users or watches. The 500-credit ceiling, free-tier stop conditions, and no-uncontrolled-polling
+rules remain unchanged.
 
 ## Release-candidate UX patch 1 quota impact
 

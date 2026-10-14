@@ -27,7 +27,11 @@ export function createOddsRequest(competitionId: CompetitionId): CanonicalOddsRe
   const competition = getCompetition(competitionId);
   if (!competition) throw new Error("Unsupported competition");
   const bookmakers = sportsProviderConfiguration.bookmakers.filter(
-    (bookmaker) => bookmaker.enabled && bookmaker.freeTierEligible,
+    (bookmaker) =>
+      bookmaker.enabled &&
+      bookmaker.core &&
+      bookmaker.requestByDefault &&
+      bookmaker.freeTierEligible,
   );
   return {
     provider: "the_odds_api_v4",
@@ -49,7 +53,11 @@ export function createAlternateOddsRequest(
   const competition = getCompetition(competitionId);
   if (!competition) throw new Error("Unsupported competition");
   const bookmakers = sportsProviderConfiguration.bookmakers.filter(
-    (bookmaker) => bookmaker.enabled && bookmaker.freeTierEligible,
+    (bookmaker) =>
+      bookmaker.enabled &&
+      bookmaker.core &&
+      bookmaker.requestByDefault &&
+      bookmaker.freeTierEligible,
   );
   return {
     provider: "the_odds_api_v4",

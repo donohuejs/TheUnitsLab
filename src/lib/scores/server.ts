@@ -9,10 +9,12 @@ import { PostgresScoreStore } from "./postgres-store";
 import { fetchScoreProvider } from "./provider";
 import { getScores } from "./service";
 import type { ScoreRefreshPurpose } from "./types";
+import { uniqueScoreTargets, type ScoreRefreshTarget } from "./priority";
 
 export async function refreshCompetitionScores(
   competitionId: CompetitionId,
   purpose: ScoreRefreshPurpose,
+  targets?: readonly ScoreRefreshTarget[],
 ) {
   const environment = readServerEnvironment(process.env);
   const store = new PostgresScoreStore(createSupabaseAdminClient());
@@ -27,25 +29,40 @@ export async function refreshCompetitionScores(
           scores: normalizeScoreResponse(response.body, competitionId, refreshedAt),
           quota: response.quota,
           status: response.status,
+          attempts: response.attempts,
+          responseTimeMs: response.responseTimeMs,
         };
       },
     },
     competitionId,
     purpose,
+    targets,
   );
 }
 
 export async function runScoreAndSettlementCycle(
-  competitionIds: CompetitionId[],
+  targetsOrCompetitions: CompetitionId[] | ScoreRefreshTarget[],
   purpose: ScoreRefreshPurpose,
 ) {
-  const unique = [...new Set(competitionIds)];
+  const isTarget = (value: CompetitionId | ScoreRefreshTarget): value is ScoreRefreshTarget =>
+    typeof value === "object";
+  const targets = targetsOrCompetitions.filter(isTarget);
+  const competitionIds = isTarget(targetsOrCompetitions[0] as CompetitionId | ScoreRefreshTarget)
+    ? [...new Set(targets.map((target) => target.competitionId))]
+    : [...new Set(targetsOrCompetitions as CompetitionId[])];
+  const unique = competitionIds;
   const refreshes = [];
   for (const competitionId of unique) {
     try {
       refreshes.push({
         competitionId,
-        ...(await refreshCompetitionScores(competitionId, purpose)),
+        ...(await refreshCompetitionScores(
+          competitionId,
+          purpose,
+          targets.length
+            ? uniqueScoreTargets(targets.filter((target) => target.competitionId === competitionId))
+            : undefined,
+        )),
       });
     } catch (error) {
       refreshes.push({

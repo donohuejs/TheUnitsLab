@@ -72,6 +72,16 @@ v0.15.1 adds no database migration. The corrective patch changes only shared Bro
 normalization, active-event state, responsive presentation, and release metadata. Existing cache,
 quota, wager, settlement, bankroll, RLS, and authorization boundaries remain unchanged.
 
+v0.16.0 adds `20261009000000_v0_16_odds_data_architecture.sql`. It additively adds a hard stale
+timestamp to `public.odds_cache`, a pregame marker and lookup index to shared odds history, and
+provider request/response telemetry columns and indexes to `public.api_usage_ledger`. Existing rows
+receive safe legacy defaults; post-start history rows identified by the current market state are
+marked non-pregame for future movement analysis. No new exposed table or grant is created, and the
+existing forced-RLS posture remains unchanged. The application writes the new cache and ledger
+fields through the existing service-only provider boundary, while the legacy history RPC remains
+compatible with the additive payload. The migration is local repository state until the production
+release workflow verifies linked-project parity and applies it.
+
 The release-candidate UX patch adds `20260920000000_release_candidate_ux_patch_1.sql`. It adds
 configurable hockey/NHL catalog data, enables NFL, introduces immutable synthetic flags for
 administrator settlement tests, filters synthetic rows from ordinary history/analytics/score and

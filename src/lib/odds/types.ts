@@ -1,5 +1,11 @@
 import type { TeamResolution } from "../teams/logos";
 
+export type OddsProviderId = "the_odds_api_v4";
+export type MarketScope = "game" | "team" | "player";
+export type MarketPeriod =
+  "full_game" | "first_half" | "second_half" | "quarter" | "period" | "soccer_half";
+export type MarketVariant = "main" | "alternate";
+
 export type CompetitionId =
   "epl" | "ucl" | "uel" | "laliga" | "ncaaf" | "ncaab" | "nfl" | "nba" | "nhl";
 export type MarketType = "moneyline" | "spread" | "total";
@@ -8,7 +14,14 @@ export type SelectionType = "home" | "away" | "draw" | "over" | "under";
 export type NormalizedOdds = {
   bookmakerId: string;
   bookmakerName: string;
+  providerBookmakerKey?: string;
+  providerMarketKey?: string;
+  providerSelectionName?: string;
   marketType: MarketType;
+  marketScope?: MarketScope;
+  marketPeriod?: MarketPeriod;
+  marketVariant?: MarketVariant;
+  participantId?: string | null;
   selection: SelectionType;
   selectionName: string;
   point: number | null;
@@ -21,6 +34,7 @@ export type NormalizedOdds = {
 
 export type NormalizedEvent = {
   id: string;
+  provider?: OddsProviderId;
   providerEventId: string;
   sport: "soccer" | "football" | "basketball" | "hockey";
   competitionId: CompetitionId;

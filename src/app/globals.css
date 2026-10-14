@@ -1681,6 +1681,22 @@ textarea:focus {
   background: #eaf8f1;
   box-shadow: 0 0 0 3px rgba(18, 183, 106, 0.14);
 }
+.odd.best-odds {
+  border-color: #8eafc1;
+  background: #e8f1f6;
+  box-shadow: inset 0 0 0 1px rgba(49, 85, 108, 0.08);
+}
+.odd.best-odds:hover {
+  border-color: #31556c;
+  background: #dcebf3;
+}
+.odd.best-odds.selected {
+  border-color: var(--accent);
+  background: #eaf8f1;
+  box-shadow:
+    0 0 0 3px rgba(18, 183, 106, 0.14),
+    inset 0 0 0 1px #8eafc1;
+}
 .odd-selected-indicator {
   display: inline-flex;
   align-items: center;

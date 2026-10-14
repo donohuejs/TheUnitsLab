@@ -1,4 +1,5 @@
 import type { OddsDataset } from "@/lib/odds/types";
+import { sportsProviderConfiguration } from "@/config/sports";
 import { isSupportedStraightSelection } from "@/lib/wagers/selection";
 
 export type OddsObservation = {
@@ -21,13 +22,25 @@ export type OddsObservation = {
 export function oddsObservations(dataset: OddsDataset) {
   const observations = new Map<string, OddsObservation>();
   const seenEventIds = new Set<string>();
+  const coreBookmakerIds = new Set(
+    sportsProviderConfiguration.bookmakers
+      .filter((bookmaker) => bookmaker.core)
+      .map((bookmaker) => bookmaker.id),
+  );
   for (const event of dataset.events) {
     seenEventIds.add(event.providerEventId);
+    if (
+      event.status !== "scheduled" ||
+      Date.parse(event.scheduledStart) <= Date.parse(dataset.fetchedAt)
+    ) {
+      continue;
+    }
     for (const odds of event.odds) {
       // Provider alternate ladders contain several simultaneous lines for one
       // outcome. They have no stable line-independent selection ID and cannot
       // be interpreted as successive movement of the canonical base market.
       if (odds.isAlternate || !isSupportedStraightSelection(event, odds)) continue;
+      if (!coreBookmakerIds.has(odds.bookmakerId)) continue;
       const key = [event.providerEventId, odds.bookmakerId, odds.marketType, odds.selection].join(
         "\u001f",
       );

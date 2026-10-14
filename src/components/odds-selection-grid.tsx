@@ -12,6 +12,7 @@ import {
   subscribeToStraightSlip,
 } from "@/lib/wagers/slip";
 import type { MarketType, SelectionType } from "@/lib/odds/types";
+import { getBestOdds, groupOddsByComparableSelection } from "@/lib/odds/best";
 
 type DisplayOdd = {
   providerEventId: string;
@@ -74,19 +75,8 @@ export function OddsSelectionGrid({
       })),
     [odds, straightSelectionKeys],
   );
-  const groups = useMemo(() => {
-    const bySelection = new Map<string, DisplayOdd[]>();
-    for (const odd of displayOdds) {
-      const key = `${odd.selection}|${odd.point ?? ""}`;
-      const current = bySelection.get(key) ?? [];
-      current.push(odd);
-      bySelection.set(key, current);
-    }
-    return [...bySelection.entries()].map(([key, prices]) => ({
-      key,
-      prices: [...prices].sort((left, right) => right.americanOdds - left.americanOdds),
-    }));
-  }, [displayOdds]);
+  const groups = useMemo(() => groupOddsByComparableSelection(displayOdds), [displayOdds]);
+  const bestOdds = useMemo(() => getBestOdds(displayOdds), [displayOdds]);
 
   const selectedGroupKeys = useMemo(
     () => groups.filter(({ prices }) => prices.some((odd) => odd.isSelected)).map(({ key }) => key),
@@ -105,6 +95,7 @@ export function OddsSelectionGrid({
         {displayOdds.map((odd, index) => (
           <OddChoice
             odd={odd}
+            isBest={bestOdds.has(odd)}
             watchlistAvailable={watchlistAvailable}
             key={`${odd.bookmakerId}-${odd.selection}-${odd.point}-${index}`}
           />
@@ -156,7 +147,15 @@ export function OddsSelectionGrid({
   );
 }
 
-function OddChoice({ odd, watchlistAvailable }: { odd: DisplayOdd; watchlistAvailable: boolean }) {
+function OddChoice({
+  odd,
+  isBest = false,
+  watchlistAvailable,
+}: {
+  odd: DisplayOdd;
+  isBest?: boolean;
+  watchlistAvailable: boolean;
+}) {
   const content = (
     <>
       <small>
@@ -177,15 +176,18 @@ function OddChoice({ odd, watchlistAvailable }: { odd: DisplayOdd; watchlistAvai
       ) : (
         <small>Add to Bet Slip</small>
       )}
+      {isBest ? <span className="sr-only">Best available odds</span> : null}
     </>
   );
   const selection = odd.eventStarted ? (
-    <div className="odd locked" aria-disabled="true">
+    <div className={`odd locked${isBest ? " best-odds" : ""}`} aria-disabled="true">
       {content}
     </div>
   ) : (
     <Link
-      className={odd.isSelected ? "odd selected" : "odd"}
+      className={["odd", odd.isSelected ? "selected" : "", isBest ? "best-odds" : ""]
+        .filter(Boolean)
+        .join(" ")}
       href={odd.href}
       scroll={false}
       aria-current={odd.isSelected ? "true" : undefined}

@@ -4,6 +4,7 @@ import { readServerEnvironment } from "@/config/env.server";
 import { getCompetition } from "@/lib/odds/request";
 import type { CompetitionId } from "@/lib/odds/types";
 import { runScoreAndSettlementCycle } from "@/lib/scores/server";
+import type { ScoreRefreshTarget } from "@/lib/scores/priority";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 function authorized(request: Request, expected: string) {
@@ -25,16 +26,27 @@ export async function POST(request: Request) {
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin
     .from("bets")
-    .select("bet_legs(competition_key)")
+    .select("bet_legs(provider_event_id,competition_key,scheduled_start)")
     .eq("status", "open")
-    .eq("source", "simulated")
     .eq("is_synthetic", false);
   if (error) return Response.json({ error: "Open wagers could not be loaded." }, { status: 500 });
-  const competitionIds = (data ?? [])
+  const targets = (data ?? [])
     .flatMap((ticket) => ticket.bet_legs)
-    .map((leg) => leg.competition_key)
-    .filter((id): id is CompetitionId => Boolean(getCompetition(id)));
-  const result = await runScoreAndSettlementCycle(competitionIds, "settlement");
+    .filter(
+      (
+        leg,
+      ): leg is { provider_event_id: string; competition_key: string; scheduled_start: string } =>
+        typeof leg.provider_event_id === "string" &&
+        typeof leg.competition_key === "string" &&
+        typeof leg.scheduled_start === "string" &&
+        Boolean(getCompetition(leg.competition_key)),
+    )
+    .map((leg): ScoreRefreshTarget => ({
+      competitionId: leg.competition_key as CompetitionId,
+      providerEventId: leg.provider_event_id,
+      scheduledStart: leg.scheduled_start,
+    }));
+  const result = await runScoreAndSettlementCycle(targets, "settlement");
   return Response.json(result);
 }
 

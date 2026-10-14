@@ -23,6 +23,7 @@ export class PostgresOddsStore implements OddsStore {
       fetchedAt: data.fetched_at,
       expiresAt: data.expires_at,
       refreshNotBefore: data.refresh_not_before,
+      staleUntil: data.stale_until ?? data.expires_at,
     } as CacheRow;
   }
 
@@ -55,6 +56,7 @@ export class PostgresOddsStore implements OddsStore {
       normalized_payload: row.dataset,
       fetched_at: row.fetchedAt,
       expires_at: row.expiresAt,
+      stale_until: row.staleUntil ?? row.expiresAt,
       refresh_not_before: row.refreshNotBefore,
       updated_at: row.fetchedAt,
     });
@@ -62,6 +64,7 @@ export class PostgresOddsStore implements OddsStore {
   }
 
   async recordHistory(row: CacheRow, request: CanonicalOddsRequest) {
+    if (request.endpoint !== "odds") return;
     const { observations, seenEventIds } = oddsObservations(row.dataset);
     const { error } = await this.client.rpc("record_odds_cache_snapshot", {
       p_cache: {
@@ -74,6 +77,7 @@ export class PostgresOddsStore implements OddsStore {
         normalized_payload: row.dataset,
         fetched_at: row.fetchedAt,
         expires_at: row.expiresAt,
+        stale_until: row.staleUntil ?? row.expiresAt,
         refresh_not_before: row.refreshNotBefore,
       },
       p_observations: observations,
@@ -100,14 +104,36 @@ export class PostgresOddsStore implements OddsStore {
     key: string,
     quota: { used: number | null; remaining: number | null; lastRequestCost: number | null },
     status: number,
+    metadata: {
+      refreshReason: string;
+      cacheState: string;
+      refreshLeaseAcquired: boolean;
+      attempts: number;
+      responseTimeMs: number | null;
+      success: boolean;
+      errorCode?: string | null;
+      errorDetail?: string | null;
+    },
   ) {
     const { error } = await this.client.from("api_usage_ledger").insert({
       provider: request.provider,
       endpoint: request.endpoint,
       sport: request.providerSportKey.split("_")[0],
       competition: request.competitionId,
+      provider_event_id: request.eventId ?? null,
       request_purpose: purpose,
       cache_key: key,
+      requested_markets: request.markets,
+      requested_bookmakers: request.bookmakers,
+      requested_regions: request.regions,
+      refresh_reason: metadata.refreshReason,
+      cache_state: metadata.cacheState,
+      refresh_lease_acquired: metadata.refreshLeaseAcquired,
+      http_attempts: metadata.attempts,
+      response_time_ms: metadata.responseTimeMs,
+      success: metadata.success,
+      error_code: metadata.errorCode ?? null,
+      error_detail: metadata.errorDetail ?? null,
       http_status: status,
       credits_consumed: quota.lastRequestCost,
       credits_used: quota.used,

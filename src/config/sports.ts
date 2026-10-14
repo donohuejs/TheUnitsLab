@@ -35,6 +35,8 @@ export const bookmakerSchema = z.object({
   providerKey: Identifier,
   region: z.enum(["us", "us2"]),
   enabled: z.boolean(),
+  core: z.boolean(),
+  requestByDefault: z.boolean(),
   freeTierEligible: z.boolean(),
 });
 
@@ -43,6 +45,17 @@ export const providerConfigurationSchema = z
     provider: z.literal("the_odds_api_v4"),
     competitions: z.array(competitionSchema).min(1),
     bookmakers: z.array(bookmakerSchema).min(1),
+    oddsFreshness: z
+      .array(
+        z.object({
+          id: z.enum(["distant", "week", "day", "near", "imminent"]),
+          minLeadSeconds: z.number().int().min(0),
+          maxLeadSeconds: z.number().int().min(0).nullable(),
+          targetFreshnessSeconds: z.number().int().positive(),
+          maxStaleSeconds: z.number().int().positive(),
+        }),
+      )
+      .min(1),
     quotaBands: z.array(
       z.object({
         id: z.enum(["normal", "conserve", "high", "critical"]),
@@ -209,6 +222,8 @@ export const rawSportsProviderConfiguration = {
       providerKey: "fanduel",
       region: "us",
       enabled: true,
+      core: true,
+      requestByDefault: true,
       freeTierEligible: true,
     },
     {
@@ -217,6 +232,8 @@ export const rawSportsProviderConfiguration = {
       providerKey: "draftkings",
       region: "us",
       enabled: true,
+      core: true,
+      requestByDefault: true,
       freeTierEligible: true,
     },
     {
@@ -225,6 +242,18 @@ export const rawSportsProviderConfiguration = {
       providerKey: "betmgm",
       region: "us",
       enabled: true,
+      core: false,
+      requestByDefault: false,
+      freeTierEligible: true,
+    },
+    {
+      id: "betrivers",
+      name: "BetRivers",
+      providerKey: "betrivers",
+      region: "us",
+      enabled: true,
+      core: true,
+      requestByDefault: true,
       freeTierEligible: true,
     },
     {
@@ -232,8 +261,47 @@ export const rawSportsProviderConfiguration = {
       name: "Caesars",
       providerKey: "williamhill_us",
       region: "us",
-      enabled: false,
+      enabled: true,
+      core: true,
+      requestByDefault: false,
       freeTierEligible: false,
+    },
+  ],
+  oddsFreshness: [
+    {
+      id: "distant",
+      minLeadSeconds: 7 * 24 * 60 * 60 + 1,
+      maxLeadSeconds: null,
+      targetFreshnessSeconds: 24 * 60 * 60,
+      maxStaleSeconds: 48 * 60 * 60,
+    },
+    {
+      id: "week",
+      minLeadSeconds: 24 * 60 * 60 + 1,
+      maxLeadSeconds: 7 * 24 * 60 * 60,
+      targetFreshnessSeconds: 6 * 60 * 60,
+      maxStaleSeconds: 18 * 60 * 60,
+    },
+    {
+      id: "day",
+      minLeadSeconds: 6 * 60 * 60 + 1,
+      maxLeadSeconds: 24 * 60 * 60,
+      targetFreshnessSeconds: 2 * 60 * 60,
+      maxStaleSeconds: 6 * 60 * 60,
+    },
+    {
+      id: "near",
+      minLeadSeconds: 60 * 60 + 1,
+      maxLeadSeconds: 6 * 60 * 60,
+      targetFreshnessSeconds: 30 * 60,
+      maxStaleSeconds: 2 * 60 * 60,
+    },
+    {
+      id: "imminent",
+      minLeadSeconds: 0,
+      maxLeadSeconds: 60 * 60,
+      targetFreshnessSeconds: 10 * 60,
+      maxStaleSeconds: 30 * 60,
     },
   ],
   quotaBands: [
